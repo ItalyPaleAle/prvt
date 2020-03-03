@@ -83,7 +83,7 @@ func addFile(path string) (error, string) {
 	}
 
 	// Get a stream to the output
-	out, err := os.Create("out/fileout")
+	out, err := os.Create("test/fileout")
 	if err != nil {
 		return err, utils.ErrorApp
 	}

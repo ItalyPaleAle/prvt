@@ -29,9 +29,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-func DecryptFile(out io.WriteCloser, in io.Reader, masterKey []byte) error {
-	defer out.Close()
-
+func DecryptFile(out io.Writer, in io.Reader, masterKey []byte) error {
 	// Peek the first 2kb at most
 	peek := make([]byte, 2048)
 	n, err := io.ReadFull(in, peek)

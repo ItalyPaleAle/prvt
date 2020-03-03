@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package fs
 
 import (
+	"e2e/crypto"
 	"os"
 )
 
@@ -28,40 +29,23 @@ import (
 // OsFs is a Fs implementation that uses functions provided by the os package
 type OsFs struct{}
 
-func (OsFs) Create(name string) (File, error) {
-	f, e := os.Create(name)
-	if f == nil {
-		// while this looks strange, we need to return a bare nil (of type nil) not
-		// a nil value of type *os.File or nil won't be nil
-		return nil, e
-	}
-	return f, e
-}
-
-func (OsFs) Mkdir(name string, perm os.FileMode) error {
-	return os.Mkdir(name, perm)
-}
-
-func (OsFs) MkdirAll(path string, perm os.FileMode) error {
-	return os.MkdirAll(path, perm)
-}
-
 func (OsFs) Open(name string) (File, error) {
-	f, e := os.Open(name)
-	if f == nil {
+	// Open the input file
+	in, err := os.Open(name)
+	if in == nil {
 		// while this looks strange, we need to return a bare nil (of type nil) not
 		// a nil value of type *os.File or nil won't be nil
-		return nil, e
+		return nil, err
 	}
-	return f, e
-}
 
-func (OsFs) Remove(name string) error {
-	return os.Remove(name)
-}
+	// Output stream
+	out := crypto.NewCryptoFile(name)
+	err = crypto.DecryptFile(out, in, []byte("hello world"))
+	if err != nil {
+		return nil, err
+	}
 
-func (OsFs) RemoveAll(path string) error {
-	return os.RemoveAll(path)
+	return out, nil
 }
 
 func (OsFs) Stat(name string) (os.FileInfo, error) {

@@ -64,18 +64,6 @@ func (h HttpFs) Dir(s string) *httpDir {
 	return &httpDir{basePath: s, fs: h}
 }
 
-func (h HttpFs) Create(name string) (File, error) {
-	return h.source.Create(name)
-}
-
-func (h HttpFs) Mkdir(name string, perm os.FileMode) error {
-	return h.source.Mkdir(name, perm)
-}
-
-func (h HttpFs) MkdirAll(path string, perm os.FileMode) error {
-	return h.source.MkdirAll(path, perm)
-}
-
 func (h HttpFs) Open(name string) (http.File, error) {
 	f, err := h.source.Open(name)
 	if err == nil {
@@ -84,14 +72,6 @@ func (h HttpFs) Open(name string) (http.File, error) {
 		}
 	}
 	return nil, err
-}
-
-func (h HttpFs) Remove(name string) error {
-	return h.source.Remove(name)
-}
-
-func (h HttpFs) RemoveAll(path string) error {
-	return h.source.RemoveAll(path)
 }
 
 func (h HttpFs) Stat(name string) (os.FileInfo, error) {

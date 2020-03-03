@@ -20,9 +20,7 @@ package cmd
 import (
 	"log"
 	"net/http"
-	"os"
 
-	"e2e/crypto"
 	"e2e/fs"
 
 	"github.com/spf13/cobra"
@@ -35,34 +33,14 @@ var serveCmd = &cobra.Command{
 	Long:              ``,
 	DisableAutoGenTag: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Get a stream to the file
-		in, err := os.Open("out/fileout")
-		if err != nil {
-			panic(err)
-		}
-
-		// Get a stream to the output
-		out, err := os.Create("out/decrypted")
-		if err != nil {
-			panic(err)
-		}
-
-		// Encrypt the data
-		err = crypto.DecryptFile(out, in, []byte("hello world"))
-		if err != nil {
-			panic(err)
-		}
-
-		/////////
-
 		// Create the file server
 		baseFs := fs.OsFs{}
 		httpFs := fs.NewHttpFs(baseFs)
-		fileserver := http.FileServer(httpFs.Dir("out/"))
+		fileserver := http.FileServer(httpFs.Dir("test/"))
 		http.Handle("/", fileserver)
 
 		// Create and listen to the web server
-		err = http.ListenAndServe("127.0.0.1:3000", nil)
+		err := http.ListenAndServe("127.0.0.1:3000", nil)
 		if err != nil {
 			log.Fatal(err)
 		}

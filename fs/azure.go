@@ -22,24 +22,6 @@ import "os"
 // AzureFs is a Fs implementation that uses Azure Blob Storage as backend
 type AzureFs struct{}
 
-func (AzureFs) Create(name string) (File, error) {
-	f, e := os.Create(name)
-	if f == nil {
-		// while this looks strange, we need to return a bare nil (of type nil) not
-		// a nil value of type *os.File or nil won't be nil
-		return nil, e
-	}
-	return f, e
-}
-
-func (AzureFs) Mkdir(name string, perm os.FileMode) error {
-	return os.Mkdir(name, perm)
-}
-
-func (AzureFs) MkdirAll(path string, perm os.FileMode) error {
-	return os.MkdirAll(path, perm)
-}
-
 func (AzureFs) Open(name string) (File, error) {
 	f, e := os.Open(name)
 	if f == nil {
@@ -48,14 +30,6 @@ func (AzureFs) Open(name string) (File, error) {
 		return nil, e
 	}
 	return f, e
-}
-
-func (AzureFs) Remove(name string) error {
-	return os.Remove(name)
-}
-
-func (AzureFs) RemoveAll(path string) error {
-	return os.RemoveAll(path)
 }
 
 func (AzureFs) Stat(name string) (os.FileInfo, error) {
