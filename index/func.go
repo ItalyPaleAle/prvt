@@ -17,7 +17,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package index
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/gofrs/uuid"
+)
 
 // Basename returns the path of a file
 func Basename(path string) string {
@@ -26,4 +30,13 @@ func Basename(path string) string {
 	folder := path[0:(index + 1)]
 
 	return folder
+}
+
+// GenerateFileId generates a new ID for a file
+func GenerateFileId() (string, error) {
+	fileIdUuid, err := uuid.NewV4()
+	if err != nil {
+		return "", err
+	}
+	return fileIdUuid.String(), nil
 }

@@ -24,288 +24,139 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/gofrs/uuid"
 )
 
 // How long to cache files for, in seconds
-const cacheTime = 300
+const cacheDuration = 300
 
 // IndexElements represents a value in the index
 type IndexElement struct {
-	IsFolder bool   `json:"f"`
-	Name     string `json:"n"`
-	Location string `json:"l"`
+	Path string `json:"p"`
+	Name string `json:"n"`
 }
 
 // CachedIndex contains the cached values for the index files
-type CachedIndex struct {
-	Time     time.Time
-	Elements []IndexElement
+type IndexFile struct {
+	Version  int            `json:"version"`
+	Elements []IndexElement `json:"elements"`
 }
 
 // Index manages the index for all files and folders
 type Index struct {
-	cache      map[string]CachedIndex
-	refreshing map[string]uint8
+	cacheTime  time.Time
+	cache      *IndexFile
+	refreshing bool
 }
 
 // Refresh an index if necessary
-func (i *Index) Refresh(name string, force bool) error {
+func (i *Index) Refresh(force bool) error {
 	// If we're already refreshing the cache, wait
-	if i.refreshing == nil {
-		i.refreshing = make(map[string]uint8)
-	}
-	for i.refreshing[name] != 0 {
+	for i.refreshing {
 		time.Sleep(100 * time.Millisecond)
 	}
 	// Semaphore
-	i.refreshing[name] = 1
+	i.refreshing = true
 	defer func() {
-		delete(i.refreshing, name)
+		i.refreshing = false
 	}()
 
 	// Check if we already have the index in cache and its age (unless we're forcing a refresh)
-	if i.cache == nil {
-		i.cache = make(map[string]CachedIndex, 0)
-	}
-	if !force {
-		cachedIndex, found := i.cache[name]
-		if found && time.Now().Add(cacheTime*time.Second).Before(cachedIndex.Time) {
-			// Cache exists and it's fresh
-			return nil
-		}
+	if !force && i.cache != nil && time.Now().Add(cacheDuration*time.Second).Before(i.cacheTime) {
+		// Cache exists and it's fresh
+		return nil
 	}
 
 	// Need to request the index
-	var elements []IndexElement
 	now := time.Now()
-	data, err := ioutil.ReadFile("test/index/" + name)
+	data, err := ioutil.ReadFile("test/index")
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	// Empty index
 	if len(data) == 0 {
-		// If we're requesting the list of folders, we always have at least "/"
-		if name == "folders" {
-			elements = []IndexElement{
-				IndexElement{
-					IsFolder: true,
-					Name:     "/",
-					Location: "root", // Convention
-				},
-			}
-		} else {
-			elements = []IndexElement{}
+		i.cache = &IndexFile{
+			Version:  1,
+			Elements: []IndexElement{},
 		}
-		i.cache[name] = CachedIndex{
-			Time:     now,
-			Elements: elements,
-		}
+		i.cacheTime = now
 		return nil
 	}
-	err = json.Unmarshal(data, &elements)
+	i.cache = &IndexFile{}
+	err = json.Unmarshal(data, i.cache)
 	if err != nil {
 		return err
 	}
-	i.cache[name] = CachedIndex{
-		Time:     now,
-		Elements: elements,
-	}
+	i.cacheTime = now
 
 	return nil
 }
 
 // Save an index object
-func (i *Index) save(name string, elements []IndexElement) error {
+func (i *Index) save(obj *IndexFile) error {
 	now := time.Now()
 
 	// Represent the data as JSON
-	data, err := json.Marshal(elements)
+	data, err := json.Marshal(obj)
 	if err != nil {
 		return err
 	}
 
 	// Save the updated index
-	if err := ioutil.WriteFile("test/index/"+name, data, 0644); err != nil {
+	if err := ioutil.WriteFile("test/index", data, 0644); err != nil {
 		return err
 	}
 
 	// Update the index in cache too
-	i.cache[name] = CachedIndex{
-		Time:     now,
-		Elements: elements,
-	}
+	i.cache = obj
+	i.cacheTime = now
 
 	return nil
 }
 
-// AddFolder adds a folder to the index
-func (i *Index) AddFolder(path string) (string, error) {
-	// path must not be "/"
-	if path == "/" {
-		return "", errors.New("cannot add root folder")
-	}
-
-	// Ensure the path starts with a /
-	if !strings.HasPrefix(path, "/") {
-		return "", errors.New("path must start with /")
-	}
-
-	// Ensure there's a trailing slash
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
-	}
-
-	// Force a refresh of the folders index
-	if err := i.Refresh("folders", true); err != nil {
-		return "", err
-	}
-
-	// Check if the folder already exists in the index
-	exists, err := i.FolderExists(path)
-	if err != nil {
-		return "", err
-	}
-
-	// If it already exists, return an error
-	if exists {
-		return "", errors.New("folder already exists")
-	}
-
-	// Ensure that all the intermediate folders (if any) exist
-	parts := strings.Split(path, "/")
-	for n := 0; n < len(parts)-1; n++ {
-		f := "/" + strings.Join(parts[0:n], "/")
-		exists, err := i.FolderExists(f)
-		if err != nil {
-			return "", err
-		}
-		if !exists {
-			return "", errors.New("intermediate folder " + f + " does not exist")
-		}
-	}
-
-	// Create a new folder ID for the folder, then add it to the index
-	folderId, err := uuid.NewV4()
-	if err != nil {
-		return "", err
-	}
-	folderIdStr := folderId.String()
-	folderEl := IndexElement{
-		IsFolder: true,
-		Name:     path,
-		Location: folderIdStr,
-	}
-	updated := i.cache["folders"].Elements
-	updated = append(updated, folderEl)
-	if err := i.save("folders", updated); err != nil {
-		return "", err
-	}
-
-	return folderIdStr, nil
-}
-
 // AddFile adds a file to the index
-func (i *Index) AddFile(path string) (string, error) {
+func (i *Index) AddFile(path string, fileId string) error {
 	// path must be at least 2 characters (with / being one)
 	if len(path) < 2 {
-		return "", errors.New("path name is too short")
+		return errors.New("path name is too short")
 	}
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
-		return "", errors.New("path must start with /")
+		return errors.New("path must start with /")
 	}
 	// Ensure the path does not end with /
 	if strings.HasSuffix(path, "/") {
-		return "", errors.New("path must not end with /")
+		return errors.New("path must not end with /")
 	}
 
-	// Force a refresh of the folders index
-	if err := i.Refresh("folders", true); err != nil {
-		return "", err
-	}
-
-	// Get the file's folder and ensure it exists
-	// Do not use the "FolderExists" method as we need to get the ID of the folder, to refresh the cache
-	folder := Basename(path)
-	var folderId string
-	for _, el := range i.cache["folders"].Elements {
-		// Folder exists
-		if el.Name == folder && el.IsFolder {
-			folderId = el.Location
-			break
-		}
-	}
-	if folderId == "" {
-		return "", errors.New("folder doesn't exist")
-	}
-
-	// Force a refresh of the folder's index
-	if err := i.Refresh(folderId, true); err != nil {
-		return "", err
+	// Force a refresh of the index
+	if err := i.Refresh(true); err != nil {
+		return err
 	}
 
 	// Check if the file already exists
 	exists, err := i.FileExists(path)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if exists {
-		return "", errors.New("file already exists")
+		return errors.New("file already exists")
 	}
 
 	// Add the file to the index and return the id
-	fileId, err := uuid.NewV4()
-	if err != nil {
-		return "", err
-	}
-	fileIdStr := fileId.String()
 	fileEl := IndexElement{
-		IsFolder: false,
-		Name:     path,
-		Location: fileIdStr,
+		Path: path,
+		Name: fileId,
 	}
-	updated := i.cache[folderId].Elements
-	updated = append(updated, fileEl)
-	if err := i.save(folderId, updated); err != nil {
-		return "", err
+	elements := append(i.cache.Elements, fileEl)
+	updated := &IndexFile{
+		Version:  1,
+		Elements: elements,
 	}
-
-	return fileIdStr, nil
-}
-
-// FolderExists returns true if the folder exists in the index
-func (i *Index) FolderExists(path string) (bool, error) {
-	// If the folder is "/", it always exists
-	if path == "/" {
-		return true, nil
+	if err := i.save(updated); err != nil {
+		return err
 	}
 
-	// Ensure the path starts with a /
-	if !strings.HasPrefix(path, "/") {
-		return false, errors.New("path must start with /")
-	}
-
-	// Ensure there's a trailing slash
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
-	}
-
-	// First, refresh the folders index, which contains the list of all folders
-	if err := i.Refresh("folders", false); err != nil {
-		return false, err
-	}
-
-	// Iterate throught the folders looking for the one
-	for _, el := range i.cache["folders"].Elements {
-		// Folder exists
-		if el.Name == path && el.IsFolder {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return nil
 }
 
 // FileExists returns true if the file exists in the index
@@ -315,16 +166,9 @@ func (i *Index) FileExists(path string) (bool, error) {
 		return false, errors.New("path must start with /")
 	}
 
-	// Get the folder's content
-	folder := Basename(path)
-	folderContents, err := i.ListFolder(folder)
-	if err != nil || folderContents == nil {
-		return false, err
-	}
-
-	// Check if the file exists
-	for _, el := range folderContents {
-		if el.Name == path {
+	// Iterate through the list of elemets to check if the file exists
+	for _, el := range i.cache.Elements {
+		if el.Path == path {
 			return true, nil
 		}
 	}
@@ -344,25 +188,17 @@ func (i *Index) ListFolder(path string) ([]IndexElement, error) {
 		path += "/"
 	}
 
-	// First, refresh the folders index, which contains the list of all folders
-	if err := i.Refresh("folders", false); err != nil {
+	// Force a refresh of the index
+	if err := i.Refresh(false); err != nil {
 		return nil, err
 	}
 
 	// Iterate through the folders looking for the one
 	result := make([]IndexElement, 0)
 	found := false
-	for _, el := range i.cache["folders"].Elements {
-		// Folder matches, so it has a list of files
-		if el.Name == path {
-			found = true
-			// Load the folder's index
-			if err := i.Refresh(el.Location, false); err != nil {
-				return nil, err
-			}
-			result = append(result, i.cache[el.Location].Elements...)
-		} else if strings.HasPrefix(el.Name, path) {
-			// Prefix matches, so it's a sub-folder
+	for _, el := range i.cache.Elements {
+		if strings.HasPrefix(el.Name, path) {
+			// Prefix matches, so it's in the right path
 			// Return only one level of sub-folders
 			if !strings.Contains(el.Name[len(path):], "/") {
 				found = true

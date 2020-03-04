@@ -18,26 +18,27 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"e2e/index"
 	"errors"
-	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"e2e/crypto"
+	"e2e/index"
 	"e2e/utils"
 
 	"github.com/spf13/cobra"
 )
 
-func addFile(path string, destination string) (error, string) {
-	// Check if file exists
+func addFile(folder, target, destinationFolder string) (error, string) {
+	// Check if target exists
+	path := filepath.Join(folder, target)
 	exists, err := utils.PathExists(path)
 	if err != nil {
 		return err, utils.ErrorUser
 	}
 	if !exists {
-		return errors.New("File does not exist"), utils.ErrorUser
+		return errors.New("target does not exist"), utils.ErrorUser
 	}
 
 	// Check if it's a directory
@@ -47,30 +48,47 @@ func addFile(path string, destination string) (error, string) {
 	}
 	if !isFile {
 		// TODO: SCAN DIRECTORY AND RECURSIVELY DO THIS
-		fmt.Println("TODO: SCAN DIRECTORY AND RECURSIVELY DO THIS")
+		f, err := os.Open(path)
+		if err != nil {
+			return err, utils.ErrorApp
+		}
+		list, err := f.Readdir(-1)
+		f.Close()
+		for _, el := range list {
+			err, errTyp := addFile(path, el.Name(), destinationFolder+target+"/")
+			if err != nil {
+				return err, errTyp
+			}
+		}
 		return nil, ""
 	}
 
-	// Get a stream to the file
+	// Get a stream to the input file
 	in, err := os.Open(path)
 	if err != nil {
 		return err, utils.ErrorApp
 	}
 
-	// Add to the index
-	fileId, err := index.Instance.AddFile(destination + "fileout")
+	// Generate a file id
+	fileId, err := index.GenerateFileId()
 	if err != nil {
 		return err, utils.ErrorApp
 	}
 
 	// Get a stream to the output
-	out, err := os.Create("test/data/" + fileId)
+	out, err := os.Create("test/" + fileId)
 	if err != nil {
 		return err, utils.ErrorApp
 	}
 
 	// Encrypt the data
 	err = crypto.EncryptFile(out, in, []byte("hello world"), "name", "image/jpeg", 0)
+	if err != nil {
+		return err, utils.ErrorApp
+	}
+
+	// Add to the index
+	err = index.Instance.AddFile(destinationFolder+target, fileId)
 	if err != nil {
 		return err, utils.ErrorApp
 	}
@@ -89,13 +107,13 @@ func init() {
 		Run: func(cmd *cobra.Command, args []string) {
 			// Get the file/folder name from the args
 			if len(args) < 1 {
-				utils.ExitWithError(utils.ErrorUser, "No file or folder specified", nil)
+				utils.ExitWithError(utils.ErrorUser, "no file or folder specified", nil)
 				return
 			}
 
 			// Destination must start with "/"
 			if !strings.HasPrefix(flagDestination, "/") {
-				utils.ExitWithError(utils.ErrorUser, "Destination must start with /", nil)
+				utils.ExitWithError(utils.ErrorUser, "destination must start with /", nil)
 				return
 			}
 
@@ -104,16 +122,12 @@ func init() {
 				flagDestination += "/"
 			}
 
-			// Create the destination folder
-			_, err := index.Instance.AddFolder(flagDestination)
-			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, err.Error(), err)
-				return
-			}
-
 			// Iterate through the args and add them all
 			for _, e := range args {
-				err, errType := addFile(e, flagDestination)
+				// Get the target and folder
+				folder := filepath.Dir(e)
+				target := filepath.Base(e)
+				err, errType := addFile(folder, target, flagDestination)
 				if err != nil {
 					if errType == "" {
 						errType = utils.ErrorApp
