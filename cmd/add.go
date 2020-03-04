@@ -18,9 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"e2e/index"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"e2e/crypto"
 	"e2e/utils"
@@ -28,34 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// addCmd represents the auth command
-var addCmd = &cobra.Command{
-	Use:               "add",
-	Short:             "Add a file or folder",
-	Long:              ``,
-	DisableAutoGenTag: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		// Get the file/folder name from the args
-		if len(args) < 1 {
-			utils.ExitWithError(utils.ErrorUser, "No file or folder specified", nil)
-			return
-		}
-
-		// Iterate through the args and add them all
-		for _, e := range args {
-			err, errType := addFile(e)
-			if err != nil {
-				if errType == "" {
-					errType = utils.ErrorApp
-				}
-				utils.ExitWithError(errType, err.Error(), err)
-				return
-			}
-		}
-	},
-}
-
-func addFile(path string) (error, string) {
+func addFile(path string, destination string) (error, string) {
 	// Check if file exists
 	exists, err := utils.PathExists(path)
 	if err != nil {
@@ -82,14 +57,20 @@ func addFile(path string) (error, string) {
 		return err, utils.ErrorApp
 	}
 
+	// Add to the index
+	fileId, err := index.Instance.AddFile(destination + "fileout")
+	if err != nil {
+		return err, utils.ErrorApp
+	}
+
 	// Get a stream to the output
-	out, err := os.Create("test/fileout")
+	out, err := os.Create("test/data/" + fileId)
 	if err != nil {
 		return err, utils.ErrorApp
 	}
 
 	// Encrypt the data
-	err = crypto.EncryptFile(out, in, []byte("hello world"))
+	err = crypto.EncryptFile(out, in, []byte("hello world"), "name", "image/jpeg", 0)
 	if err != nil {
 		return err, utils.ErrorApp
 	}
@@ -98,5 +79,56 @@ func addFile(path string) (error, string) {
 }
 
 func init() {
-	rootCmd.AddCommand(addCmd)
+	var flagDestination string
+
+	c := &cobra.Command{
+		Use:               "add",
+		Short:             "Add a file or folder",
+		Long:              ``,
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			// Get the file/folder name from the args
+			if len(args) < 1 {
+				utils.ExitWithError(utils.ErrorUser, "No file or folder specified", nil)
+				return
+			}
+
+			// Destination must start with "/"
+			if !strings.HasPrefix(flagDestination, "/") {
+				utils.ExitWithError(utils.ErrorUser, "Destination must start with /", nil)
+				return
+			}
+
+			// Ensure destination ends with a "/"
+			if !strings.HasSuffix(flagDestination, "/") {
+				flagDestination += "/"
+			}
+
+			// Create the destination folder
+			_, err := index.Instance.AddFolder(flagDestination)
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, err.Error(), err)
+				return
+			}
+
+			// Iterate through the args and add them all
+			for _, e := range args {
+				err, errType := addFile(e, flagDestination)
+				if err != nil {
+					if errType == "" {
+						errType = utils.ErrorApp
+					}
+					utils.ExitWithError(errType, err.Error(), err)
+					return
+				}
+			}
+		},
+	}
+
+	// Flags
+	c.Flags().StringVarP(&flagDestination, "destination", "d", "", "destination folder")
+	c.MarkFlagRequired("destination")
+
+	// Add the command
+	rootCmd.AddCommand(c)
 }

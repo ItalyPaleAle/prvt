@@ -15,12 +15,15 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package crypto
+package index
 
-type Header struct {
-	Version     uint16 `json:"v"`
-	Salt        []byte `json:"salt"`
-	Name        string `json:"n,omitempty"`
-	ContentType string `json:"ctyp,omitempty"`
-	Size        uint32 `json:"sz,omitempty"`
+import "strings"
+
+// Basename returns the path of a file
+func Basename(path string) string {
+	// The next line is never -1 (not found) since path must start with /
+	index := strings.LastIndex(path, "/")
+	folder := path[0:(index + 1)]
+
+	return folder
 }

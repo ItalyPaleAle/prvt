@@ -18,10 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"log"
-	"net/http"
-
-	"e2e/fs"
+	"e2e/server"
+	"e2e/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -33,16 +31,11 @@ var serveCmd = &cobra.Command{
 	Long:              ``,
 	DisableAutoGenTag: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Create the file server
-		baseFs := fs.OsFs{}
-		httpFs := fs.NewHttpFs(baseFs)
-		fileserver := http.FileServer(httpFs.Dir("test/"))
-		http.Handle("/", fileserver)
-
-		// Create and listen to the web server
-		err := http.ListenAndServe("127.0.0.1:3000", nil)
+		// Start the server
+		err := server.Start()
 		if err != nil {
-			log.Fatal(err)
+			utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
+			return
 		}
 	},
 }

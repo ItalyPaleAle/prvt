@@ -15,23 +15,11 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package fs
+package index
 
-import "os"
+// Singleton
+var Instance *Index
 
-// AzureFs is a Fs implementation that uses Azure Blob Storage as backend
-type AzureFs struct{}
-
-func (AzureFs) Open(name string) (File, error) {
-	f, e := os.Open(name)
-	if f == nil {
-		// while this looks strange, we need to return a bare nil (of type nil) not
-		// a nil value of type *os.File or nil won't be nil
-		return nil, e
-	}
-	return f, e
-}
-
-func (AzureFs) Stat(name string) (os.FileInfo, error) {
-	return os.Stat(name)
+func init() {
+	Instance = &Index{}
 }
