@@ -28,7 +28,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, fileName string, fileContentType string, fileSize uint32) error {
+func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, fileName string, fileContentType string, fileSize int64) error {
 	defer out.Close()
 
 	// Get the salt that will be used to generate the file's key

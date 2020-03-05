@@ -22,5 +22,5 @@ type Header struct {
 	Salt        []byte `json:"salt"`
 	Name        string `json:"n,omitempty"`
 	ContentType string `json:"ctyp,omitempty"`
-	Size        uint32 `json:"sz,omitempty"`
+	Size        int64  `json:"sz,omitempty"`
 }

@@ -29,18 +29,18 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-func DecryptFile(out io.Writer, in io.Reader, masterKey []byte) (*Header, error) {
+func DecryptFile(out io.Writer, in io.Reader, masterKey []byte, headerCb func(*Header)) error {
 	// Peek the first 2kb at most
 	peek := make([]byte, 2048)
 	n, err := io.ReadFull(in, peek)
 	// Ignore the ErrUnexpectedEOF, which means that we read less than the requested size
 	if err != nil && err != io.ErrUnexpectedEOF {
-		return nil, err
+		return err
 	}
 
 	// Ensure we have at least 3 bytes
 	if n < 3 {
-		return nil, errors.New("Input stream ended too quickly")
+		return errors.New("Input stream ended too quickly")
 	}
 
 	// Get the length of the header
@@ -48,15 +48,20 @@ func DecryptFile(out io.Writer, in io.Reader, masterKey []byte) (*Header, error)
 	header := Header{}
 	err = json.Unmarshal(peek[2:headerLen+2], &header)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Ensure the header is valid
 	if header.Version != 0x01 {
-		return nil, fmt.Errorf("File header uses version %d which is not supported", header.Version)
+		return fmt.Errorf("File header uses version %d which is not supported", header.Version)
 	}
 	if len(header.Salt) != 16 {
-		return nil, errors.New("Invalid salt found in file header")
+		return errors.New("Invalid salt found in file header")
+	}
+
+	// Header is ready, so invoke the header callback
+	if headerCb != nil {
+		headerCb(&header)
 	}
 
 	// Put the first bytes after the header back into the stream
@@ -71,16 +76,16 @@ func DecryptFile(out io.Writer, in io.Reader, masterKey []byte) (*Header, error)
 		Key: key,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Copy the buffer
 	if _, err := io.Copy(dec, in); err != nil {
-		return nil, err
+		return err
 	}
 	if err := dec.Close(); err != nil {
-		return nil, err
+		return err
 	}
 
-	return &header, nil
+	return nil
 }

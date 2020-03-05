@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"errors"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,7 +48,6 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 		return err, utils.ErrorUser
 	}
 	if !isFile {
-		// TODO: SCAN DIRECTORY AND RECURSIVELY DO THIS
 		f, err := os.Open(path)
 		if err != nil {
 			return err, utils.ErrorApp
@@ -81,8 +81,21 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 		return err, utils.ErrorApp
 	}
 
+	// Get the mime type
+	extension := filepath.Ext(target)
+	var mimeType string
+	if extension != "" {
+		mimeType = mime.TypeByExtension(extension)
+	}
+
+	// Get the size of the file
+	stat, err := in.Stat()
+	if err != nil {
+		return err, utils.ErrorApp
+	}
+
 	// Encrypt the data
-	err = crypto.EncryptFile(out, in, []byte("hello world"), "name", "image/jpeg", 0)
+	err = crypto.EncryptFile(out, in, []byte("hello world"), target, mimeType, stat.Size())
 	if err != nil {
 		return err, utils.ErrorApp
 	}

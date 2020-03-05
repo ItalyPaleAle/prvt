@@ -26,12 +26,30 @@ import (
 	"syscall"
 	"time"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/gin-gonic/gin"
 )
 
 func Start() error {
 	// Start gin server
 	router := gin.Default()
+
+	// Add routes
+	router.GET("/file/:fileId", FileHandler)
+	{
+		// APIs
+		apis := router.Group("/api")
+		apis.GET("/tree/*path", TreeHandler)
+	}
+
+	// UI
+	uiBox := rice.MustFindBox("ui")
+	router.StaticFS("/ui", uiBox.HTTPBox())
+
+	// Redirect from / to the UI
+	router.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/ui")
+	})
 
 	// HTTP Server
 	server := &http.Server{

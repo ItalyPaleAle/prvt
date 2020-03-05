@@ -48,6 +48,13 @@ type Index struct {
 	refreshing bool
 }
 
+// FolderList contains the result of the ListFolder method
+type FolderList struct {
+	Path      string `json:"path"`
+	Directory bool   `json:"isDir,omitempty"`
+	FileId    string `json:"fileId,omitempty"`
+}
+
 // Refresh an index if necessary
 func (i *Index) Refresh(force bool) error {
 	// If we're already refreshing the cache, wait
@@ -94,6 +101,8 @@ func (i *Index) Refresh(force bool) error {
 // Save an index object
 func (i *Index) save(obj *IndexFile) error {
 	now := time.Now()
+
+	// TODO: ENCRYPT INDEX
 
 	// Represent the data as JSON
 	data, err := json.Marshal(obj)
@@ -168,7 +177,8 @@ func (i *Index) FileExists(path string) (bool, error) {
 
 	// Iterate through the list of elemets to check if the file exists
 	for _, el := range i.cache.Elements {
-		if el.Path == path {
+		// Check if there's an exact match, or if there's a folder starting with the path
+		if el.Path == path || strings.HasPrefix(el.Path, path+"/") {
 			return true, nil
 		}
 	}
@@ -177,7 +187,7 @@ func (i *Index) FileExists(path string) (bool, error) {
 }
 
 // ListFolder returns the list of elements in a folder
-func (i *Index) ListFolder(path string) ([]IndexElement, error) {
+func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
 		return nil, errors.New("path must start with /")
@@ -194,22 +204,53 @@ func (i *Index) ListFolder(path string) ([]IndexElement, error) {
 	}
 
 	// Iterate through the folders looking for the one
-	result := make([]IndexElement, 0)
-	found := false
+	result := make([]FolderList, 0)
 	for _, el := range i.cache.Elements {
-		if strings.HasPrefix(el.Name, path) {
+		if strings.HasPrefix(el.Path, path) {
 			// Prefix matches, so it's in the right path
 			// Return only one level of sub-folders
-			if !strings.Contains(el.Name[len(path):], "/") {
-				found = true
-				result = append(result, el)
+			slashPos := strings.Index(el.Path[len(path):], "/")
+			oneLevel := ""
+			if slashPos == -1 {
+				// No more slashes in the path
+				// Means we have a file
+				oneLevel = el.Path[len(path):]
+
+				// Since we have a file, we're sure there aren't more with the same path
+				result = append(result, FolderList{
+					Path:      el.Path,
+					Directory: false,
+					FileId:    el.Name,
+				})
+			} else {
+				// We have a directory
+				// Get only until the slash
+				oneLevel = el.Path[len(path):(len(path) + slashPos)]
+
+				// Check if the path is already in the result
+				if !folderListContains(result, oneLevel) {
+					result = append(result, FolderList{
+						Path:      oneLevel,
+						Directory: true,
+					})
+				}
 			}
 		}
 	}
 
-	if !found {
+	if len(result) == 0 {
 		result = nil
 	}
 
 	return result, nil
+}
+
+// Check if a path is already contained in a []FolderList sllice
+func folderListContains(list []FolderList, path string) bool {
+	for _, el := range list {
+		if el.Path == path {
+			return true
+		}
+	}
+	return false
 }
