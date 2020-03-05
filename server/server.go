@@ -26,20 +26,26 @@ import (
 	"syscall"
 	"time"
 
+	"e2e/fs"
+
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/gin-gonic/gin"
 )
 
-func Start() error {
+type Server struct {
+	Store fs.Fs
+}
+
+func (s *Server) Start() error {
 	// Start gin server
 	router := gin.Default()
 
 	// Add routes
-	router.GET("/file/:fileId", FileHandler)
+	router.GET("/file/:fileId", s.FileHandler)
 	{
 		// APIs
 		apis := router.Group("/api")
-		apis.GET("/tree/*path", TreeHandler)
+		apis.GET("/tree/*path", s.TreeHandler)
 	}
 
 	// UI

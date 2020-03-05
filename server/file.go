@@ -17,19 +17,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package server
 
 import (
-	"e2e/crypto"
 	"errors"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
+
+	"e2e/crypto"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid"
 )
 
 // FileHandler is the handler for GET /file/:fileId, which returns a (decrypted) file
-func FileHandler(c *gin.Context) {
+func (s *Server) FileHandler(c *gin.Context) {
 	// Get the fileId
 	fileId := c.Param("fileId")
 	if fileId == "" {
@@ -44,21 +44,9 @@ func FileHandler(c *gin.Context) {
 		return
 	}
 
-	// Load the file
-	file, err := os.Open("test/" + fileId)
-	if err != nil {
-		if os.IsNotExist(err) {
-			c.AbortWithError(http.StatusNotFound, errors.New("file does not exist"))
-			return
-		} else {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	// Decrypt the file and pipe it to the response writer
-	err = crypto.DecryptFile(c.Writer, file, []byte("hello world"), func(header *crypto.Header) {
-		// Headers
+	// Load and decrypt the file, then pipe it to the response writer
+	found, _, err := s.Store.Get(fileId, c.Writer, func(header *crypto.Header) {
+		// Send headers before the data is sent
 		if header.ContentType != "" {
 			c.Header("Content-Type", header.ContentType)
 		} else {
@@ -74,6 +62,10 @@ func FileHandler(c *gin.Context) {
 		}
 		c.Header("Content-Disposition", contentDisposition)
 	})
+	if !found {
+		c.AbortWithError(http.StatusNotFound, errors.New("file does not exist"))
+		return
+	}
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return

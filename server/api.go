@@ -17,15 +17,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package server
 
 import (
-	"e2e/index"
 	"net/http"
 	"strings"
+
+	"e2e/index"
 
 	"github.com/gin-gonic/gin"
 )
 
 // TreeHandler is the handler for GET /api/tree/:path, which returns the contents of a path
-func TreeHandler(c *gin.Context) {
+func (s *Server) TreeHandler(c *gin.Context) {
 	// Get the path (can be empty if requesting the root)
 	path := c.Param("path")
 	// Ensure that the path starts with /

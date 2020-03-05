@@ -18,13 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"e2e/fs"
 	"errors"
 	"mime"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"e2e/crypto"
 	"e2e/index"
 	"e2e/utils"
 
@@ -32,6 +32,10 @@ import (
 )
 
 func addFile(folder, target, destinationFolder string) (error, string) {
+	// Get the master key and create the filesystem object
+	store := &fs.Local{}
+	store.SetMasterKey([]byte("hello world"))
+
 	// Check if target exists
 	path := filepath.Join(folder, target)
 	exists, err := utils.PathExists(path)
@@ -69,18 +73,6 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 		return err, utils.ErrorApp
 	}
 
-	// Generate a file id
-	fileId, err := index.GenerateFileId()
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
-	// Get a stream to the output
-	out, err := os.Create("test/" + fileId)
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
 	// Get the mime type
 	extension := filepath.Ext(target)
 	var mimeType string
@@ -94,8 +86,14 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 		return err, utils.ErrorApp
 	}
 
-	// Encrypt the data
-	err = crypto.EncryptFile(out, in, []byte("hello world"), target, mimeType, stat.Size())
+	// Generate a file id
+	fileId, err := index.GenerateFileId()
+	if err != nil {
+		return err, utils.ErrorApp
+	}
+
+	// Write the data to an encrypted file
+	err = store.Set(fileId, in, nil, target, mimeType, stat.Size())
 	if err != nil {
 		return err, utils.ErrorApp
 	}

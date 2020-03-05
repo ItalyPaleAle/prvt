@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"e2e/fs"
 	"e2e/server"
 	"e2e/utils"
 
@@ -31,8 +32,15 @@ var serveCmd = &cobra.Command{
 	Long:              ``,
 	DisableAutoGenTag: true,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Get the master key and create the filesystem object
+		store := &fs.Local{}
+		store.SetMasterKey([]byte("hello world"))
+
 		// Start the server
-		err := server.Start()
+		srv := server.Server{
+			Store: store,
+		}
+		err := srv.Start()
 		if err != nil {
 			utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
 			return
