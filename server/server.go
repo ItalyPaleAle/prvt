@@ -28,8 +28,8 @@ import (
 
 	"e2e/fs"
 
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/gin-gonic/gin"
+	"github.com/gobuffalo/packr/v2"
 )
 
 type Server struct {
@@ -49,8 +49,8 @@ func (s *Server) Start() error {
 	}
 
 	// UI
-	uiBox := rice.MustFindBox("ui")
-	router.StaticFS("/ui", uiBox.HTTPBox())
+	uiBox := packr.New("ui", "../ui/dist")
+	router.GET("/ui/*page", gin.WrapH(http.StripPrefix("/ui/", http.FileServer(uiBox))))
 
 	// Redirect from / to the UI
 	router.GET("/", func(c *gin.Context) {

@@ -1,7 +1,11 @@
+# Compiled files
+bin
+packrd/
+*-packr.go
+
 # Development
 old/
 test/
-
 
 # Created by https://www.gitignore.io/api/go,linux,macos,windows,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=go,linux,macos,windows,visualstudiocode
