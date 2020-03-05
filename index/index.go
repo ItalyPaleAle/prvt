@@ -18,12 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"os"
 	"strings"
 	"time"
+
+	"e2e/fs"
 )
 
 // How long to cache files for, in seconds
@@ -37,15 +39,8 @@ type IndexElement struct {
 
 // CachedIndex contains the cached values for the index files
 type IndexFile struct {
-	Version  int            `json:"version"`
-	Elements []IndexElement `json:"elements"`
-}
-
-// Index manages the index for all files and folders
-type Index struct {
-	cacheTime  time.Time
-	cache      *IndexFile
-	refreshing bool
+	Version  int            `json:"v"`
+	Elements []IndexElement `json:"e"`
 }
 
 // FolderList contains the result of the ListFolder method
@@ -53,6 +48,20 @@ type FolderList struct {
 	Path      string `json:"path"`
 	Directory bool   `json:"isDir,omitempty"`
 	FileId    string `json:"fileId,omitempty"`
+}
+
+// Index manages the index for all files and folders
+type Index struct {
+	cache      *IndexFile
+	cacheTime  time.Time
+	cacheTag   *interface{}
+	refreshing bool
+	store      fs.Fs
+}
+
+// SetStore sets the store (filesystem) object to use
+func (i *Index) SetStore(store fs.Fs) {
+	i.store = store
 }
 
 // Refresh an index if necessary
@@ -75,10 +84,24 @@ func (i *Index) Refresh(force bool) error {
 
 	// Need to request the index
 	now := time.Now()
-	data, err := ioutil.ReadFile("test/index")
-	if err != nil && !os.IsNotExist(err) {
-		return err
+	var data []byte
+	buf := &bytes.Buffer{}
+	found, tag, err := i.store.Get("index", buf, nil)
+	if found {
+		// Check error here because otherwise we might have an error also if the index wasn't found
+		if err != nil {
+			return err
+		}
+
+		data, err = ioutil.ReadAll(buf)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Ignore "not found" errors
+		err = nil
 	}
+
 	// Empty index
 	if len(data) == 0 {
 		i.cache = &IndexFile{
@@ -94,6 +117,7 @@ func (i *Index) Refresh(force bool) error {
 		return err
 	}
 	i.cacheTime = now
+	i.cacheTag = tag
 
 	return nil
 }
@@ -102,22 +126,23 @@ func (i *Index) Refresh(force bool) error {
 func (i *Index) save(obj *IndexFile) error {
 	now := time.Now()
 
-	// TODO: ENCRYPT INDEX
-
 	// Represent the data as JSON
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return err
 	}
 
-	// Save the updated index
-	if err := ioutil.WriteFile("test/index", data, 0644); err != nil {
+	// Encrypt and save the updated index, if the tag is the same
+	buf := bytes.NewBuffer(data)
+	tag, err := i.store.Set("index", buf, i.cacheTag, "index", "application/json", int64(len(data)))
+	if err != nil {
 		return err
 	}
 
 	// Update the index in cache too
 	i.cache = obj
 	i.cacheTime = now
+	i.cacheTag = tag
 
 	return nil
 }
@@ -218,7 +243,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 
 				// Since we have a file, we're sure there aren't more with the same path
 				result = append(result, FolderList{
-					Path:      el.Path,
+					Path:      oneLevel,
 					Directory: false,
 					FileId:    el.Name,
 				})

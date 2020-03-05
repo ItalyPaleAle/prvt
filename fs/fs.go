@@ -34,5 +34,5 @@ type Fs interface {
 
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
-	Set(name string, in io.Reader, tag *interface{}, fileName string, mimeType string, size int64) (err error)
+	Set(name string, in io.Reader, tag *interface{}, fileName string, mimeType string, size int64) (tagOut *interface{}, err error)
 }

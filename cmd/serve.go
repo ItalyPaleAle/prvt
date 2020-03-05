@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"e2e/fs"
+	"e2e/index"
 	"e2e/server"
 	"e2e/utils"
 
@@ -35,6 +36,7 @@ var serveCmd = &cobra.Command{
 		// Get the master key and create the filesystem object
 		store := &fs.Local{}
 		store.SetMasterKey([]byte("hello world"))
+		index.Instance.SetStore(store)
 
 		// Start the server
 		srv := server.Server{

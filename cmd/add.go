@@ -18,13 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"e2e/fs"
 	"errors"
 	"mime"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"e2e/fs"
 	"e2e/index"
 	"e2e/utils"
 
@@ -35,6 +35,7 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 	// Get the master key and create the filesystem object
 	store := &fs.Local{}
 	store.SetMasterKey([]byte("hello world"))
+	index.Instance.SetStore(store)
 
 	// Check if target exists
 	path := filepath.Join(folder, target)
@@ -93,7 +94,7 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 	}
 
 	// Write the data to an encrypted file
-	err = store.Set(fileId, in, nil, target, mimeType, stat.Size())
+	_, err = store.Set(fileId, in, nil, target, mimeType, stat.Size())
 	if err != nil {
 		return err, utils.ErrorApp
 	}

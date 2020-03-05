@@ -74,7 +74,8 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, fileName st
 
 	// Encrypt the data using minio/sio
 	enc, err := sio.EncryptWriter(out, sio.Config{
-		Key: key,
+		MinVersion: sio.Version20,
+		Key:        key,
 	})
 	if err != nil {
 		return err

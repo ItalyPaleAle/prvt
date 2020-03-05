@@ -65,7 +65,7 @@ func DecryptFile(out io.Writer, in io.Reader, masterKey []byte, headerCb func(*H
 	}
 
 	// Put the first bytes after the header back into the stream
-	in = io.MultiReader(bytes.NewReader(peek[headerLen+2:]), in)
+	in = io.MultiReader(bytes.NewReader(peek[headerLen+2:n]), in)
 
 	// Derive the encryption key using Argon2id
 	// From the docs: "The draft RFC recommends[2] time=1, and memory=64*1024 is a sensible number. If using that amount of memory (64 MB) is not possible in some contexts then the time parameter can be increased to compensate.""

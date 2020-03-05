@@ -46,6 +46,16 @@ func (f *Local) Get(name string, out io.Writer, headerCb func(*crypto.Header)) (
 		return
 	}
 
+	// Check if the file has any content
+	stat, err := file.Stat()
+	if err != nil {
+		return
+	}
+	if stat.Size() == 0 {
+		found = false
+		return
+	}
+
 	// Decrypt the data
 	err = crypto.DecryptFile(out, file, f.masterKey, headerCb)
 	if err != nil {
@@ -55,18 +65,18 @@ func (f *Local) Get(name string, out io.Writer, headerCb func(*crypto.Header)) (
 	return
 }
 
-func (f *Local) Set(name string, in io.Reader, tag *interface{}, fileName string, mimeType string, size int64) (err error) {
+func (f *Local) Set(name string, in io.Reader, tag *interface{}, fileName string, mimeType string, size int64) (tagOut *interface{}, err error) {
 	// Create the file
 	file, err := os.Create("test/" + name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Encrypt the data and write it to file
 	err = crypto.EncryptFile(file, in, f.masterKey, fileName, mimeType, size)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
