@@ -10,6 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.5.0
 	github.com/gobuffalo/packr/v2 v2.7.1
 	github.com/gofrs/uuid v3.2.0+incompatible
+	github.com/manifoldco/promptui v0.7.0
 	github.com/minio/sio v0.2.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v0.0.5

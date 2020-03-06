@@ -38,7 +38,11 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 	if err != nil {
 		return err, utils.ErrorUser
 	}
-	store.SetMasterKey([]byte("hello world"))
+	masterKey, err := utils.PromptMasterKey()
+	if err != nil {
+		return err, utils.ErrorUser
+	}
+	store.SetMasterKey([]byte(masterKey))
 	index.Instance.SetStore(store)
 
 	// Check if target exists

@@ -39,7 +39,12 @@ var serveCmd = &cobra.Command{
 			utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 			return
 		}
-		store.SetMasterKey([]byte("hello world"))
+		masterKey, err := utils.PromptMasterKey()
+		if err != nil {
+			utils.ExitWithError(utils.ErrorUser, "Error getting master key", err)
+			return
+		}
+		store.SetMasterKey([]byte(masterKey))
 		index.Instance.SetStore(store)
 
 		// Start the server
