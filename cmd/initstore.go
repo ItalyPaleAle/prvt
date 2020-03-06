@@ -18,9 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"bytes"
+	"fmt"
+
 	"e2e/fs"
 	"e2e/index"
-	"e2e/server"
 	"e2e/utils"
 
 	"github.com/spf13/cobra"
@@ -28,8 +30,8 @@ import (
 
 func init() {
 	c := &cobra.Command{
-		Use:               "serve",
-		Short:             "Start the server",
+		Use:               "initstore",
+		Short:             "Initialize a new store",
 		Long:              ``,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -46,21 +48,23 @@ func init() {
 			}
 			store.SetMasterKey([]byte(masterKey))
 			index.Instance.SetStore(store)
-			err = fs.Verify(store)
+
+			// Create the info file, which is encrypted also to verify the passphrase
+			infoFile, err := utils.InfoCreate()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Invalid master key or store connection", err)
+				utils.ExitWithError(utils.ErrorApp, "Error creating info file", err)
 				return
 			}
 
-			// Start the server
-			srv := server.Server{
-				Store: store,
-			}
-			err = srv.Start()
+			// Store the info file
+			buf := bytes.NewReader(infoFile)
+			_, err = store.Set("info", buf, nil, "info.json", "application/json", int64(len(infoFile)))
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
+				utils.ExitWithError(utils.ErrorApp, "Cannot store the info file", err)
 				return
 			}
+
+			fmt.Println("Initialized new store")
 		},
 	}
 	rootCmd.AddCommand(c)

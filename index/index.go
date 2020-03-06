@@ -134,7 +134,7 @@ func (i *Index) save(obj *IndexFile) error {
 
 	// Encrypt and save the updated index, if the tag is the same
 	buf := bytes.NewBuffer(data)
-	tag, err := i.store.Set("index", buf, i.cacheTag, "index", "application/json", int64(len(data)))
+	tag, err := i.store.Set("index", buf, i.cacheTag, "index.json", "application/json", int64(len(data)))
 	if err != nil {
 		return err
 	}

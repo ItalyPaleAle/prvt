@@ -40,6 +40,9 @@ func (s *Server) TreeHandler(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
+	if list == nil {
+		list = []index.FolderList{}
+	}
 
 	c.JSON(http.StatusOK, list)
 }

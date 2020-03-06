@@ -38,12 +38,19 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 	if err != nil {
 		return err, utils.ErrorUser
 	}
+	if store == nil {
+		return errors.New("could not initialize store"), utils.ErrorUser
+	}
 	masterKey, err := utils.PromptMasterKey()
 	if err != nil {
 		return err, utils.ErrorUser
 	}
 	store.SetMasterKey([]byte(masterKey))
 	index.Instance.SetStore(store)
+	err = fs.Verify(store)
+	if err != nil {
+		return fmt.Errorf("invalid master key or store connection\n%s", err.Error()), utils.ErrorUser
+	}
 
 	// Check if target exists
 	path := filepath.Join(folder, target)

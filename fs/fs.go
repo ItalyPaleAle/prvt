@@ -18,11 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package fs
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"e2e/crypto"
+	"e2e/utils"
 )
 
 // Get returns a store for the given connection string
@@ -37,16 +40,38 @@ func Get(connection string) (store Fs, err error) {
 	}
 
 	switch connection[0:pos] {
-	case "local":
-	case "fs":
+	case "file", "local":
 		store = &Local{}
 		err = store.Init(connection)
-	case "azureblob":
-	case "azure":
+	case "azure", "azureblob":
 		store = &AzureStorage{}
 		err = store.Init(connection)
+	default:
+		err = fmt.Errorf("invalid connection string")
 	}
+
 	return
+}
+
+// Verify the store is valid and initialized, and that the master key is correct
+func Verify(store Fs) (err error) {
+	// Request and decrypt the info file
+	buf := &bytes.Buffer{}
+	found, _, err := store.Get("info", buf, nil)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errors.New("store not initialized")
+	}
+
+	// Validate the info file (this also will verify the master key)
+	_, err = utils.InfoVerify(buf.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Fs is the interface for the filesystem
