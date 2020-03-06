@@ -34,10 +34,9 @@ import (
 
 func addFile(folder, target, destinationFolder string) (error, string) {
 	// Get the master key and create the filesystem object
-	store := &fs.AzureStorage{}
-	err := store.Init("azure:e2e")
+	store, err := fs.Get(storeConnectionString)
 	if err != nil {
-		return err, utils.ErrorApp
+		return err, utils.ErrorUser
 	}
 	store.SetMasterKey([]byte("hello world"))
 	index.Instance.SetStore(store)

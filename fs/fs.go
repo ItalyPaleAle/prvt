@@ -18,10 +18,36 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package fs
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"e2e/crypto"
 )
+
+// Get returns a store for the given connection string
+func Get(connection string) (store Fs, err error) {
+	store = nil
+
+	// Get the name of the store
+	pos := strings.Index(connection, ":")
+	if pos < 1 {
+		err = fmt.Errorf("invalid connection string")
+		return
+	}
+
+	switch connection[0:pos] {
+	case "local":
+	case "fs":
+		store = &Local{}
+		err = store.Init(connection)
+	case "azureblob":
+	case "azure":
+		store = &AzureStorage{}
+		err = store.Init(connection)
+	}
+	return
+}
 
 // Fs is the interface for the filesystem
 type Fs interface {

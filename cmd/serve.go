@@ -34,10 +34,9 @@ var serveCmd = &cobra.Command{
 	DisableAutoGenTag: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Get the master key and create the filesystem object
-		store := &fs.AzureStorage{}
-		err := store.Init("azure:e2e")
+		store, err := fs.Get(storeConnectionString)
 		if err != nil {
-			utils.ExitWithError(utils.ErrorApp, "Could not initialize store", err)
+			utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 			return
 		}
 		store.SetMasterKey([]byte("hello world"))

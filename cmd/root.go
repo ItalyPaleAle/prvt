@@ -24,12 +24,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Store connection string
+var storeConnectionString string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:               "e2e",
 	Short:             "",
 	Long:              ``,
 	DisableAutoGenTag: true,
+}
+
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&storeConnectionString, "store", "s", "", "connection string for the store")
+	rootCmd.MarkFlagFilename("store")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
