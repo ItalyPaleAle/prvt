@@ -10,8 +10,8 @@ module.exports = {
             // Specify the paths to all of the template files in your project
             content: [
                 './dist/index.html',
-                './app/**/*.svelte',
-                './app/**/*.html',
+                './src/**/*.svelte',
+                './src/**/*.html',
             ],
 
             // Include any special characters you're using in this regular expression

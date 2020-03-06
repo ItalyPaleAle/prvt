@@ -25,7 +25,10 @@ import (
 
 // Fs is the interface for the filesystem
 type Fs interface {
-	// SetMasterKey sets the master key in the object
+	// Init the object, by passing a connection string
+	Init(connection string) error
+
+	// SetMasterKey sets the master passphrase (used to encrypt/decrypt files) in the object
 	SetMasterKey(key []byte)
 
 	// Get returns a stream to a file in the filesystem

@@ -2,3 +2,6 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
+/* Fork-Awesome */
+@import "fork-awesome/css/fork-awesome.css";

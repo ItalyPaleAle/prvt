@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"mime"
 	"os"
 	"path/filepath"
@@ -34,6 +35,7 @@ import (
 func addFile(folder, target, destinationFolder string) (error, string) {
 	// Get the master key and create the filesystem object
 	store := &fs.Local{}
+	store.Init("local:test")
 	store.SetMasterKey([]byte("hello world"))
 	index.Instance.SetStore(store)
 
@@ -104,6 +106,8 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 	if err != nil {
 		return err, utils.ErrorApp
 	}
+
+	fmt.Println("Added:", destinationFolder+target)
 
 	return nil, ""
 }

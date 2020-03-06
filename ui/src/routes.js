@@ -1,10 +1,12 @@
 // Components
-import Home from './routes/Home.svelte'
+import Tree from './routes/Tree.svelte'
 import NotFound from './routes/NotFound.svelte'
 
 const routes = {
     // Home
-    '/': Home,
+    '/': Tree,
+    '/tree': Tree,
+    '/tree/*': Tree,
         
     // Catch-all, must be last
     '*': NotFound,

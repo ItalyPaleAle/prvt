@@ -35,6 +35,7 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Get the master key and create the filesystem object
 		store := &fs.Local{}
+		store.Init("local:test")
 		store.SetMasterKey([]byte("hello world"))
 		index.Instance.SetStore(store)
 
