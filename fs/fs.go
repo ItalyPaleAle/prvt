@@ -33,9 +33,9 @@ type Fs interface {
 
 	// Get returns a stream to a file in the filesystem
 	// It also returns a tag (which might be empty) that should be passed to the Set method if you want to subsequentially update the contents of the file
-	Get(name string, out io.Writer, headerCb func(*crypto.Header)) (found bool, tag *interface{}, err error)
+	Get(name string, out io.Writer, headerCb func(*crypto.Header)) (found bool, tag interface{}, err error)
 
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
-	Set(name string, in io.Reader, tag *interface{}, fileName string, mimeType string, size int64) (tagOut *interface{}, err error)
+	Set(name string, in io.Reader, tag interface{}, fileName string, mimeType string, size int64) (tagOut interface{}, err error)
 }

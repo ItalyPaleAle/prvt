@@ -34,8 +34,12 @@ var serveCmd = &cobra.Command{
 	DisableAutoGenTag: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Get the master key and create the filesystem object
-		store := &fs.Local{}
-		store.Init("local:test")
+		store := &fs.AzureStorage{}
+		err := store.Init("azure:e2e")
+		if err != nil {
+			utils.ExitWithError(utils.ErrorApp, "Could not initialize store", err)
+			return
+		}
 		store.SetMasterKey([]byte("hello world"))
 		index.Instance.SetStore(store)
 
@@ -43,7 +47,7 @@ var serveCmd = &cobra.Command{
 		srv := server.Server{
 			Store: store,
 		}
-		err := srv.Start()
+		err = srv.Start()
 		if err != nil {
 			utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
 			return

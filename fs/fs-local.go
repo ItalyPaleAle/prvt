@@ -81,7 +81,7 @@ func (f *Local) SetMasterKey(key []byte) {
 	f.masterKey = key
 }
 
-func (f *Local) Get(name string, out io.Writer, headerCb func(*crypto.Header)) (found bool, tag *interface{}, err error) {
+func (f *Local) Get(name string, out io.Writer, headerCb func(*crypto.Header)) (found bool, tag interface{}, err error) {
 	found = true
 
 	// Open the file
@@ -112,7 +112,7 @@ func (f *Local) Get(name string, out io.Writer, headerCb func(*crypto.Header)) (
 	return
 }
 
-func (f *Local) Set(name string, in io.Reader, tag *interface{}, fileName string, mimeType string, size int64) (tagOut *interface{}, err error) {
+func (f *Local) Set(name string, in io.Reader, tag interface{}, fileName string, mimeType string, size int64) (tagOut interface{}, err error) {
 	// Create the file
 	file, err := os.Create(f.basePath + name)
 	if err != nil {

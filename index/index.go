@@ -54,7 +54,7 @@ type FolderList struct {
 type Index struct {
 	cache      *IndexFile
 	cacheTime  time.Time
-	cacheTag   *interface{}
+	cacheTag   interface{}
 	refreshing bool
 	store      fs.Fs
 }
