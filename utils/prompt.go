@@ -23,15 +23,16 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func PromptMasterKey() (string, error) {
+// PromptPassphrase prompts the user for a passphrase
+func PromptPassphrase() (string, error) {
 	prompt := promptui.Prompt{
 		Validate: func(input string) error {
 			if len(input) < 1 {
-				return errors.New("Master key must not be empty")
+				return errors.New("Passphrase must not be empty")
 			}
 			return nil
 		},
-		Label: "Master key",
+		Label: "Passphrase",
 		Mask:  '*',
 	}
 

@@ -18,9 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package crypto
 
 type Header struct {
-	Version     uint16 `json:"v"`
-	Salt        []byte `json:"salt"`
+	Version uint16 `json:"v"`
+	Key     []byte `json:"k"`
+}
+
+type Metadata struct {
 	Name        string `json:"n,omitempty"`
-	ContentType string `json:"ctyp,omitempty"`
+	ContentType string `json:"ct,omitempty"`
 	Size        int64  `json:"sz,omitempty"`
 }
+
+type MetadataCb func(*Metadata)

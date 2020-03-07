@@ -45,19 +45,19 @@ func (s *Server) FileHandler(c *gin.Context) {
 	}
 
 	// Load and decrypt the file, then pipe it to the response writer
-	found, _, err := s.Store.Get(fileId, c.Writer, func(header *crypto.Header) {
+	found, _, err := s.Store.Get(fileId, c.Writer, func(metadata *crypto.Metadata) {
 		// Send headers before the data is sent
-		if header.ContentType != "" {
-			c.Header("Content-Type", header.ContentType)
+		if metadata.ContentType != "" {
+			c.Header("Content-Type", metadata.ContentType)
 		} else {
 			c.Header("Content-Type", "application/octet-stream")
 		}
-		if header.Size > 0 {
-			c.Header("Content-Length", strconv.FormatInt(header.Size, 10))
+		if metadata.Size > 0 {
+			c.Header("Content-Length", strconv.FormatInt(metadata.Size, 10))
 		}
 		contentDisposition := "inline"
-		if header.Name != "" {
-			fileName := strings.ReplaceAll(header.Name, "\"", "")
+		if metadata.Name != "" {
+			fileName := strings.ReplaceAll(metadata.Name, "\"", "")
 			contentDisposition += "; filename=\"" + fileName + "\""
 		}
 		c.Header("Content-Disposition", contentDisposition)

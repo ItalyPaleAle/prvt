@@ -18,9 +18,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 
+	"e2e/crypto"
 	"e2e/fs"
 	"e2e/index"
 	"e2e/utils"
@@ -35,30 +36,54 @@ func init() {
 		Long:              ``,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			// Get the master key and create the filesystem object
+			// Create the store object
 			store, err := fs.Get(storeConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return
 			}
-			masterKey, err := utils.PromptMasterKey()
+
+			// Get the passphrase and derive the master key, after generating a new salt
+			passphrase, err := utils.PromptPassphrase()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error getting master key", err)
+				utils.ExitWithError(utils.ErrorUser, "Error getting passphrase", err)
 				return
 			}
-			store.SetMasterKey([]byte(masterKey))
+			salt, err := crypto.NewSalt()
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Error generating a new salt", err)
+				return
+			}
+			_, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, salt)
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Error deriving the master key", err)
+				return
+			}
+
+			// Set up the index
 			index.Instance.SetStore(store)
 
-			// Create the info file, which is encrypted also to verify the passphrase
-			infoFile, err := utils.InfoCreate()
+			// Check if the file exists already
+			// We are expecting this to be empty
+			info, err := store.GetInfoFile()
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Error initializing store", errors.New("store is already initialized"))
+				return
+			}
+			if info != nil {
+				utils.ExitWithError(utils.ErrorUser, "Error initializing store", errors.New("store is already initialized"))
+				return
+			}
+
+			// Create the info file
+			info, err = fs.InfoCreate(salt, confirmationHash)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorApp, "Error creating info file", err)
 				return
 			}
 
 			// Store the info file
-			buf := bytes.NewReader(infoFile)
-			_, err = store.Set("info", buf, nil, "info.json", "application/json", int64(len(infoFile)))
+			err = store.SetInfoFile(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorApp, "Cannot store the info file", err)
 				return

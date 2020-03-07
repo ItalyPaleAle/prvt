@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"e2e/crypto"
 	"e2e/fs"
 )
 
@@ -86,7 +87,7 @@ func (i *Index) Refresh(force bool) error {
 	now := time.Now()
 	var data []byte
 	buf := &bytes.Buffer{}
-	found, tag, err := i.store.Get("index", buf, nil)
+	found, tag, err := i.store.Get("_index", buf, nil)
 	if found {
 		// Check error here because otherwise we might have an error also if the index wasn't found
 		if err != nil {
@@ -133,8 +134,13 @@ func (i *Index) save(obj *IndexFile) error {
 	}
 
 	// Encrypt and save the updated index, if the tag is the same
+	metadata := &crypto.Metadata{
+		Name:        "index.json",
+		ContentType: "application/json",
+		Size:        int64(len(data)),
+	}
 	buf := bytes.NewBuffer(data)
-	tag, err := i.store.Set("index", buf, i.cacheTag, "index.json", "application/json", int64(len(data)))
+	tag, err := i.store.Set("_index", buf, i.cacheTag, metadata)
 	if err != nil {
 		return err
 	}

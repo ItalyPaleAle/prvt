@@ -15,49 +15,49 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package utils
+package fs
 
 import (
-	"encoding/json"
 	"errors"
 )
 
 // InfoFile is the content of the info file
 type InfoFile struct {
-	App     string `json:"app"`
-	Version uint16 `json:"ver"`
+	App              string `json:"app"`
+	Version          uint16 `json:"ver"`
+	Salt             []byte `json:"slt"`
+	ConfirmationHash []byte `json:"ph"`
 }
 
 // InfoCreate creates a new info file
-func InfoCreate() ([]byte, error) {
-	info := InfoFile{
-		App:     "e2e",
-		Version: 1,
+func InfoCreate(salt []byte, confirmationHash []byte) (*InfoFile, error) {
+	info := &InfoFile{
+		App:              "e2e",
+		Version:          1,
+		Salt:             salt,
+		ConfirmationHash: confirmationHash,
 	}
-	data, err := json.Marshal(info)
-	return data, err
+	return info, nil
 }
 
-// InfoVerify verifies the info file
-func InfoVerify(data []byte) (*InfoFile, error) {
-	if len(data) == 0 {
-		return nil, errors.New("info file is empty")
-	}
-
-	// Parse the JSON data
-	info := &InfoFile{}
-	err := json.Unmarshal(data, info)
-	if err != nil {
-		return nil, err
-	}
-
+// InfoValidate validates the info object
+func InfoValidate(info *InfoFile) error {
 	// Check the contents
+	if info == nil {
+		return errors.New("empty info object")
+	}
 	if info.App != "e2e" {
-		return nil, errors.New("invalid app name in info file")
+		return errors.New("invalid app name in info file")
 	}
 	if info.Version != 1 {
-		return nil, errors.New("unsupported info file version")
+		return errors.New("unsupported info file version")
+	}
+	if len(info.Salt) != 16 {
+		return errors.New("invalid salt in info file")
+	}
+	if len(info.ConfirmationHash) != 32 {
+		return errors.New("invalid confirmation hash in info file")
 	}
 
-	return info, nil
+	return nil
 }

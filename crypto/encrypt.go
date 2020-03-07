@@ -18,33 +18,36 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package crypto
 
 import (
-	"crypto/rand"
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
 
 	"github.com/minio/sio"
-	"golang.org/x/crypto/argon2"
 )
 
-func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, fileName string, fileContentType string, fileSize int64) error {
+// EncryptFile encrypts a stream (in), streaming the result to out
+// The function requires a masterKey, a 32-byte key for AES-256, which is used to wrap a key unique for this file
+// The function optionally accepts a metadata argument that will be encrypted at the beginning of the file
+func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, metadata *Metadata) error {
 	defer out.Close()
 
-	// Get the salt that will be used to generate the file's key
-	salt := make([]byte, 16)
-	_, err := rand.Read(salt)
+	// Generate a new key for this file, wrapped with the master key
+	key, err := NewKey()
+	if err != nil {
+		return err
+	}
+	wrappedKey, err := WrapKey(masterKey, key)
 	if err != nil {
 		return err
 	}
 
 	// First, build the header
+	// This contains the wrapped key too
 	head := Header{
-		Version:     0x01,
-		Salt:        salt,
-		Name:        fileName,
-		ContentType: fileContentType,
-		Size:        fileSize,
+		Version: 0x01,
+		Key:     wrappedKey,
 	}
 	headJSON, err := json.Marshal(head)
 	if err != nil {
@@ -54,9 +57,9 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, fileName st
 	// Write the header to the stream
 	// Start with the length
 	headLen := make([]byte, 2)
-	// Header must be at most 2kb - 2 bytes (length)
-	if len(headJSON) > 2046 {
-		return errors.New("Header too big")
+	// Header must be at most (256-2) bytes (first 2 bytes are the length)
+	if len(headJSON) > 254 {
+		return errors.New("header object is too big")
 	}
 	binary.LittleEndian.PutUint16(headLen, uint16(len(headJSON)))
 	_, err = out.Write(headLen)
@@ -68,11 +71,37 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, fileName st
 		return err
 	}
 
-	// Derive the encryption key using Argon2id
-	// From the docs: "The draft RFC recommends[2] time=1, and memory=64*1024 is a sensible number. If using that amount of memory (64 MB) is not possible in some contexts then the time parameter can be increased to compensate.""
-	key := argon2.IDKey(masterKey, salt, 1, 64*1024, 4, 32)
+	// Metadata, which is encrypted
+	if metadata == nil {
+		metadata = &Metadata{}
+	}
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
 
-	// Encrypt the data using minio/sio
+	// Metadata must be at most (1024-2) bytes (first 2 bytes are the length)
+	if len(metadataJSON) > 1022 {
+		return errors.New("metadata object is too big")
+	}
+	metadataLen := make([]byte, 2)
+	binary.LittleEndian.PutUint16(metadataLen, uint16(len(metadataJSON)))
+
+	// Write the metadata to a buffer
+	metadataBuf := &bytes.Buffer{}
+	_, err = metadataBuf.Write(metadataLen)
+	if err != nil {
+		return err
+	}
+	_, err = metadataBuf.Write(metadataJSON)
+	if err != nil {
+		return err
+	}
+
+	// Prepend the metadata to the data to encrypt
+	reader := io.MultiReader(metadataBuf, in)
+
+	// Encrypt the data using minio/sio and the file-specific key (un-wrapped)
 	enc, err := sio.EncryptWriter(out, sio.Config{
 		MinVersion: sio.Version20,
 		Key:        key,
@@ -82,7 +111,7 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, fileName st
 	}
 
 	// Copy the buffer
-	if _, err := io.Copy(enc, in); err != nil {
+	if _, err := io.Copy(enc, reader); err != nil {
 		return err
 	}
 	if err := enc.Close(); err != nil {

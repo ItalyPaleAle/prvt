@@ -19,9 +19,11 @@ package fs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -82,7 +84,83 @@ func (f *AzureStorage) SetMasterKey(key []byte) {
 	f.masterKey = key
 }
 
-func (f *AzureStorage) Get(name string, out io.Writer, headerCb func(*crypto.Header)) (found bool, tag interface{}, err error) {
+func (f *AzureStorage) GetInfoFile() (info *InfoFile, err error) {
+	// Create the blob URL
+	u, err := url.Parse(f.storageURL + "/_info.json")
+	if err != nil {
+		return
+	}
+	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
+
+	// Download the file
+	resp, err := blockBlobURL.Download(context.TODO(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
+	if err != nil {
+		if stgErr, ok := err.(azblob.StorageError); !ok {
+			err = fmt.Errorf("network error while downloading the file: %s", err.Error())
+		} else {
+			// Blob not found
+			if stgErr.Response().StatusCode == http.StatusNotFound {
+				return
+			}
+			err = fmt.Errorf("azure Storage error while downloading the file: %s", stgErr.Response().Status)
+		}
+		return
+	}
+	body := resp.Body(azblob.RetryReaderOptions{
+		MaxRetryRequests: 3,
+	})
+	defer body.Close()
+
+	// Read the entire file
+	data, err := ioutil.ReadAll(body)
+	if err != nil || len(data) == 0 {
+		return
+	}
+
+	// Parse the JSON data
+	info = &InfoFile{}
+	if err = json.Unmarshal(data, info); err != nil {
+		info = nil
+		return
+	}
+
+	// Validate the content
+	if err = InfoValidate(info); err != nil {
+		info = nil
+		return
+	}
+
+	return
+}
+
+func (f *AzureStorage) SetInfoFile(info *InfoFile) (err error) {
+	// Encode the content as JSON
+	data, err := json.Marshal(info)
+	if err != nil {
+		return
+	}
+
+	// Create the blob URL
+	u, err := url.Parse(f.storageURL + "/_info.json")
+	if err != nil {
+		return
+	}
+	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
+
+	// Upload
+	_, err = azblob.UploadBufferToBlockBlob(context.TODO(), data, blockBlobURL, azblob.UploadToBlockBlobOptions{})
+	if err != nil {
+		if stgErr, ok := err.(azblob.StorageError); !ok {
+			return fmt.Errorf("network error while uploading the file: %s", err.Error())
+		} else {
+			return fmt.Errorf("Azure Storage error failed while uploading the file: %s", stgErr.Response().Status)
+		}
+	}
+
+	return
+}
+
+func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	found = true
 
 	// Create the blob URL
@@ -96,14 +174,14 @@ func (f *AzureStorage) Get(name string, out io.Writer, headerCb func(*crypto.Hea
 	resp, err := blockBlobURL.Download(context.TODO(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {
-			err = fmt.Errorf("network error while downloading the archive: %s", err.Error())
+			err = fmt.Errorf("network error while downloading the file: %s", err.Error())
 		} else {
 			// Blob not found
 			if stgErr.Response().StatusCode == http.StatusNotFound {
 				found = false
 				return
 			}
-			err = fmt.Errorf("azure Storage error while downloading the archive: %s", stgErr.Response().Status)
+			err = fmt.Errorf("azure Storage error while downloading the file: %s", stgErr.Response().Status)
 		}
 		return
 	}
@@ -119,7 +197,7 @@ func (f *AzureStorage) Get(name string, out io.Writer, headerCb func(*crypto.Hea
 	}
 
 	// Decrypt the data
-	err = crypto.DecryptFile(out, body, f.masterKey, headerCb)
+	err = crypto.DecryptFile(out, body, f.masterKey, metadataCb)
 	if err != nil {
 		return
 	}
@@ -131,7 +209,7 @@ func (f *AzureStorage) Get(name string, out io.Writer, headerCb func(*crypto.Hea
 	return
 }
 
-func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, fileName string, mimeType string, size int64) (tagOut interface{}, err error) {
+func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
 	// Create the blob URL
 	u, err := url.Parse(f.storageURL + "/" + name)
 	if err != nil {
@@ -142,7 +220,7 @@ func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, fileName 
 	// Encrypt the data and upload it
 	pr, pw := io.Pipe()
 	go func() {
-		err := crypto.EncryptFile(pw, in, f.masterKey, fileName, mimeType, size)
+		err := crypto.EncryptFile(pw, in, f.masterKey, metadata)
 		if err != nil {
 			panic(err)
 		}
@@ -178,9 +256,9 @@ func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, fileName 
 	})
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {
-			return nil, fmt.Errorf("network error while uploading the archive: %s", err.Error())
+			return nil, fmt.Errorf("network error while uploading the file: %s", err.Error())
 		} else {
-			return nil, fmt.Errorf("Azure Storage error failed while uploading the archive: %s", stgErr.Response().Status)
+			return nil, fmt.Errorf("Azure Storage error failed while uploading the file: %s", stgErr.Response().Status)
 		}
 	}
 

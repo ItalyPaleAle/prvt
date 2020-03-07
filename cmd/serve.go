@@ -18,6 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"bytes"
+
+	"e2e/crypto"
 	"e2e/fs"
 	"e2e/index"
 	"e2e/server"
@@ -33,24 +36,39 @@ func init() {
 		Long:              ``,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			// Get the master key and create the filesystem object
+			// Create the store object
 			store, err := fs.Get(storeConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return
 			}
-			masterKey, err := utils.PromptMasterKey()
+
+			// Request the info file
+			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error getting master key", err)
+				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
 				return
 			}
-			store.SetMasterKey([]byte(masterKey))
+			if info == nil {
+				utils.ExitWithError(utils.ErrorUser, "Store is not initialized", err)
+				return
+			}
+
+			// Get the passphrase and derive the master key
+			passphrase, err := utils.PromptPassphrase()
+			if err != nil {
+				utils.ExitWithError(utils.ErrorUser, "Error getting passphrase", err)
+				return
+			}
+			masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
+			if bytes.Compare(info.ConfirmationHash, confirmationHash) != 0 {
+				utils.ExitWithError(utils.ErrorUser, "Invalid passphrase", err)
+				return
+			}
+			store.SetMasterKey(masterKey)
+
+			// Set up the index
 			index.Instance.SetStore(store)
-			err = fs.Verify(store)
-			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Invalid master key or store connection", err)
-				return
-			}
 
 			// Start the server
 			srv := server.Server{

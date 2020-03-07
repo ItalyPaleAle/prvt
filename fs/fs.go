@@ -18,14 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package fs
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"e2e/crypto"
-	"e2e/utils"
 )
 
 // Get returns a store for the given connection string
@@ -53,27 +50,6 @@ func Get(connection string) (store Fs, err error) {
 	return
 }
 
-// Verify the store is valid and initialized, and that the master key is correct
-func Verify(store Fs) (err error) {
-	// Request and decrypt the info file
-	buf := &bytes.Buffer{}
-	found, _, err := store.Get("info", buf, nil)
-	if err != nil {
-		return err
-	}
-	if !found {
-		return errors.New("store not initialized")
-	}
-
-	// Validate the info file (this also will verify the master key)
-	_, err = utils.InfoVerify(buf.Bytes())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Fs is the interface for the filesystem
 type Fs interface {
 	// Init the object, by passing a connection string
@@ -82,11 +58,17 @@ type Fs interface {
 	// SetMasterKey sets the master passphrase (used to encrypt/decrypt files) in the object
 	SetMasterKey(key []byte)
 
+	// GetInfoFile returns the contents of the info file
+	GetInfoFile() (info *InfoFile, err error)
+
+	// SetInfoFile stores the info file
+	SetInfoFile(info *InfoFile) (err error)
+
 	// Get returns a stream to a file in the filesystem
 	// It also returns a tag (which might be empty) that should be passed to the Set method if you want to subsequentially update the contents of the file
-	Get(name string, out io.Writer, headerCb func(*crypto.Header)) (found bool, tag interface{}, err error)
+	Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
-	Set(name string, in io.Reader, tag interface{}, fileName string, mimeType string, size int64) (tagOut interface{}, err error)
+	Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)
 }

@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"mime"
@@ -25,6 +26,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"e2e/crypto"
 	"e2e/fs"
 	"e2e/index"
 	"e2e/utils"
@@ -32,26 +34,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addFile(folder, target, destinationFolder string) (error, string) {
-	// Get the master key and create the filesystem object
-	store, err := fs.Get(storeConnectionString)
-	if err != nil {
-		return err, utils.ErrorUser
-	}
-	if store == nil {
-		return errors.New("could not initialize store"), utils.ErrorUser
-	}
-	masterKey, err := utils.PromptMasterKey()
-	if err != nil {
-		return err, utils.ErrorUser
-	}
-	store.SetMasterKey([]byte(masterKey))
-	index.Instance.SetStore(store)
-	err = fs.Verify(store)
-	if err != nil {
-		return fmt.Errorf("invalid master key or store connection\n%s", err.Error()), utils.ErrorUser
-	}
-
+func addFile(store fs.Fs, folder, target, destinationFolder string) (error, string) {
 	// Check if target exists
 	path := filepath.Join(folder, target)
 	exists, err := utils.PathExists(path)
@@ -75,7 +58,7 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 		list, err := f.Readdir(-1)
 		f.Close()
 		for _, el := range list {
-			err, errTyp := addFile(path, el.Name(), destinationFolder+target+"/")
+			err, errTyp := addFile(store, path, el.Name(), destinationFolder+target+"/")
 			if err != nil {
 				return err, errTyp
 			}
@@ -109,7 +92,12 @@ func addFile(folder, target, destinationFolder string) (error, string) {
 	}
 
 	// Write the data to an encrypted file
-	_, err = store.Set(fileId, in, nil, target, mimeType, stat.Size())
+	metadata := &crypto.Metadata{
+		Name:        target,
+		ContentType: mimeType,
+		Size:        stat.Size(),
+	}
+	_, err = store.Set(fileId, in, nil, metadata)
 	if err != nil {
 		return err, utils.ErrorApp
 	}
@@ -151,12 +139,46 @@ func init() {
 				flagDestination += "/"
 			}
 
+			// Create the store object
+			store, err := fs.Get(storeConnectionString)
+			if err != nil || store == nil {
+				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				return
+			}
+
+			// Request the info file
+			info, err := store.GetInfoFile()
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				return
+			}
+			if info == nil {
+				utils.ExitWithError(utils.ErrorUser, "Store is not initialized", err)
+				return
+			}
+
+			// Get the passphrase and derive the master key
+			passphrase, err := utils.PromptPassphrase()
+			if err != nil {
+				utils.ExitWithError(utils.ErrorUser, "Error getting passphrase", err)
+				return
+			}
+			masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
+			if bytes.Compare(info.ConfirmationHash, confirmationHash) != 0 {
+				utils.ExitWithError(utils.ErrorUser, "Invalid passphrase", err)
+				return
+			}
+			store.SetMasterKey(masterKey)
+
+			// Set up the index
+			index.Instance.SetStore(store)
+
 			// Iterate through the args and add them all
 			for _, e := range args {
 				// Get the target and folder
 				folder := filepath.Dir(e)
 				target := filepath.Base(e)
-				err, errType := addFile(folder, target, flagDestination)
+				err, errType := addFile(store, folder, target, flagDestination)
 				if err != nil {
 					if errType == "" {
 						errType = utils.ErrorApp
