@@ -70,12 +70,12 @@ jobs:
               set -e
 
               echo "###\nFetching packr2\n"
-              mkdir -p .bin/packr
-              wget -O - https://github.com/gobuffalo/packr/releases/download/v2.7.1/packr_2.7.1_linux_amd64.tar.gz | tar xvz -C .bin/packr
-              chmod +x .bin/packr/packr2
+              mkdir -p .packr
+              wget -O - https://github.com/gobuffalo/packr/releases/download/v2.7.1/packr_2.7.1_linux_amd64.tar.gz | tar xvz -C .packr
+              chmod +x .packr/packr2
 
               echo "\n###\nRunning packr2\n"
-              .bin/packr/packr2
+              .packr/packr2
 
               echo "\n###\nFetching modules\n"
               GO111MODULE=on \
