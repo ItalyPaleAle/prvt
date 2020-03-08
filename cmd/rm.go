@@ -38,6 +38,8 @@ func init() {
 Usage: "prvt rm <path> [<path> ...] --store <string>"
 
 Removes a file or folder (recursively) from the repository. Once removed, files cannot be recovered.
+
+To remove a file, specify its exact path. To remove a folder recursively, specify the name of the folder, ending with /*
 `,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {

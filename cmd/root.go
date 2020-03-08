@@ -33,11 +33,11 @@ var rootCmd = &cobra.Command{
 	Short: "Store encrypted end-to-end files and view them in your browser ",
 	Long: `prvt lets you store files on local folders or on the cloud, encrypted with strong end-to-end encryption.
 
-All commands require the address of a store, which begin with the name of the store.
+All commands require the address of a repository, which begins with the name of the store.
 
 - For Azure Blob Storage: use "azure:" followed by the name of the container, for example "azure:myfiles". The container must already exist. Additionally, set the following environmental variables to authenticate with Azure Storage: "AZURE_STORAGE_ACCOUNT" with the storage account name, and "AZURE_STORAGE_ACCESS_KEY" with the storage account key.
 
-- For storing on a local folder: use "local:" and the path to the folder (absolute or relative to the current working directory). For example: "local:/myfolder" or "local:subfolder-in-cwd".
+- For storing on a local folder: use "local:" and the path to the folder (absolute or relative to the current working directory). For example: "local:/path/to/folder" or "local:subfolder-in-cwd".
 
 Start by initializing the repository with the "prvt initrepo" command.
 
@@ -48,7 +48,7 @@ Use the "prvt serve" command to launch a local server so you can view the files 
 Lastly, the "prvt rm" command lets you remove files from the repository.
 
 prvt is open source, licensed under GNU General Public License version 3.0.
-Project: https://github.com/ItalyPaleAle/pvt
+Project: https://github.com/ItalyPaleAle/prvt
 `,
 	DisableAutoGenTag: true,
 }
