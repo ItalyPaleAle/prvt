@@ -31,8 +31,8 @@ import (
 
 func init() {
 	c := &cobra.Command{
-		Use:               "initstore",
-		Short:             "initialize a new store",
+		Use:               "initrepo",
+		Short:             "Initialize a new repository",
 		Long:              ``,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
