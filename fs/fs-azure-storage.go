@@ -29,7 +29,7 @@ import (
 	"os"
 	"regexp"
 
-	"e2e/crypto"
+	"github.com/ItalyPaleAle/prvt/crypto"
 
 	"github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"

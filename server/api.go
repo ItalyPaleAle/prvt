@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"strings"
 
-	"e2e/index"
+	index "github.com/ItalyPaleAle/prvt/index"
 
 	"github.com/gin-gonic/gin"
 )

@@ -18,7 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"e2e/cmd"
+	cmd "github.com/ItalyPaleAle/prvt/cmd"
 )
 
 func main() {

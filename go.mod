@@ -1,4 +1,4 @@
-module e2e
+module github.com/ItalyPaleAle/prvt
 
 go 1.13
 

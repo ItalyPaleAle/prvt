@@ -21,10 +21,10 @@ import (
 	"errors"
 	"fmt"
 
-	"e2e/crypto"
-	"e2e/fs"
-	"e2e/index"
-	"e2e/utils"
+	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/index"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )

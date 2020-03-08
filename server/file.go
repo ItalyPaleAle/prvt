@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"e2e/crypto"
+	"github.com/ItalyPaleAle/prvt/crypto"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid"

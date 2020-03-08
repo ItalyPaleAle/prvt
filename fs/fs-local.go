@@ -27,8 +27,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"e2e/crypto"
-	"e2e/utils"
+	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	homedir "github.com/mitchellh/go-homedir"
 )

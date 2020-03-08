@@ -26,7 +26,7 @@ import (
 	"syscall"
 	"time"
 
-	"e2e/fs"
+	"github.com/ItalyPaleAle/prvt/fs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gobuffalo/packr/v2"
@@ -37,6 +37,9 @@ type Server struct {
 }
 
 func (s *Server) Start() error {
+	// Set gin to production mode
+	gin.SetMode(gin.ReleaseMode)
+
 	// Start gin server
 	router := gin.Default()
 
@@ -82,6 +85,7 @@ func (s *Server) Start() error {
 	}()
 
 	// Listen to connections
+	fmt.Println("View on http://localhost:3000")
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}

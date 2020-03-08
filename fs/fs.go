@@ -22,7 +22,7 @@ import (
 	"io"
 	"strings"
 
-	"e2e/crypto"
+	"github.com/ItalyPaleAle/prvt/crypto"
 )
 
 // Get returns a store for the given connection string

@@ -32,7 +32,7 @@ type InfoFile struct {
 // InfoCreate creates a new info file
 func InfoCreate(salt []byte, confirmationHash []byte) (*InfoFile, error) {
 	info := &InfoFile{
-		App:              "e2e",
+		App:              "prvt",
 		Version:          1,
 		Salt:             salt,
 		ConfirmationHash: confirmationHash,
@@ -46,7 +46,7 @@ func InfoValidate(info *InfoFile) error {
 	if info == nil {
 		return errors.New("empty info object")
 	}
-	if info.App != "e2e" {
+	if info.App != "prvt" {
 		return errors.New("invalid app name in info file")
 	}
 	if info.Version != 1 {

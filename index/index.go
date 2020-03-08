@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"e2e/crypto"
-	"e2e/fs"
+	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs"
 )
 
 // How long to cache files for, in seconds
