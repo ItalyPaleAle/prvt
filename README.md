@@ -12,7 +12,7 @@ prvt is free software, released under GNU General Public License version 3.0.
 
 ## Pre-compiled binaries
 
-The easiest way to install prvt is to download a pre-compiled binary, available for Windows, macOS, Linux, FreeBSD. Check out the [Releases](https://github.com/ItalyPaleAle/prvt/releases) section.
+The easiest way to install prvt is to download a pre-compiled binary, available for Windows, macOS, and Linux. Check out the [Releases](https://github.com/ItalyPaleAle/prvt/releases) section.
 
 ### Running on macOS
 

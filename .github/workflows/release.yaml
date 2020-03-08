@@ -1,0 +1,246 @@
+name: Release
+
+on:
+  push:
+    tags:
+      # Push to tags matching v*
+      - 'v*'
+
+env:
+  GO_BUILDER_IMAGE: 'golang:1.14-alpine'
+  NODE_BUILDER_IMAGE: 'node:12-alpine'
+  PACKR_VERSION: 2.7.1
+  
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    # Set variables
+    - name: Set variables
+      run: |
+        # Trim the first 10 characters, which are "refs/tags/"
+        BUILD_ID="${GITHUB_REF:10}"
+        # Just like BUILD_ID, but without the "v" at the beginning
+        BUILD_VERSION="${GITHUB_REF:11}"
+        BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%S')
+        COMMIT_HASH=$(echo $GITHUB_SHA | head -c 7)
+        echo ::set-env name=BUILD_ID::$BUILD_ID
+        echo ::set-env name=BUILD_VERSION::$BUILD_VERSION
+        echo ::set-env name=BUILD_TIME::$BUILD_TIME
+        echo ::set-env name=COMMIT_HASH::$COMMIT_HASH
+
+    # Build web UI
+    - name: Build web UI
+      run: |
+        # Build using Docker
+        docker run \
+          --rm \
+          -v "$PWD"/ui:/usr/src/myapp \
+          -w /usr/src/myapp \
+          ${{env.NODE_BUILDER_IMAGE}} \
+            sh -c '
+              set -e
+
+              echo "###\nInstalling npm dependencies\n"
+              npm ci
+
+              echo "\n###\nBuilding UI\n"
+              APP_VERSION="${{env.BUILD_VERSION}}" npm run build
+              '
+        echo "\n###\nCompilation done\n"
+        ls -al ui/dist
+
+    # Build for all platforms
+    - name: Build for all archs
+      run: |
+        mkdir -p .bin
+        # Build using Docker
+        docker run \
+          --rm \
+          -v "$PWD":/usr/src/myapp \
+          -w /usr/src/myapp \
+          ${{env.GO_BUILDER_IMAGE}} \
+            sh -c '
+              set -e
+
+              echo "###\nFetching packr2\n"
+              mkdir -p .bin/packr
+              wget -O - https://github.com/gobuffalo/packr/releases/download/v2.7.1/packr_2.7.1_linux_amd64.tar.gz | tar xvz -C .bin/packr
+              chmod +x .bin/packr/packr2
+
+              echo "\n###\nRunning packr2\n"
+              .bin/packr/packr2
+
+              echo "\n###\nFetching modules\n"
+              GO111MODULE=on \
+                go get
+
+              echo "\n###\nBuilding linux/amd64\n"
+              # Disable CGO so the binary is fully static
+              CGO_ENABLED=0 \
+              GOOS=linux \
+              GOARCH=amd64 \
+              GO111MODULE=on \
+                go build \
+                  -v \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt_linux_amd64
+
+              echo "\n###\nBuilding linux/386\n"
+              CGO_ENABLED=0 \
+              GOOS=linux \
+              GOARCH=386 \
+              GO111MODULE=on \
+                go build \
+                  -v \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt_linux_386
+
+              echo "\n###\nBuilding linux/arm64\n"
+              CGO_ENABLED=0 \
+              GOOS=linux \
+              GOARCH=arm64 \
+              GO111MODULE=on \
+                go build \
+                  -v \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt_linux_arm64
+
+              echo "\n###\nBuilding linux/arm\n"
+              CGO_ENABLED=0 \
+              GOOS=linux \
+              GOARCH=arm \
+              GOARM=7 \
+              GO111MODULE=on \
+                go build \
+                  -v \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt_linux_armv7
+
+              echo "\n###\nBuilding darwin/amd64\n"
+              CGO_ENABLED=0 \
+              GOOS=darwin \
+              GOARCH=amd64 \
+              GO111MODULE=on \
+                go build \
+                  -v \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt_macos
+
+              echo "\n###\nBuilding windows/amd64\n"
+              CGO_ENABLED=0 \
+              GOOS=windows \
+              GOARCH=amd64 \
+              GO111MODULE=on \
+                go build \
+                  -v \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt_win64.exe
+
+              echo "\n###\nBuilding windows/386\n"
+              CGO_ENABLED=0 \
+              GOOS=windows \
+              GOARCH=386 \
+              GO111MODULE=on \
+                go build \
+                  -v \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt_win32.exe
+              '
+        echo "\n###\nCompilation done\n"
+        ls -al .bin
+    
+    # Publish artifacts
+    - name: Publish binaries as artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: bin
+        path: .bin
+    
+    # Create release and upload assets
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: true
+        prerelease: false
+
+    - name: Upload release asset prvt_linux_amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: .bin/prvt_linux_amd64
+        asset_name: prvt_linux_amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload release asset prvt_linux_386
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: .bin/prvt_linux_386
+        asset_name: prvt_linux_386
+        asset_content_type: application/octet-stream
+
+    - name: Upload release asset prvt_linux_arm64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: .bin/prvt_linux_arm64
+        asset_name: prvt_linux_arm64
+        asset_content_type: application/octet-stream
+
+    - name: Upload release asset prvt_linux_armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: .bin/prvt_linux_armv7
+        asset_name: prvt_linux_armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload release asset prvt_macos
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: .bin/prvt_macos
+        asset_name: prvt_macos
+        asset_content_type: application/octet-stream
+
+    - name: Upload release asset prvt_win64.exe
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: .bin/prvt_win64.exe
+        asset_name: prvt_win64.exe
+        asset_content_type: application/octet-stream
+
+    - name: Upload release asset prvt_win32.exe
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: .bin/prvt_win32.exe
+        asset_name: prvt_win32.exe
+        asset_content_type: application/octet-stream

@@ -1,3 +1,5 @@
+APP_VERSION ?= canary
+
 all: build
 
 clean:
@@ -8,4 +10,4 @@ build: build-ui
 	go build -o bin
 
 build-ui:
-	(cd ui; npm ci; APP_VERSION="0.1.0" npm run build)
+	(cd ui; npm ci; APP_VERSION="$(APP_VERSION)" npm run build)

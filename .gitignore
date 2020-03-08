@@ -1,5 +1,6 @@
 # Compiled files
 bin
+.bin
 packrd/
 *-packr.go
 
