@@ -35,7 +35,7 @@ func init() {
 		Short: "Remove a file or folder",
 		Long: `Removes a file (or folder) from the repository.
 
-Usage: "prvt rm <path> [<path> ...]"
+Usage: "prvt rm <path> [<path> ...] --store <string>"
 
 Removes a file or folder (recursively) from the repository. Once removed, files cannot be recovered.
 `,

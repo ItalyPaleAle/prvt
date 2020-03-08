@@ -30,10 +30,19 @@ import (
 )
 
 func init() {
+	var (
+		flagBindPort    string
+		flagBindAddress string
+	)
+
 	c := &cobra.Command{
 		Use:   "serve",
 		Short: "Start the server",
 		Long: `Starts a web server on the local machine, so you can access your encrypted files using a web browser.
+
+Usage: "prvt serve --store <string>"
+
+You can use the optional "--address" and "--port" flags to control what address and port the server listens on. To enable connections from remote clients (not running on the local machine), set the address to "0.0.0.0".
 `,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -75,7 +84,7 @@ func init() {
 			srv := server.Server{
 				Store: store,
 			}
-			err = srv.Start()
+			err = srv.Start(flagBindAddress, flagBindPort)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
 				return
@@ -83,4 +92,8 @@ func init() {
 		},
 	}
 	rootCmd.AddCommand(c)
+
+	// Flags
+	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
+	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
 }

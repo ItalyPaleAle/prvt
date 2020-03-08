@@ -36,7 +36,7 @@ type Server struct {
 	Store fs.Fs
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(address, port string) error {
 	// Set gin to production mode
 	gin.SetMode(gin.ReleaseMode)
 
@@ -62,7 +62,7 @@ func (s *Server) Start() error {
 
 	// HTTP Server
 	server := &http.Server{
-		Addr:           "127.0.0.1:3000",
+		Addr:           address + ":" + port,
 		Handler:        router,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -85,7 +85,7 @@ func (s *Server) Start() error {
 	}()
 
 	// Listen to connections
-	fmt.Println("View on http://localhost:3000")
+	fmt.Printf("Listening on http://%s:%s\n", address, port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
