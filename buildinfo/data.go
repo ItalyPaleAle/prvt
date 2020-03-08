@@ -19,6 +19,7 @@ package buildinfo
 
 // These variables will be set at build time
 var (
+	AppVersion string
 	BuildID    string
 	CommitHash string
 	BuildTime  string
