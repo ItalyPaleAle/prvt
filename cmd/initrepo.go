@@ -31,9 +31,14 @@ import (
 
 func init() {
 	c := &cobra.Command{
-		Use:               "initrepo",
-		Short:             "Initialize a new repository",
-		Long:              ``,
+		Use:   "initrepo",
+		Short: "Initialize a new repository",
+		Long: `Initializes a new, empty repository, and sets the encryption key to use.
+
+Usage: "prvt initrepo --store <string>"
+
+See the help page for prvt ("prvt --help") for details on stores and how to configure them.
+`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object

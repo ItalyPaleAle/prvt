@@ -31,9 +31,14 @@ import (
 
 func init() {
 	c := &cobra.Command{
-		Use:               "rm",
-		Short:             "remove a file or folder",
-		Long:              ``,
+		Use:   "rm",
+		Short: "Remove a file or folder",
+		Long: `Removes a file (or folder) from the repository.
+
+Usage: "prvt rm <path> [<path> ...]"
+
+Removes a file or folder (recursively) from the repository. Once removed, files cannot be recovered.
+`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object

@@ -117,9 +117,16 @@ func init() {
 	var flagDestination string
 
 	c := &cobra.Command{
-		Use:               "add",
-		Short:             "add a file or folder",
-		Long:              ``,
+		Use:   "add",
+		Short: "Add a file or folder",
+		Long: `Adds a file or folder to a repository.
+
+Usage: "prvt add <file> [<file> ...] --store <string> --destination <string>"
+
+You can add multiple files or folders from the local file system; folders will be added recursively.
+
+You must specify a destination, which is a folder inside the repository where your files will be added. The value for the --destination flag must begin with a slash.
+`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Get the file/folder name from the args

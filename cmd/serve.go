@@ -31,9 +31,10 @@ import (
 
 func init() {
 	c := &cobra.Command{
-		Use:               "serve",
-		Short:             "start the server",
-		Long:              ``,
+		Use:   "serve",
+		Short: "Start the server",
+		Long: `Starts a web server on the local machine, so you can access your encrypted files using a web browser.
+`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
