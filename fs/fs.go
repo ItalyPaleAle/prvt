@@ -71,4 +71,8 @@ type Fs interface {
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
 	Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)
+
+	// Delete a file from the filesystem
+	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
+	Delete(name string, tag interface{}) (err error)
 }

@@ -85,9 +85,6 @@ func (f *Local) GetInfoFile() (info *InfoFile, err error) {
 	// Read the file
 	data, err := ioutil.ReadFile(f.basePath + "_info.json")
 	if err != nil {
-		if os.IsNotExist(err) {
-			err = nil
-		}
 		return
 	}
 
@@ -201,4 +198,21 @@ func (f *Local) Set(name string, in io.Reader, tag interface{}, metadata *crypto
 	}
 
 	return nil, nil
+}
+
+func (f *Local) Delete(name string, tag interface{}) (err error) {
+	if name == "" {
+		err = errors.New("name is empty")
+		return
+	}
+
+	// If the file doesn't start with _, it lives in a sub-folder
+	folder := ""
+	if len(name) > 4 && name[0] != '_' {
+		folder = name[0:2] + "/" + name[2:4] + "/"
+	}
+
+	// Delete the file
+	err = os.Remove(f.basePath + folder + name)
+	return
 }

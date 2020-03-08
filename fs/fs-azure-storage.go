@@ -268,3 +268,28 @@ func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata 
 
 	return tagOut, nil
 }
+
+func (f *AzureStorage) Delete(name string, tag interface{}) (err error) {
+	// Create the blob URL
+	u, err := url.Parse(f.storageURL + "/" + name)
+	if err != nil {
+		return
+	}
+	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
+
+	// If we have a tag (ETag), we will allow the operation to succeed only if the tag matches
+	// If there's no ETag, then it will always be allowed
+	var accessConditions azblob.BlobAccessConditions
+	if tag != nil {
+		// Operation can succeed only if the file hasn't been modified since we downloaded it
+		accessConditions = azblob.BlobAccessConditions{
+			ModifiedAccessConditions: azblob.ModifiedAccessConditions{
+				IfMatch: *tag.(*azblob.ETag),
+			},
+		}
+	}
+
+	// Delete the blob
+	_, err = blockBlobURL.Delete(context.TODO(), azblob.DeleteSnapshotsOptionInclude, accessConditions)
+	return
+}

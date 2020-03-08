@@ -32,7 +32,7 @@ import (
 func init() {
 	c := &cobra.Command{
 		Use:               "initstore",
-		Short:             "Initialize a new store",
+		Short:             "initialize a new store",
 		Long:              ``,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -66,7 +66,7 @@ func init() {
 			// Check if the file exists already
 			// We are expecting this to be empty
 			info, err := store.GetInfoFile()
-			if err != nil {
+			if err == nil {
 				utils.ExitWithError(utils.ErrorApp, "Error initializing store", errors.New("store is already initialized"))
 				return
 			}

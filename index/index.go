@@ -206,7 +206,7 @@ func (i *Index) FileExists(path string) (bool, error) {
 		return false, errors.New("path must start with /")
 	}
 
-	// Iterate through the list of elemets to check if the file exists
+	// Iterate through the list of elements to check if the file exists
 	for _, el := range i.cache.Elements {
 		// Check if there's an exact match, or if there's a folder starting with the path
 		if el.Path == path || strings.HasPrefix(el.Path, path+"/") {
@@ -215,6 +215,54 @@ func (i *Index) FileExists(path string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// DeleteFile removes a file or folder from the index
+// It returns the list of objects to remove
+// To remove a folder, make sure the path ends with /*
+func (i *Index) DeleteFile(path string) ([]string, error) {
+	// Ensure the path starts with a /
+	if !strings.HasPrefix(path, "/") {
+		return nil, errors.New("path must start with /")
+	}
+
+	// Force a refresh of the index
+	if err := i.Refresh(true); err != nil {
+		return nil, err
+	}
+
+	// If the path ends with /* we are going to remove the entire folder
+	matchPrefix := false
+	if strings.HasSuffix(path, "/*") {
+		matchPrefix = true
+		path = path[0 : len(path)-2]
+	} else if strings.HasSuffix(path, "/") {
+		return nil, errors.New("path cannot end with /; to remove a folder, end with /*")
+	}
+
+	// Iterate through the list of files to find matches
+	objectsRemoved := make([]string, 0)
+	// Output index; see: https://stackoverflow.com/a/20551116/192024
+	j := 0
+	for _, el := range i.cache.Elements {
+		// Need to remove
+		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
+			// Add to the result
+			objectsRemoved = append(objectsRemoved, el.Name)
+		} else {
+			// Maintain in the list
+			i.cache.Elements[j] = el
+			j++
+		}
+	}
+	i.cache.Elements = i.cache.Elements[:j]
+
+	// Save
+	if err := i.save(i.cache); err != nil {
+		return nil, err
+	}
+
+	return objectsRemoved, nil
 }
 
 // ListFolder returns the list of elements in a folder

@@ -118,7 +118,7 @@ func init() {
 
 	c := &cobra.Command{
 		Use:               "add",
-		Short:             "Add a file or folder",
+		Short:             "add a file or folder",
 		Long:              ``,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {

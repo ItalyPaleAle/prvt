@@ -19,11 +19,11 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 
 	"e2e/crypto"
 	"e2e/fs"
 	"e2e/index"
-	"e2e/server"
 	"e2e/utils"
 
 	"github.com/spf13/cobra"
@@ -31,8 +31,8 @@ import (
 
 func init() {
 	c := &cobra.Command{
-		Use:               "serve",
-		Short:             "start the server",
+		Use:               "rm",
+		Short:             "remove a file or folder",
 		Long:              ``,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -70,14 +70,34 @@ func init() {
 			// Set up the index
 			index.Instance.SetStore(store)
 
-			// Start the server
-			srv := server.Server{
-				Store: store,
-			}
-			err = srv.Start()
-			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
-				return
+			// Iterate through the args and remove all files
+			for _, e := range args {
+				// Remove from the index
+				objects, err := index.Instance.DeleteFile(e)
+				if err != nil {
+					utils.ExitWithError(utils.ErrorApp, "Failed to remove path from index: "+e, err)
+					return
+				}
+				if objects == nil || len(objects) < 1 {
+					fmt.Println("Nothing removed:", e)
+					continue
+				}
+
+				// Delete the files
+				for _, o := range objects {
+					err = store.Delete(o, nil)
+					if err != nil {
+						utils.ExitWithError(utils.ErrorApp, "Failed to remove object from store: "+o+" (for path "+e+")", err)
+						return
+					}
+				}
+				var removed string
+				if len(objects) == 1 {
+					removed = "(1 file)"
+				} else {
+					removed = fmt.Sprintf("(%d files)", len(objects))
+				}
+				fmt.Println("Removed path:", e, removed)
 			}
 		},
 	}
