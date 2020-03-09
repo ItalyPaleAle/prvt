@@ -161,6 +161,11 @@ func (f *AzureStorage) SetInfoFile(info *InfoFile) (err error) {
 }
 
 func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	if name == "" {
+		err = errors.New("name is empty")
+		return
+	}
+
 	found = true
 
 	// Create the blob URL
@@ -210,6 +215,11 @@ func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.Metadat
 }
 
 func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
+	if name == "" {
+		err = errors.New("name is empty")
+		return
+	}
+
 	// Create the blob URL
 	u, err := url.Parse(f.storageURL + "/" + name)
 	if err != nil {
@@ -270,6 +280,11 @@ func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata 
 }
 
 func (f *AzureStorage) Delete(name string, tag interface{}) (err error) {
+	if name == "" {
+		err = errors.New("name is empty")
+		return
+	}
+
 	// Create the blob URL
 	u, err := url.Parse(f.storageURL + "/" + name)
 	if err != nil {
