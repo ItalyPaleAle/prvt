@@ -37,6 +37,8 @@ All commands require the address of a repository, which begins with the name of 
 
 - For Azure Blob Storage: use "azure:" followed by the name of the container, for example "azure:myfiles". The container must already exist. Additionally, set the following environmental variables to authenticate with Azure Storage: "AZURE_STORAGE_ACCOUNT" with the storage account name, and "AZURE_STORAGE_ACCESS_KEY" with the storage account key.
 
+- For AWS S3 and other S3-compatible services: use "s3:" followed by the name of the bucket, for example "s3:myfiles". The bucket must already exist. Additionally, set the following environmental variables to authenticate with S3: "AWS_ACCESS_KEY_ID" with the access key id, and "AWS_SECRET_ACCESS_KEY" with the secret access key. If you're connecting to a S3-compatible service, specify the endpoint with the "S3_ENDPOINT" environmental variable (defaults to "s3.amazonaws.com"), and optionally disable TLS with the environmental variable "S3_TLS=false".
+
 - For storing on a local folder: use "local:" and the path to the folder (absolute or relative to the current working directory). For example: "local:/path/to/folder" or "local:subfolder-in-cwd".
 
 Start by initializing the repository with the "prvt initrepo" command.

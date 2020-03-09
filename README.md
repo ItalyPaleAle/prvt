@@ -2,7 +2,7 @@
 
 prvt lets you store files on the cloud or on local directories, protected with strong end-to-end encryption, and then conveniently view them within a web browser.
 
-Currently, prvt supports out-of-the-box storing files on a local folder or on [Azure Blob Storage](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview).
+Currently, prvt supports out-of-the-box storing files on [Azure Blob Storage](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview), [AWS S3](https://aws.amazon.com/s3/), other S3-compatible services, and on a local folder.
 
 prvt is free software, released under GNU General Public License version 3.0.
 
@@ -43,11 +43,13 @@ prvt initrepo --store <string>
 
 You will be prompted to set a passphrase, which will be used to encrypt and decrypt all files.
 
-The store flag tells prvt where to keep your files. It's a string that starts with the name of the store, followed by a provider-specific configuration. 
+The store flag tells prvt where to keep your files. It's a string that starts with the name of the store, followed by a provider-specific configuration.
 
 Supported stores at the moment are:
 
 - For **Azure Blob Storage**, use `azure:` followed by the name of the container, for example `azure:myfiles`. The container must already exist. Additionally, set the following environmental variables to authenticate with Azure Storage: `AZURE_STORAGE_ACCOUNT` with the storage account name, and `AZURE_STORAGE_ACCESS_KEY` with the storage account key.
+- For **AWS S3**, use `s3:` followed by the name of the bucket, for example `s3:myfiles`. The bucket must already exist. Additionally, set the following environmental variables to authenticate with S3: `AWS_ACCESS_KEY_ID` with the access key id, and `AWS_SECRET_ACCESS_KEY` with the secret access key.
+- For other **S3-compatible services**, use the `s3:` prefix and the bucket name, just like for AWS S3, and set the access key id and the secret key with the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environmental variables. Next, set the endpoint of the service with the `S3_ENDPOINT` environmental variable (if not set, that defaults to AWS S3 at `s3.amazonaws.com`). By default, prvt uses TLS for accessing S3-compatible services, but that can be disabled by setting the environmental variable `S3_TLS=false`.
 - For storing on a **local folder**: use `local:` and the path to the folder (absolute or relative to the current working directory). For example: `local:/path/to/folder` or `local:subfolder-in-cwd`.
 
 For example, to store files locally in a folder called "repo" (in the current working directory):
@@ -62,6 +64,15 @@ To store on Azure Blob Storage in a storage account called "mystorageacct" and i
 export AZURE_STORAGE_ACCOUNT=mystorageacct
 export AZURE_STORAGE_ACCESS_KEY=...
 prvt initrepo --store azure:myrepo
+```
+
+To store on AWS S3 in a bucket called "mybucket":
+
+```sh
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+# For using other S3-compatible services, set also `export S3_ENDPOINT=some.service.com`
+prvt initrepo --store s3:mybucket
 ```
 
 ### Add files
