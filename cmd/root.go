@@ -24,9 +24,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Store connection string
-var storeConnectionString string
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "prvt",
@@ -53,11 +50,6 @@ prvt is open source, licensed under GNU General Public License version 3.0.
 Project: https://github.com/ItalyPaleAle/prvt
 `,
 	DisableAutoGenTag: true,
-}
-
-func init() {
-	rootCmd.PersistentFlags().StringVarP(&storeConnectionString, "store", "s", "", "connection string for the store")
-	rootCmd.MarkFlagFilename("store")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -25,17 +25,19 @@ import (
 type InfoFile struct {
 	App              string `json:"app"`
 	Version          uint16 `json:"ver"`
-	Salt             []byte `json:"slt"`
-	ConfirmationHash []byte `json:"ph"`
+	Salt             []byte `json:"slt,omitempty"`
+	ConfirmationHash []byte `json:"ph,omitempty"`
+	EncryptedKey     []byte `json:"ek,omitempty"`
 }
 
 // InfoCreate creates a new info file
-func InfoCreate(salt []byte, confirmationHash []byte) (*InfoFile, error) {
+func InfoCreate(salt []byte, confirmationHash []byte, encryptedKey []byte) (*InfoFile, error) {
 	info := &InfoFile{
 		App:              "prvt",
 		Version:          1,
 		Salt:             salt,
 		ConfirmationHash: confirmationHash,
+		EncryptedKey:     encryptedKey,
 	}
 	return info, nil
 }
@@ -52,11 +54,17 @@ func InfoValidate(info *InfoFile) error {
 	if info.Version != 1 {
 		return errors.New("unsupported info file version")
 	}
-	if len(info.Salt) != 16 {
-		return errors.New("invalid salt in info file")
-	}
-	if len(info.ConfirmationHash) != 32 {
-		return errors.New("invalid confirmation hash in info file")
+	if info.EncryptedKey != nil {
+		if len(info.EncryptedKey) < 30 {
+			return errors.New("invalid encrypted master key")
+		}
+	} else {
+		if len(info.Salt) != 16 {
+			return errors.New("invalid salt in info file")
+		}
+		if len(info.ConfirmationHash) != 32 {
+			return errors.New("invalid confirmation hash in info file")
+		}
 	}
 
 	return nil

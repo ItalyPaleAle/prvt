@@ -2,7 +2,13 @@
 
 prvt lets you store files on the cloud or on local directories, protected with strong end-to-end encryption, and then conveniently view them within a web browser.
 
-Currently, prvt supports out-of-the-box storing files on [Azure Blob Storage](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview), [AWS S3](https://aws.amazon.com/s3/), other S3-compatible services, and on a local folder.
+Features:
+
+- Written in Go, it runs on all platforms: Windows, Linux, macOS, and more.
+- Uses industry-standard, strong authenticated encryption algorithms.
+- Supports storing files on [Azure Blob Storage](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview), [AWS S3](https://aws.amazon.com/s3/), other S3-compatible services, and on a local folder.
+- Conveniently browse files using a web browser, displaying supported files (images, videos, PDFs, etc) within the browser itself.
+- It also supports using GPG keys or security tokens (such as a smart card or a YubiKey) to restrict access to your data.
 
 prvt is free software, released under GNU General Public License version 3.0.
 
@@ -33,7 +39,7 @@ go get -u github.com/ItalyPaleAle/prvt
 
 ## Using prvt
 
-## Initialize the repository
+### Initialize the repository
 
 Before you can use prvt, you need to initialize a repository. This is done with the `prvt initrepo` command:
 
@@ -80,7 +86,6 @@ prvt initrepo --store s3:mybucket
 You can now add files to the repository, using the `prvt add` command:
 
 ```sh
-# You'll be prompted for the repository's passphrase
 prvt add <file> [<file> ...] --store <string> --destination <string>
 ```
 
@@ -99,7 +104,6 @@ prvt add ~/photos --store local:repo --destination /
 prvt offers a browser-based interface to view your (encrypted) files, by running a local server. You can start the server with:
 
 ```sh
-# You'll be prompted for the repository's passphrase
 prvt serve --store <string>
 ```
 
@@ -112,7 +116,6 @@ Your browser will try to display supported files within itself, such as photos, 
 You can remove files from the repo with:
 
 ```sh
-# You'll be prompted for the repository's passphrase
 prvt rm <path> --store <string>
 ```
 
@@ -132,11 +135,28 @@ prvt rm /photos/* --store local:repo
 
 Note: once deleted, files cannot be recovered.
 
+## Using GPG keys
+
+Instead of using passphrases, you can configure a repository to be unlocked with a GPG key. This can be useful in scenarios such as when you want to use prvt in non-interactive scripts, or when you want to use a GPG key stored in a token (such as a smart card or a security key like a YubiKey, etc).
+
+In order to use this mode of operation, you need to have the GPG utility installed (at least version 2), and the `gpg` or `gpg2` command must available in your system's `PATH`. You also need to have a GPG keypair (public and private) available.
+
+To use a GPG key rather than a passphrase, initialize the repository with the `--gpg <address>` flag. The value is the ID or address of a public key in your GPG keyring. For example:
+
+```sh
+# Use the address
+prvt initrepo --store local:repo --gpg mykey@example.com
+# Use the public key ID
+prvt initrepo --store local:repo --gpg 0x30F411E2
+```
+
+When a repository is initialized with a GPG key, the other commands that need to access (read or update) data, such as `prvt add`, `prvt serve`, and `prvt rm`, will invoke the GPG utility to obtain the master key and unlock the repository. You will need the private key available in the GPG utility for all these operations to succeed.
+
 ## FAQ
 
 ### How does prvt encrypt my files?
 
-prvt encrypts your files using strong, industry-standard ciphers, such as AES-256-GCM and ChaCha20-Poly1305. The encryption key is derived from the passphrase you choose using Argon2id.
+prvt encrypts your files using strong, industry-standard ciphers, such as AES-256-GCM and ChaCha20-Poly1305. The encryption key is derived from the passphrase you choose using Argon2id, or from a key wrapped with GPG.
 
 Check out the [Encryption](./Encryption.md) document for detailed information.
 
@@ -148,7 +168,7 @@ Yes. prvt stores all encrypted files with a random UUID as name. The name of the
 
 The prvt codebase has not been audited yet (and you won't see a "1.0" release until that happens).
 
-However, all the cryptographic operations used by prvt leverage popular, strong ciphers and algorithms such as AES-256-GCM, ChaCha20-Poly1305, and Argon2id. prvt relies on production-ready libraries that implement those algorithms, such as [minio/sio](https://github.com/minio/sio), [google/tink](github.com/google/tink), and the Go's standard library.
+However, all the cryptographic operations used by prvt leverage popular, strong ciphers and algorithms such as AES-256-GCM, ChaCha20-Poly1305, and Argon2id. prvt relies on production-ready libraries that implement those algorithms, such as [minio/sio](https://github.com/minio/sio), [google/tink](github.com/google/tink), and the Go's standard library. Additionally, prvt can interface with an externally-installed GPG utility if you are initializing a repository with a GPG-wrapped key.
 
 Check out the [Encryption](./Encryption.md) document for detailed information.
 

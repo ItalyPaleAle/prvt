@@ -18,10 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 
-	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
@@ -30,6 +28,10 @@ import (
 )
 
 func init() {
+	var (
+		flagStoreConnectionString string
+	)
+
 	c := &cobra.Command{
 		Use:   "rm",
 		Short: "Remove a file or folder",
@@ -44,7 +46,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
-			store, err := fs.Get(storeConnectionString)
+			store, err := fs.Get(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return
@@ -61,15 +63,10 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 				return
 			}
 
-			// Get the passphrase and derive the master key
-			passphrase, err := utils.PromptPassphrase()
+			// Derive the master key
+			masterKey, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error getting passphrase", err)
-				return
-			}
-			masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
-			if bytes.Compare(info.ConfirmationHash, confirmationHash) != 0 {
-				utils.ExitWithError(utils.ErrorUser, "Invalid passphrase", err)
+				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
 			store.SetMasterKey(masterKey)
@@ -108,5 +105,11 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			}
 		},
 	}
+
+	// Flags
+	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
+	c.MarkFlagRequired("store")
+
+	// Add the command
 	rootCmd.AddCommand(c)
 }

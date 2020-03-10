@@ -18,28 +18,24 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package utils
 
 import (
-	"errors"
-
-	"github.com/manifoldco/promptui"
+	"regexp"
+	"strings"
 )
 
-// PromptPassphrase prompts the user for a passphrase
-func PromptPassphrase() (string, error) {
-	prompt := promptui.Prompt{
-		Validate: func(input string) error {
-			if len(input) < 1 {
-				return errors.New("Passphrase must not be empty")
-			}
-			return nil
-		},
-		Label: "Passphrase",
-		Mask:  '*',
+var sanitizePathRegexp *regexp.Regexp
+
+// SanitizePath removes certain problematic characters from path names
+func SanitizePath(path string) string {
+	// Compile the regular expression if necessary
+	if sanitizePathRegexp == nil {
+		sanitizePathRegexp = regexp.MustCompile("[#%&{}<>*\\$:!'\"+@\x60|=]")
 	}
 
-	key, err := prompt.Run()
-	if err != nil {
-		return "", err
-	}
+	// Replace all back slashes with a forward slash
+	path = strings.ReplaceAll(path, "\\", "/")
 
-	return key, err
+	// Sanitize the string
+	path = sanitizePathRegexp.ReplaceAllString(path, "")
+
+	return path
 }

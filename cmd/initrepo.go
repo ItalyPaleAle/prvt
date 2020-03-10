@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
@@ -30,6 +29,11 @@ import (
 )
 
 func init() {
+	var (
+		flagStoreConnectionString string
+		flagGPGKey                string
+	)
+
 	c := &cobra.Command{
 		Use:   "initrepo",
 		Short: "Initialize a new repository",
@@ -38,30 +42,23 @@ func init() {
 Usage: "prvt initrepo --store <string>"
 
 See the help page for prvt ("prvt --help") for details on stores and how to configure them.
+
+If you want to use a GPG key to protect this repository (including GPG keys stored in security tokens or smart cards), use the "--gpg" flag with the address or ID of a public GPG key. For example: "prvt initrepo --store <string> --gpg mykey@example.com" 
+In order to use GPG keys, you need to have GPG version 2 installed separately. You also need a GPG keypair (public and private) in your keyring.
 `,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
-			store, err := fs.Get(storeConnectionString)
+			store, err := fs.Get(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return
 			}
 
-			// Get the passphrase and derive the master key, after generating a new salt
-			passphrase, err := utils.PromptPassphrase()
+			// Create the info file after generating a new master key
+			info, errMessage, err := NewMasterKey(flagGPGKey)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error getting passphrase", err)
-				return
-			}
-			salt, err := crypto.NewSalt()
-			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error generating a new salt", err)
-				return
-			}
-			_, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, salt)
-			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error deriving the master key", err)
+				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
 
@@ -70,20 +67,13 @@ See the help page for prvt ("prvt --help") for details on stores and how to conf
 
 			// Check if the file exists already
 			// We are expecting this to be empty
-			info, err := store.GetInfoFile()
+			infoExisting, err := store.GetInfoFile()
 			if err == nil {
 				utils.ExitWithError(utils.ErrorApp, "Error initializing store", errors.New("store is already initialized"))
 				return
 			}
-			if info != nil {
+			if infoExisting != nil {
 				utils.ExitWithError(utils.ErrorUser, "Error initializing store", errors.New("store is already initialized"))
-				return
-			}
-
-			// Create the info file
-			info, err = fs.InfoCreate(salt, confirmationHash)
-			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error creating info file", err)
 				return
 			}
 
@@ -97,5 +87,11 @@ See the help page for prvt ("prvt --help") for details on stores and how to conf
 			fmt.Println("Initialized new store")
 		},
 	}
+	// Flags
+	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
+	c.MarkFlagRequired("store")
+	c.Flags().StringVarP(&flagGPGKey, "gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
+
+	// Add the command
 	rootCmd.AddCommand(c)
 }

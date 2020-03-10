@@ -10,7 +10,7 @@ When viewing files using the web-based interface, files are downloaded and then 
 
 Files in a repository are encrypted using the [minio/sio](https://github.com/minio/sio) library. This library implements the "Data At Rest Encryption" (DARE) 2.0 format, and it encrypts files using either the AES-256-GCM or the ChaCha20-Poly1305.
 
-Both are strong algorithms that provide authenticated encryption, guaranteeing the confidentiality as well as the integrity of the data. Both use a 256-bit (32-byte) key. The DARE format guarantees that files are tamper-proof too.
+Both are strong algorithms that provide authenticated encryption, guaranteeing the confidentiality as well as the integrity of the data. Both use a 256-bit (32-byte) key. The DARE format guarantees that stored files are tamper-resistant too.
 
 sio, and by extension prvt, can decrypt files encrypted with either algorithm. When encrypting files, sio will use AES-256-GCM if the machine supports AES hardware acceleration (e.g. a CPU with AES-NI instructions), or fall back to ChaCha20-Poly1305 otherwise.
 
@@ -92,15 +92,32 @@ The metadata header is at most 1,022 bytes in length.
 
 As mentioned above, each file is encrypted with a unique key that is randomly generated. The key is then wrapped (i.e. encrypted) with a master key.
 
-The master key is a 256-bit symmetric key that is derived from the user's passphrase using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm, in the Argon2id variant.
+The master key is a 256-bit symmetric key. prvt uses that to wrap each file's key using AES, as per [RFC 5649](https://tools.ietf.org/html/rfc5649). prvt relies on a module from the [google/tink](https://github.com/google/tink) library ([google/tink/go/subtle/kwp](https://godoc.org/github.com/google/tink/go/subtle/kwp)) to perform the key wrapping and unwrapping.
+
+prvt version 0.2 supports two ways of obtaining the master key:
+
+- Deriving it from a user-supplied passphrase (using Argon2id)
+- Wrapping it using the GPG tool
+
+### Deriving from a passphrase
+
+The default method of operation of prvt uses a passphrase to derive the master key. The user sets the passphrase when first initializing the repo, and then it's prompted for that when invoking any command in the prvt CLI (e.g. `prvt add`, `prvt serve`, `prvt rm`, etc).
+
+In this mode of operation, the master key is a 256-bit symmetric key that is derived from the user's passphrase using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm, in the Argon2id variant.
 
 prvt uses the [golang.org/x/crypto/argon2](https://golang.org/x/crypto/argon2) implementation of Argon2id, which is part of the Go project. As per recommendation by the documentation (which itself references the [draft RFC](https://tools.ietf.org/html/draft-irtf-cfrg-argon2-03#section-9.3)), prvt uses Argon2id with time=1 and memory=64MB.
 
 When deriving the master key with Argon2id, prvt uses a random 16-byte salt, which is unique for each repository, and it's stored in cleartext in the info file (more on that below).
 
-After generating the master key, prvt uses that to wrap each file's keys using AES as per [RFC 5649](https://tools.ietf.org/html/rfc5649). prvt relies on a module from the [google/tink](https://github.com/google/tink) library ([google/tink/go/subtle/kwp](https://godoc.org/github.com/google/tink/go/subtle/kwp)) to perform the key wrapping and unwrapping.
+> When the master key is derived from the passphrase, it's important to choose a passphrase with enough entropy. See [this site](https://www.useapassphrase.com/) for more information on passphrases.
 
-> Because the master key is derived from the passphrase, it's important to choose a passphrase with enough entropy. See [this site](https://www.useapassphrase.com/) for more information on passphrases.
+### Wrapping with GPG
+
+This mode of operation is enabled with the `--gpg` (or `-g`) flag for the `prvt initrepo` command.
+
+When the prvt repository is initialized with the GPG option, the CLI generates a random 256-bit key. This key is then encrypted by invoking the GPG utility, and using the public key specified in the `--gpg` flag. The wrapped key is stored in the info file, and on every invocation of a prvt command that requires reading or writing data, the key is un-wrapped again using the GPG utility.
+
+In order to use this option, clients need to have GPG version 2 or higher installed, as an external utility available in the system's `PATH`. They also need to have at least one keypair (public and secret) imported in their GPG keyring.
 
 ## File names and index
 
@@ -141,14 +158,23 @@ Thanks to this index, prvt can show a tree of all directories and files, and kno
 
 The `_info.json` file is the only file in the repository that is not encrypted.
 
-This file is a JSON document containing four keys:
+This file is a JSON document containing three or four keys:
 
 - The name of the app (`app`) that created it. This is always `prvt`.
 - The version (`ver`) of the info file. Currently, this is always `1`.
+
+When the repository is initialized with a passphrase, the info file contains two more keys:
+
 - The salt (`slt`) for deriving the master key using Argon2id, a 16-byte sequence encoded as base64.
 - The passphrase's confirmation hash (`ph`), a 32-byte sequence encoded as base64.
 
-For example (the document below has been pretty-printed for clarity for this example only):
+Instead, if the repository is initialized with a GPG-wrapped key, the info file contains one more key:
+
+- The encrypted key (`ek`) as wrapped by GPG, base64-encoded
+
+### Repository initialized with a passphrase
+
+For example, when the repository was initialized with a passphrase (the document below has been pretty-printed for clarity for this example only):
 
 ```json
 {
@@ -164,3 +190,15 @@ The last element, the passphrase's confirmation hash, is used to ensure that use
 The confirmation hash is generated in the same invocation of Argon2 that generates the master key. The Argon2 function returns 64 bytes: the first 32 are the master key (and are never stored anywhere), and the remaining 32 are used as the passphrase's confirmation hash, stored in cleartext in the info file.
 
 When users run any command that requires reading or writing encrypted data in the repository (such as `prvt add`, `prvt serve`, etc), prvt invokes Argon2 to generate the 64-byte sequence from the passphrase, and compares the last 32 bytes with the value of `ph` in the info file. If they're different, it means that the user typed the wrong passphrase, and so prvt won't perform any operation on the repository.
+
+### Repository initialized with a GPG-wrapped key
+
+If using a GPG-wrapped key, instead, the info file looks like this (the document below has been pretty-printed for clarity for this example only, and the encrypted key was truncated):
+
+```json
+{
+  "app": "prvt",
+  "ver": 1,
+  "ek": "hQIMAwAAAAAAAAAAAQ..."
+}
+```

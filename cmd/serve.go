@@ -18,9 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"bytes"
-
-	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/server"
@@ -31,8 +28,9 @@ import (
 
 func init() {
 	var (
-		flagBindPort    string
-		flagBindAddress string
+		flagStoreConnectionString string
+		flagBindPort              string
+		flagBindAddress           string
 	)
 
 	c := &cobra.Command{
@@ -47,7 +45,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
-			store, err := fs.Get(storeConnectionString)
+			store, err := fs.Get(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return
@@ -64,15 +62,10 @@ You can use the optional "--address" and "--port" flags to control what address 
 				return
 			}
 
-			// Get the passphrase and derive the master key
-			passphrase, err := utils.PromptPassphrase()
+			// Derive the master key
+			masterKey, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error getting passphrase", err)
-				return
-			}
-			masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
-			if bytes.Compare(info.ConfirmationHash, confirmationHash) != 0 {
-				utils.ExitWithError(utils.ErrorUser, "Invalid passphrase", err)
+				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
 			store.SetMasterKey(masterKey)
@@ -91,9 +84,13 @@ You can use the optional "--address" and "--port" flags to control what address 
 			}
 		},
 	}
-	rootCmd.AddCommand(c)
 
 	// Flags
+	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
+	c.MarkFlagRequired("store")
 	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
 	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
+
+	// Add the command
+	rootCmd.AddCommand(c)
 }

@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"mime"
@@ -91,9 +90,13 @@ func addFile(store fs.Fs, folder, target, destinationFolder string) (error, stri
 		return err, utils.ErrorApp
 	}
 
+	// Sanitize the file name added to the index
+	sanitizedTarget := utils.SanitizePath(target)
+	sanitizedPath := utils.SanitizePath(destinationFolder + target)
+
 	// Write the data to an encrypted file
 	metadata := &crypto.Metadata{
-		Name:        target,
+		Name:        sanitizedTarget,
 		ContentType: mimeType,
 		Size:        stat.Size(),
 	}
@@ -103,7 +106,7 @@ func addFile(store fs.Fs, folder, target, destinationFolder string) (error, stri
 	}
 
 	// Add to the index
-	err = index.Instance.AddFile(destinationFolder+target, fileId)
+	err = index.Instance.AddFile(sanitizedPath, fileId)
 	if err != nil {
 		return err, utils.ErrorApp
 	}
@@ -114,7 +117,10 @@ func addFile(store fs.Fs, folder, target, destinationFolder string) (error, stri
 }
 
 func init() {
-	var flagDestination string
+	var (
+		flagStoreConnectionString string
+		flagDestination           string
+	)
 
 	c := &cobra.Command{
 		Use:   "add",
@@ -147,7 +153,7 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 
 			// Create the store object
-			store, err := fs.Get(storeConnectionString)
+			store, err := fs.Get(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return
@@ -164,15 +170,10 @@ You must specify a destination, which is a folder inside the repository where yo
 				return
 			}
 
-			// Get the passphrase and derive the master key
-			passphrase, err := utils.PromptPassphrase()
+			// Derive the master key
+			masterKey, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error getting passphrase", err)
-				return
-			}
-			masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
-			if bytes.Compare(info.ConfirmationHash, confirmationHash) != 0 {
-				utils.ExitWithError(utils.ErrorUser, "Invalid passphrase", err)
+				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
 			store.SetMasterKey(masterKey)
@@ -198,6 +199,8 @@ You must specify a destination, which is a folder inside the repository where yo
 	}
 
 	// Flags
+	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
+	c.MarkFlagRequired("store")
 	c.Flags().StringVarP(&flagDestination, "destination", "d", "", "destination folder")
 	c.MarkFlagRequired("destination")
 
