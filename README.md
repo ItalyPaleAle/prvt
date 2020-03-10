@@ -2,13 +2,15 @@
 
 prvt lets you store files on the cloud or on local directories, protected with strong end-to-end encryption, and then conveniently view them within a web browser.
 
+With prvt, you can leverage cloud-based object storage (such as AWS S3 or Azure Storage) as a personal, general-purpose cloud storage service, with full end-to-end encryption.
+
 Features:
 
-- Written in Go, it runs on all platforms: Windows, Linux, macOS, and more.
+- Runs on all platforms: Windows, Linux, macOS, and any other platform supported by the Go compiler.
 - Uses industry-standard, strong authenticated encryption algorithms.
 - Supports storing files on [Azure Blob Storage](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview), [AWS S3](https://aws.amazon.com/s3/), other S3-compatible services, and on a local folder.
-- Conveniently browse files using a web browser, displaying supported files (images, videos, PDFs, etc) within the browser itself.
-- It also supports using GPG keys or security tokens (such as a smart card or a YubiKey) to restrict access to your data.
+- Lets you conveniently browse files using a web browser, displaying supported files (images, videos, PDFs, etc) within the browser itself.
+- Supports using GPG keys or security tokens (such as a smart card or a YubiKey) to restrict access to your data.
 
 prvt is free software, released under GNU General Public License version 3.0.
 
