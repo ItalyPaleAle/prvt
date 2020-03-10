@@ -130,7 +130,8 @@ prvt rm /photos/IMG_0311.jpeg --store local:repo
 To remove an entire folder:
 
 ```sh
-prvt rm /photos/* --store local:repo
+# It's recommended to quote the path to prevent the shell from expanding it
+prvt rm "/photos/*" --store local:repo
 ```
 
 Note: once deleted, files cannot be recovered.
