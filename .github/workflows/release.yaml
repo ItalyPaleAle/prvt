@@ -92,7 +92,6 @@ jobs:
               GOARCH=amd64 \
               GO111MODULE=on \
                 go build \
-                  -v \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64/prvt
               cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
@@ -106,7 +105,6 @@ jobs:
               GOARCH=386 \
               GO111MODULE=on \
                 go build \
-                  -v \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-386/prvt
               cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
@@ -120,7 +118,6 @@ jobs:
               GOARCH=arm64 \
               GO111MODULE=on \
                 go build \
-                  -v \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64/prvt
               cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
@@ -135,7 +132,6 @@ jobs:
               GOARM=7 \
               GO111MODULE=on \
                 go build \
-                  -v \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7/prvt
               cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
@@ -149,7 +145,6 @@ jobs:
               GOARCH=amd64 \
               GO111MODULE=on \
                 go build \
-                  -v \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-macos/prvt
               cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-macos
@@ -163,7 +158,6 @@ jobs:
               GOARCH=amd64 \
               GO111MODULE=on \
                 go build \
-                  -v \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-win64/prvt.exe
               cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-win64
@@ -177,14 +171,13 @@ jobs:
               GOARCH=386 \
               GO111MODULE=on \
                 go build \
-                  -v \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-win32/prvt.exe
               cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-win32
               cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-win32
               zip -r .bin/prvt-v${{env.BUILD_VERSION}}-win32.zip .bin/prvt-v${{env.BUILD_VERSION}}-win32
               '
-        echo "\n###\nCompilation done\n"
+        echo -e"\n###\nCompilation done\n"
         ls -al .bin
     
     # Publish artifacts
@@ -212,8 +205,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .bin/prvt-${{env.BUILD_VERSION}}-linux-amd64.tar.gz
-        asset_name: prvt-${{env.BUILD_VERSION}}-linux-amd64.tar.gz
+        asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz
+        asset_name: prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload release asset prvt-linux-386
@@ -222,8 +215,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .bin/prvt-${{env.BUILD_VERSION}}-linux-386.tar.gz
-        asset_name: prvt-${{env.BUILD_VERSION}}-linux-386.tar.gz
+        asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-386.tar.gz
+        asset_name: prvt-v${{env.BUILD_VERSION}}-linux-386.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload release asset prvt-linux-arm64
@@ -232,8 +225,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .bin/prvt-${{env.BUILD_VERSION}}-linux-arm64.tar.gz
-        asset_name: prvt-${{env.BUILD_VERSION}}-linux-arm64.tar.gz
+        asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64.tar.gz
+        asset_name: prvt-v${{env.BUILD_VERSION}}-linux-arm64.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload release asset prvt-linux-armv7
@@ -242,8 +235,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .bin/prvt-${{env.BUILD_VERSION}}-linux-armv7.tar.gz
-        asset_name: prvt-${{env.BUILD_VERSION}}-linux-armv7.tar.gz
+        asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7.tar.gz
+        asset_name: prvt-v${{env.BUILD_VERSION}}-linux-armv7.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload release asset prvt-macos
@@ -252,8 +245,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .bin/prvt-${{env.BUILD_VERSION}}-macos.tar.gz
-        asset_name: prvt-${{env.BUILD_VERSION}}-macos.tar.gz
+        asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-macos.tar.gz
+        asset_name: prvt-v${{env.BUILD_VERSION}}-macos.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload release asset prvt-win64
@@ -262,8 +255,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .bin/prvt-${{env.BUILD_VERSION}}-win64.zip
-        asset_name: prvt-${{env.BUILD_VERSION}}-win64.zip
+        asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-win64.zip
+        asset_name: prvt-v${{env.BUILD_VERSION}}-win64.zip
         asset_content_type: application/zip
 
     - name: Upload release asset prvt-win32
@@ -272,6 +265,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .bin/prvt-${{env.BUILD_VERSION}}-win32.zip
-        asset_name: prvt-${{env.BUILD_VERSION}}-win32.zip
+        asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-win32.zip
+        asset_name: prvt-v${{env.BUILD_VERSION}}-win32.zip
         asset_content_type: application/zip
