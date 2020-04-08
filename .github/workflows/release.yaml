@@ -47,13 +47,13 @@ jobs:
             sh -c '
               set -e
 
-              echo "###\nInstalling npm dependencies\n"
+              echo -e "###\nInstalling npm dependencies\n"
               npm ci
 
               echo -e "\n###\nBuilding UI\n"
               APP_VERSION="${{env.BUILD_VERSION}}" npm run build
               '
-        echo "\n###\nCompilation done\n"
+        echo -e "\n###\nCompilation done\n"
         ls -al ui/dist
 
     # Build for all platforms
@@ -177,7 +177,7 @@ jobs:
               cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-win32
               (cd .bin && zip -r prvt-v${{env.BUILD_VERSION}}-win32.zip prvt-v${{env.BUILD_VERSION}}-win32)
               '
-        echo -e"\n###\nCompilation done\n"
+        echo -e "\n###\nCompilation done\n"
         ls -al .bin
     
     # Publish artifacts

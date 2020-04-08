@@ -144,6 +144,7 @@ func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (f
 	if err != nil {
 		if os.IsNotExist(err) {
 			found = false
+			err = nil
 		}
 		return
 	}

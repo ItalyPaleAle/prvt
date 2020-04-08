@@ -55,7 +55,7 @@ $: {
 
 function requestTree(reqPath) {
     // Request the tree
-    return fetch('/api/tree/' + reqPath)
+    return fetch('/api/tree/' + encodeURIComponent(reqPath))
         // Get response as JSON
         .then((resp) => {
             return resp.json()

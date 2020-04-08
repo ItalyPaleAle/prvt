@@ -62,12 +62,12 @@ func (s *Server) FileHandler(c *gin.Context) {
 		}
 		c.Header("Content-Disposition", contentDisposition)
 	})
-	if !found {
-		c.AbortWithError(http.StatusNotFound, errors.New("file does not exist"))
-		return
-	}
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	if !found {
+		c.AbortWithError(http.StatusNotFound, errors.New("file does not exist"))
 		return
 	}
 }
