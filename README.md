@@ -27,7 +27,7 @@ The easiest way to install prvt is to download a pre-compiled binary, available 
 The pre-compiled binary is not signed with an Apple developer certificate, and recent versions of macOS will refuse to run it. You can fix this by running:
 
 ```sh
-# Use the path where you downloaded prvt too
+# Use the path where you downloaded prvt to
 xattr -rc /path/to/prvt
 ```
 
