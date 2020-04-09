@@ -182,7 +182,7 @@ You must specify a destination, which is a folder inside the repository where yo
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Store is not initialized", err)
+				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
 				return
 			}
 

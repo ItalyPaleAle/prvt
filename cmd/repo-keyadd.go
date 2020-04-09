@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
@@ -30,26 +29,21 @@ import (
 func init() {
 	var (
 		flagStoreConnectionString string
+		flagGPGKey                string
 	)
 
 	c := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove a file or folder",
-		Long: `Removes a file (or folder) from the repository.
+		Use:   "keyadd",
+		Short: "Add a passphrase or GPG key to the repo",
+		Long: `Adds a passphrase or GPG key that can unlock a repo
 
-Usage: "prvt rm <path> [<path> ...] --store <string>"
+Usage: "prvt repo keyadd --store <string>"
 
-Removes a file or folder (recursively) from the repository. Once removed, files cannot be recovered.
-
-To remove a file, specify its exact path. To remove a folder recursively, specify the name of the folder, ending with /*
-`,
+If you want to add a GPG key (including GPG keys stored in security tokens or smart cards), use the "--gpg" flag with the address or ID of a public GPG key. For example: "prvt repo keyadd --store <string> --gpg mykey@example.com" 
+In order to use GPG keys, you need to have GPG version 2 installed separately. You also need a GPG keypair (public and private) in your keyring.`,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			if len(args) == 0 {
-				utils.ExitWithError(utils.ErrorUser, "No file to remove", nil)
-				return
-			}
 
+		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
 			store, err := fs.Get(flagStoreConnectionString)
 			if err != nil || store == nil {
@@ -68,53 +62,51 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 				return
 			}
 
-			// Derive the master key
+			// If we have a GPG key, ensure it's not already added
+			if flagGPGKey != "" {
+				for _, k := range info.Keys {
+					if k.GPGKey == flagGPGKey {
+						utils.ExitWithError(utils.ErrorUser, "A GPG key with the same ID is already authorized to unlock this repository", err)
+						return
+					}
+				}
+			}
+
+			// First, unlock the repository
+			fmt.Println("Unlocking the repository: if prompted for a passphrase, please type an existing one")
 			masterKey, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
-			store.SetMasterKey(masterKey)
 
-			// Set up the index
-			index.Instance.SetStore(store)
-
-			// Iterate through the args and remove all files
-			for _, e := range args {
-				// Remove from the index
-				objects, err := index.Instance.DeleteFile(e)
-				if err != nil {
-					utils.ExitWithError(utils.ErrorApp, "Failed to remove path from index: "+e, err)
-					return
-				}
-				if objects == nil || len(objects) < 1 {
-					fmt.Println("Nothing removed:", e)
-					continue
-				}
-
-				// Delete the files
-				for _, o := range objects {
-					err = store.Delete(o, nil)
-					if err != nil {
-						utils.ExitWithError(utils.ErrorApp, "Failed to remove object from store: "+o+" (for path "+e+")", err)
-						return
-					}
-				}
-				var removed string
-				if len(objects) == 1 {
-					removed = "(1 file)"
-				} else {
-					removed = fmt.Sprintf("(%d files)", len(objects))
-				}
-				fmt.Println("Removed path:", e, removed)
+			// Add the new key
+			fmt.Println("Repository unlocked")
+			if flagGPGKey == "" {
+				fmt.Println("Type the new passphrase")
 			}
+			errMessage, err = AddKey(info, masterKey, flagGPGKey)
+			if err != nil {
+				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				return
+			}
+
+			// Store the info file
+			err = store.SetInfoFile(info)
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot store the info file", err)
+				return
+			}
+
+			fmt.Println("Key added")
 		},
 	}
 
 	// Flags
 	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
 	c.MarkFlagRequired("store")
+	c.Flags().StringVarP(&flagGPGKey, "gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
 
 	// Add the command
-	rootCmd.AddCommand(c)
+	repoCmd.AddCommand(c)
 }
