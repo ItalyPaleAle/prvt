@@ -45,6 +45,11 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 `,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) == 0 {
+				utils.ExitWithError(utils.ErrorUser, "No file to remove", nil)
+				return
+			}
+
 			// Create the store object
 			store, err := fs.Get(flagStoreConnectionString)
 			if err != nil || store == nil {
