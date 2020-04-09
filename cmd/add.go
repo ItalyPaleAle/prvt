@@ -44,6 +44,12 @@ func addFile(store fs.Fs, folder, target, destinationFolder string) (error, stri
 		return errors.New("target does not exist"), utils.ErrorUser
 	}
 
+	// Check if we should ignore this path
+	if utils.IsIgnoredFile(path) {
+		fmt.Println("Ignoring:", destinationFolder+target)
+		return nil, ""
+	}
+
 	// Check if it's a directory
 	isFile, err := utils.IsRegularFile(path)
 	if err != nil {

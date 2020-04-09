@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package utils
 
 import (
+	"path"
 	"regexp"
 	"strings"
 )
@@ -38,4 +39,29 @@ func SanitizePath(path string) string {
 	path = sanitizePathRegexp.ReplaceAllString(path, "")
 
 	return path
+}
+
+// IsIgnoredFile returns true if the file should be ignored and not added to the repository
+// Ignored files include OS metadata files etc
+func IsIgnoredFile(file string) bool {
+	base := path.Base(file)
+
+	// Invalid paths
+	if base == "" ||
+		base == "/" ||
+		// Hidden files on *nix systems and on macOS
+		// This includes all macOS metadata (.DS_Store, .AppleDouble, .LSOverride, .Trash, and files starting with ._)
+		// It also includes .directory on Linux
+		base[0] == '.' ||
+		// Linux temp files
+		base[len(base)-1] == '~' ||
+		// Windows
+		base == "Thumbs.db" ||
+		base == "Thumbs.db:encrypted" ||
+		base == "desktop.ini" ||
+		base == "Desktop.ini" {
+		return true
+	}
+
+	return false
 }
