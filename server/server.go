@@ -33,7 +33,8 @@ import (
 )
 
 type Server struct {
-	Store fs.Fs
+	Store   fs.Fs
+	Verbose bool
 }
 
 func (s *Server) Start(address, port string) error {
@@ -41,7 +42,13 @@ func (s *Server) Start(address, port string) error {
 	gin.SetMode(gin.ReleaseMode)
 
 	// Start gin server
-	router := gin.Default()
+	router := gin.New()
+
+	// Add middlewares: logger (if desired) and recovery
+	if s.Verbose {
+		router.Use(gin.Logger())
+	}
+	router.Use(gin.Recovery())
 
 	// Add routes
 	router.GET("/file/:fileId", s.FileHandler)

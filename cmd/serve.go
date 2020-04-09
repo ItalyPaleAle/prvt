@@ -31,6 +31,7 @@ func init() {
 		flagStoreConnectionString string
 		flagBindPort              string
 		flagBindAddress           string
+		flagVerbose               bool
 	)
 
 	c := &cobra.Command{
@@ -75,7 +76,8 @@ You can use the optional "--address" and "--port" flags to control what address 
 
 			// Start the server
 			srv := server.Server{
-				Store: store,
+				Store:   store,
+				Verbose: flagVerbose,
 			}
 			err = srv.Start(flagBindAddress, flagBindPort)
 			if err != nil {
@@ -90,6 +92,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 	c.MarkFlagRequired("store")
 	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
 	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
+	c.Flags().BoolVarP(&flagVerbose, "verbose", "v", false, "show request log")
 
 	// Add the command
 	rootCmd.AddCommand(c)
