@@ -65,6 +65,26 @@ func addFile(store fs.Fs, folder, target, destinationFolder string) (error, stri
 		return nil, ""
 	}
 
+	// Generate a file id
+	fileId, err := index.GenerateFileId()
+	if err != nil {
+		return err, utils.ErrorApp
+	}
+
+	// Sanitize the file name added to the index
+	sanitizedTarget := utils.SanitizePath(target)
+	sanitizedPath := utils.SanitizePath(destinationFolder + target)
+
+	// Check if the file exists in the index already
+	exists, err = index.Instance.FileExists(sanitizedPath)
+	if err != nil {
+		return err, utils.ErrorApp
+	}
+	if exists {
+		fmt.Println("Skipping existing file:", destinationFolder+target)
+		return nil, ""
+	}
+
 	// Get a stream to the input file
 	in, err := os.Open(path)
 	if err != nil {
@@ -83,16 +103,6 @@ func addFile(store fs.Fs, folder, target, destinationFolder string) (error, stri
 	if err != nil {
 		return err, utils.ErrorApp
 	}
-
-	// Generate a file id
-	fileId, err := index.GenerateFileId()
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
-	// Sanitize the file name added to the index
-	sanitizedTarget := utils.SanitizePath(target)
-	sanitizedPath := utils.SanitizePath(destinationFolder + target)
 
 	// Write the data to an encrypted file
 	metadata := &crypto.Metadata{

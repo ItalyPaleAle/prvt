@@ -206,6 +206,11 @@ func (i *Index) FileExists(path string) (bool, error) {
 		return false, errors.New("path must start with /")
 	}
 
+	// Refresh the index if needed
+	if err := i.Refresh(false); err != nil {
+		return false, err
+	}
+
 	// Iterate through the list of elements to check if the file exists
 	for _, el := range i.cache.Elements {
 		// Check if there's an exact match, or if there's a folder starting with the path
@@ -277,7 +282,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 		path += "/"
 	}
 
-	// Force a refresh of the index
+	// Refresh the index if needed
 	if err := i.Refresh(false); err != nil {
 		return nil, err
 	}
