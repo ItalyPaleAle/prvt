@@ -28,6 +28,7 @@ type InfoFile struct {
 	Salt             []byte `json:"slt,omitempty"`
 	ConfirmationHash []byte `json:"ph,omitempty"`
 	EncryptedKey     []byte `json:"ek,omitempty"`
+	DataPath         string `json:"dp,omitempty"`
 }
 
 // InfoCreate creates a new info file
@@ -38,6 +39,7 @@ func InfoCreate(salt []byte, confirmationHash []byte, encryptedKey []byte) (*Inf
 		Salt:             salt,
 		ConfirmationHash: confirmationHash,
 		EncryptedKey:     encryptedKey,
+		DataPath:         "data",
 	}
 	return info, nil
 }

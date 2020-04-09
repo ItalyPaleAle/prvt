@@ -38,6 +38,7 @@ import (
 type Local struct {
 	basePath  string
 	masterKey []byte
+	dataPath  string
 }
 
 func (f *Local) Init(connection string) error {
@@ -77,6 +78,10 @@ func (f *Local) Init(connection string) error {
 	return nil
 }
 
+func (f *Local) SetDataPath(path string) {
+	f.dataPath = path
+}
+
 func (f *Local) SetMasterKey(key []byte) {
 	f.masterKey = key
 }
@@ -106,6 +111,9 @@ func (f *Local) GetInfoFile() (info *InfoFile, err error) {
 		return
 	}
 
+	// Set the data path
+	f.dataPath = info.DataPath
+
 	return
 }
 
@@ -133,10 +141,10 @@ func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (f
 
 	found = true
 
-	// If the file doesn't start with _, it lives in a sub-folder
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
 	folder := ""
 	if len(name) > 4 && name[0] != '_' {
-		folder = name[0:2] + "/" + name[2:4] + "/"
+		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 	}
 
 	// Open the file
@@ -174,10 +182,10 @@ func (f *Local) Set(name string, in io.Reader, tag interface{}, metadata *crypto
 		return
 	}
 
-	// If the file doesn't start with _, place it in a sub-folder
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
 	folder := ""
 	if len(name) > 4 && name[0] != '_' {
-		folder = name[0:2] + "/" + name[2:4] + "/"
+		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 
 		// Ensure the folder exists
 		err = utils.EnsureFolder(f.basePath + folder)
@@ -207,10 +215,10 @@ func (f *Local) Delete(name string, tag interface{}) (err error) {
 		return
 	}
 
-	// If the file doesn't start with _, it lives in a sub-folder
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
 	folder := ""
 	if len(name) > 4 && name[0] != '_' {
-		folder = name[0:2] + "/" + name[2:4] + "/"
+		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 	}
 
 	// Delete the file

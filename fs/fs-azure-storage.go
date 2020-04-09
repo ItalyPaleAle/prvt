@@ -42,6 +42,7 @@ type AzureStorage struct {
 	storageContainer   string
 	storagePipeline    pipeline.Pipeline
 	storageURL         string
+	dataPath           string
 }
 
 func (f *AzureStorage) Init(connection string) error {
@@ -78,6 +79,10 @@ func (f *AzureStorage) Init(connection string) error {
 	})
 
 	return nil
+}
+
+func (f *AzureStorage) SetDataPath(path string) {
+	f.dataPath = path
 }
 
 func (f *AzureStorage) SetMasterKey(key []byte) {
@@ -130,6 +135,9 @@ func (f *AzureStorage) GetInfoFile() (info *InfoFile, err error) {
 		return
 	}
 
+	// Set the data path
+	f.dataPath = info.DataPath
+
 	return
 }
 
@@ -166,10 +174,16 @@ func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.Metadat
 		return
 	}
 
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
 	found = true
 
 	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/" + name)
+	u, err := url.Parse(f.storageURL + "/" + folder + name)
 	if err != nil {
 		return
 	}
@@ -220,8 +234,14 @@ func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata 
 		return
 	}
 
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
 	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/" + name)
+	u, err := url.Parse(f.storageURL + "/" + folder + name)
 	if err != nil {
 		return nil, err
 	}
@@ -285,8 +305,14 @@ func (f *AzureStorage) Delete(name string, tag interface{}) (err error) {
 		return
 	}
 
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
 	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/" + name)
+	u, err := url.Parse(f.storageURL + "/" + folder + name)
 	if err != nil {
 		return
 	}

@@ -58,6 +58,9 @@ type Fs interface {
 	// Init the object, by passing a connection string
 	Init(connection string) error
 
+	// SetDataPath sets the path where the data is stored (read from the info file)
+	SetDataPath(path string)
+
 	// SetMasterKey sets the master passphrase (used to encrypt/decrypt files) in the object
 	SetMasterKey(key []byte)
 
