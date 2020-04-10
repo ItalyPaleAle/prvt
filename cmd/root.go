@@ -38,7 +38,7 @@ All commands require the address of a repository, which begins with the name of 
 
 - For storing on a local folder: use "local:" and the path to the folder (absolute or relative to the current working directory). For example: "local:/path/to/folder" or "local:subfolder-in-cwd".
 
-Start by initializing the repository with the "prvt initrepo" command.
+Start by initializing the repository with the "prvt repo init" command.
 
 You can add files and folders to a repository with the "prvt add" command.
 

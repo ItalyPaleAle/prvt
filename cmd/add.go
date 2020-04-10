@@ -187,7 +187,7 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 
 			// Derive the master key
-			masterKey, errMessage, err := GetMasterKey(info)
+			masterKey, _, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return

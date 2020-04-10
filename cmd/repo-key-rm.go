@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
@@ -29,18 +30,20 @@ import (
 func init() {
 	var (
 		flagStoreConnectionString string
-		flagGPGKey                string
+		flagKeyId                 string
 	)
 
 	c := &cobra.Command{
-		Use:   "keyadd",
-		Short: "Add a passphrase or GPG key to the repo",
-		Long: `Adds a passphrase or GPG key that can unlock a repo
+		Use:   "rm",
+		Short: "Remove a passphrase or GPG key",
+		Long: `Removes a passphrase or GPG key from those allowed to unlock the repository.
 
-Usage: "prvt repo keyadd --store <string>"
+Usage: "prvt repo key rm --store <string> --key <string>"
 
-If you want to add a GPG key (including GPG keys stored in security tokens or smart cards), use the "--gpg" flag with the address or ID of a public GPG key. For example: "prvt repo keyadd --store <string> --gpg mykey@example.com" 
-In order to use GPG keys, you need to have GPG version 2 installed separately. You also need a GPG keypair (public and private) in your keyring.`,
+You can find the list of passphrases and GPG keys authorized to unlock the repository using "prvt repo key ls --store <string>".
+
+To identify a passphrase or a GPG key among those authorized, you can use the "prvt repo key test --store <string>" command.
+`,
 		DisableAutoGenTag: true,
 
 		Run: func(cmd *cobra.Command, args []string) {
@@ -62,30 +65,35 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 				return
 			}
 
-			// If we have a GPG key, ensure it's not already added
-			if flagGPGKey != "" {
-				for _, k := range info.Keys {
-					if k.GPGKey == flagGPGKey {
-						utils.ExitWithError(utils.ErrorUser, "A GPG key with the same ID is already authorized to unlock this repository", err)
-						return
-					}
-				}
+			// Require info files version 2 or higher
+			if info.Version < 2 {
+				utils.ExitWithError(utils.ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`))
+				return
+			}
+
+			// Require at least 2 keys in the repository
+			if len(info.Keys) < 2 {
+				utils.ExitWithError(utils.ErrorUser, "Cannot remove the only key", errors.New("This repository has only one key, which cannot be removed"))
+				return
 			}
 
 			// First, unlock the repository
-			fmt.Println("Unlocking the repository: if prompted for a passphrase, please type an existing one")
-			masterKey, errMessage, err := GetMasterKey(info)
+			fmt.Println("Unlocking the repository")
+			_, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
-
-			// Add the new key
 			fmt.Println("Repository unlocked")
-			if flagGPGKey == "" {
-				fmt.Println("Type the new passphrase")
+
+			// The key we're removing must not be the same as the key used to unlock the repository
+			if flagKeyId == keyId {
+				utils.ExitWithError(utils.ErrorUser, "Invalid key ID", errors.New("You cannot remove the same key you're using to unlock the repository"))
+				return
 			}
-			errMessage, err = AddKey(info, masterKey, flagGPGKey)
+
+			// Remove the key
+			errMessage, err = RemoveKey(info, flagKeyId)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
@@ -98,15 +106,16 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 				return
 			}
 
-			fmt.Println("Key added")
+			fmt.Println("Key removed")
 		},
 	}
 
 	// Flags
 	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
 	c.MarkFlagRequired("store")
-	c.Flags().StringVarP(&flagGPGKey, "gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
+	c.Flags().StringVarP(&flagKeyId, "key", "k", "", "ID of the key to remove")
+	c.MarkFlagRequired("key")
 
 	// Add the command
-	repoCmd.AddCommand(c)
+	repoKeyCmd.AddCommand(c)
 }

@@ -22,6 +22,8 @@ import (
 	"fmt"
 )
 
+const UnknownGPGKey = "UnknownGPGKey"
+
 // InfoFileKey is a key that can be used to unlock a repo
 type InfoFileKey struct {
 	// Wrapped master key
@@ -111,7 +113,7 @@ func InfoValidate(info *InfoFile) error {
 			// Convert the key to the slice as used by version 2
 			key := InfoFileKey{
 				MasterKey: info.EncryptedKey,
-				GPGKey:    "UnknownGPGKey",
+				GPGKey:    UnknownGPGKey,
 			}
 			info.Keys = []InfoFileKey{key}
 			info.EncryptedKey = nil

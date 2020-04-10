@@ -22,6 +22,8 @@ import (
 	"errors"
 	"io/ioutil"
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
@@ -75,6 +77,63 @@ func NewInfoFile(gpgKey string) (info *fs.InfoFile, errMessage string, err error
 	return info, "", nil
 }
 
+// UpgradeInfoFile upgrades an info file from version 1 to 2
+func UpgradeInfoFile(info *fs.InfoFile) (errMessage string, err error) {
+	// Can only upgrade info files version 1
+	if info.Version != 1 {
+		return "Unsupported repository version", errors.New("This repository has already been upgraded or is using an unsupported version")
+	}
+
+	// GPG keys are already migrated into the Keys slice
+	// But passphrases need to be migrated
+	if len(info.Salt) > 0 && len(info.ConfirmationHash) > 0 {
+		// Prompt for the passphrase to get the current master key
+		passphrase, err := PromptPassphrase()
+		if err != nil {
+			return "Error getting passphrase", err
+		}
+
+		// Get the current master key from the passphrase
+		masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
+		if err != nil || bytes.Compare(info.ConfirmationHash, confirmationHash) != 0 {
+			return "Cannot unlock the repository", errors.New("Invalid passphrase")
+		}
+
+		// Create a new salt
+		newSalt, err := crypto.NewSalt()
+		if err != nil {
+			return "Error generating a new salt", err
+		}
+
+		// Create a new wrapping key
+		wrappingKey, newConfirmationHash, err := crypto.KeyFromPassphrase(passphrase, newSalt)
+		if err != nil {
+			return "Error deriving the wrapping key", err
+		}
+
+		// Wrap the key
+		wrappedKey, err := crypto.WrapKey(wrappingKey, masterKey)
+		if err != nil {
+			return "Error wrapping the master key", err
+		}
+
+		// Add the key
+		err = fs.InfoAddPassphrase(info, newSalt, newConfirmationHash, wrappedKey)
+		if err != nil {
+			return "Error adding the key", err
+		}
+
+		// Remove the old key
+		info.Salt = nil
+		info.ConfirmationHash = nil
+	}
+
+	// Update the version
+	info.Version = 2
+
+	return "", nil
+}
+
 // AddKey adds a key to an info file
 // If the GPG Key is empty, will prompt for a passphrase
 func AddKey(info *fs.InfoFile, masterKey []byte, gpgKey string) (errMessage string, err error) {
@@ -125,8 +184,76 @@ func AddKey(info *fs.InfoFile, masterKey []byte, gpgKey string) (errMessage stri
 	return "", nil
 }
 
+// isKeyIdPassphrase checks if a key ID is for a passphrase, and returns the index of the key
+// Returns -1 otherwise
+func isKeyIdPassphrase(keyId string) int {
+	// Key IDs for passphrases start with "p:" and then have a number
+	if !strings.HasPrefix(keyId, "p:") {
+		return -1
+	}
+
+	passphraseId, err := strconv.Atoi(keyId[2:])
+	if err != nil {
+		return -1
+	}
+
+	return passphraseId
+}
+
+// RemoveKey removes a key from the info file
+func RemoveKey(info *fs.InfoFile, keyId string) (errMessage string, err error) {
+	found := false
+
+	// Check if we're removing a passphrase
+	passphraseId := isKeyIdPassphrase(keyId)
+	if passphraseId >= 0 {
+		// Iterate through the keys looking for the right one
+		i := 0
+		n := 0
+		for _, k := range info.Keys {
+			// Add all GPG keys
+			if k.GPGKey != "" {
+				info.Keys[n] = k
+				n++
+				continue
+			}
+
+			if i == passphraseId {
+				found = true
+			} else {
+				info.Keys[n] = k
+				n++
+			}
+			i++
+		}
+
+		// Truncate the slice
+		info.Keys = info.Keys[:n]
+	} else {
+		// Iterate through the keys looking for the right one
+		n := 0
+		for _, k := range info.Keys {
+			if k.GPGKey != "" && k.GPGKey == keyId {
+				found = true
+				continue
+			}
+			info.Keys[n] = k
+			n++
+		}
+
+		// Truncate the slice
+		info.Keys = info.Keys[:n]
+	}
+
+	if !found {
+		return "Key not found", errors.New("Could not find a key with the given ID")
+	}
+
+	return "", nil
+}
+
 // GetMasterKey gets the master key, either deriving it from a passphrase, or from GPG
-func GetMasterKey(info *fs.InfoFile) (masterKey []byte, errMessage string, err error) {
+func GetMasterKey(info *fs.InfoFile) (masterKey []byte, keyId string, errMessage string, err error) {
 	// Iterate through all the keys
 	// First, try all keys that are wrapped with GPG
 	for _, k := range info.Keys {
@@ -136,7 +263,7 @@ func GetMasterKey(info *fs.InfoFile) (masterKey []byte, errMessage string, err e
 		// Try decrypting with GPG
 		masterKey, err = GPGDecrypt(k.MasterKey)
 		if err == nil {
-			return masterKey, "", nil
+			return masterKey, k.GPGKey, "", nil
 		}
 	}
 
@@ -144,7 +271,7 @@ func GetMasterKey(info *fs.InfoFile) (masterKey []byte, errMessage string, err e
 	// We'll try with passphrases; first, prompt for it
 	passphrase, err := PromptPassphrase()
 	if err != nil {
-		return nil, "Error getting passphrase", err
+		return nil, "", "Error getting passphrase", err
 	}
 
 	// Check if we have a version 1 key, where the master key is directly derived from the passphrase
@@ -152,11 +279,12 @@ func GetMasterKey(info *fs.InfoFile) (masterKey []byte, errMessage string, err e
 		var confirmationHash []byte
 		masterKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, info.Salt)
 		if err == nil && bytes.Compare(info.ConfirmationHash, confirmationHash) == 0 {
-			return masterKey, "", nil
+			return masterKey, "LegacyKey", "", nil
 		}
 	}
 
 	// Try all version 2 keys that are wrapped with a key derived from the passphrase
+	i := 0
 	for _, k := range info.Keys {
 		if k.GPGKey != "" || len(k.MasterKey) == 0 {
 			continue
@@ -173,14 +301,16 @@ func GetMasterKey(info *fs.InfoFile) (masterKey []byte, errMessage string, err e
 		if err == nil && bytes.Compare(k.ConfirmationHash, confirmationHash) == 0 {
 			masterKey, err = crypto.UnwrapKey(wrappingKey, k.MasterKey)
 			if err != nil {
-				return nil, "Error while unwrapping the master key", err
+				return nil, "", "Error while unwrapping the master key", err
 			}
-			return masterKey, "", nil
+			return masterKey, "p:" + strconv.Itoa(i), "", nil
 		}
+
+		i++
 	}
 
 	// Tried all keys and nothing worked
-	return nil, "Cannot unlock the repository", errors.New("Invalid passphrase")
+	return nil, "", "Cannot unlock the repository", errors.New("Invalid passphrase")
 }
 
 // GPGEncrypt encrypts data using the GPG binary

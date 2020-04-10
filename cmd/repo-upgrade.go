@@ -19,7 +19,6 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/utils"
@@ -33,14 +32,13 @@ func init() {
 	)
 
 	c := &cobra.Command{
-		Use:   "keylist",
-		Short: "List all keys for the repo",
-		Long: `Prints the list of keys (passphrases and GPG keys) that can unlock the repo.
+		Use:   "upgrade",
+		Short: "Upgrade a repository",
+		Long: `Upgrades a repository to the latest info file format.
 
-Usage: "prvt repo keylist --store <string>"
+Usage: "prvt repo upgrade --store <string>"
 `,
 		DisableAutoGenTag: true,
-
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
 			store, err := fs.Get(flagStoreConnectionString)
@@ -60,25 +58,21 @@ Usage: "prvt repo keylist --store <string>"
 				return
 			}
 
-			// Table headers
-			fmt.Println("KEY TYPE    | KEY ID")
-			fmt.Println("------------|------------------------")
+			// Upgrade the info file
+			errMessage, err := UpgradeInfoFile(info)
+			if err != nil {
+				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				return
+			}
 
-			// Show all keys in a table
-			// First, show all passphrases
-			i := 0
-			for _, k := range info.Keys {
-				if k.GPGKey == "" {
-					fmt.Println("Passphrase  | p:" + strconv.Itoa(i))
-					i++
-				}
+			// Store the info file
+			err = store.SetInfoFile(info)
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot store the info file", err)
+				return
 			}
-			// Now, show all GPG keys
-			for _, k := range info.Keys {
-				if k.GPGKey != "" {
-					fmt.Println("GPG Key     | " + k.GPGKey)
-				}
-			}
+
+			fmt.Println("Repository upgraded")
 		},
 	}
 

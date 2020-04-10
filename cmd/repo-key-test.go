@@ -18,10 +18,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
@@ -33,23 +33,17 @@ func init() {
 	)
 
 	c := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove a file or folder",
-		Long: `Removes a file (or folder) from the repository.
+		Use:   "test",
+		Short: "Test a key for unlocking the repo",
+		Long: `Tests a key and returns the ID of the key used to unlock the repo.
 
-Usage: "prvt rm <path> [<path> ...] --store <string>"
+Usage: "prvt repo key test --store <string>"
 
-Removes a file or folder (recursively) from the repository. Once removed, files cannot be recovered.
-
-To remove a file, specify its exact path. To remove a folder recursively, specify the name of the folder, ending with /*
+This command is particularly useful to determine the ID of a key that you want to remove.
 `,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			if len(args) == 0 {
-				utils.ExitWithError(utils.ErrorUser, "No file to remove", nil)
-				return
-			}
 
+		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
 			store, err := fs.Get(flagStoreConnectionString)
 			if err != nil || store == nil {
@@ -68,46 +62,21 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 				return
 			}
 
-			// Derive the master key
-			masterKey, _, errMessage, err := GetMasterKey(info)
+			// Require info files version 2 or higher
+			if info.Version < 2 {
+				utils.ExitWithError(utils.ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`))
+				return
+			}
+
+			// Unlock the repository
+			_, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
-			store.SetMasterKey(masterKey)
 
-			// Set up the index
-			index.Instance.SetStore(store)
-
-			// Iterate through the args and remove all files
-			for _, e := range args {
-				// Remove from the index
-				objects, err := index.Instance.DeleteFile(e)
-				if err != nil {
-					utils.ExitWithError(utils.ErrorApp, "Failed to remove path from index: "+e, err)
-					return
-				}
-				if objects == nil || len(objects) < 1 {
-					fmt.Println("Nothing removed:", e)
-					continue
-				}
-
-				// Delete the files
-				for _, o := range objects {
-					err = store.Delete(o, nil)
-					if err != nil {
-						utils.ExitWithError(utils.ErrorApp, "Failed to remove object from store: "+o+" (for path "+e+")", err)
-						return
-					}
-				}
-				var removed string
-				if len(objects) == 1 {
-					removed = "(1 file)"
-				} else {
-					removed = fmt.Sprintf("(%d files)", len(objects))
-				}
-				fmt.Println("Removed path:", e, removed)
-			}
+			// Show the key ID
+			fmt.Println("Repository unlocked using key with ID:", keyId)
 		},
 	}
 
@@ -116,5 +85,5 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 	c.MarkFlagRequired("store")
 
 	// Add the command
-	rootCmd.AddCommand(c)
+	repoKeyCmd.AddCommand(c)
 }
