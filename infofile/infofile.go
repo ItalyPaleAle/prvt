@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package fs
+package infofile
 
 import (
 	"errors"
@@ -52,8 +52,8 @@ type InfoFile struct {
 	Keys []InfoFileKey `json:"k,omitempty"`
 }
 
-// InfoCreate creates a new info file
-func InfoCreate() (*InfoFile, error) {
+// New creates a new info file
+func New() (*InfoFile, error) {
 	info := &InfoFile{
 		App:      "prvt",
 		Version:  2,
@@ -62,8 +62,8 @@ func InfoCreate() (*InfoFile, error) {
 	return info, nil
 }
 
-// InfoAddPassphrase adds a passphrase to an info file
-func InfoAddPassphrase(info *InfoFile, salt []byte, confirmationHash []byte, wrappedKey []byte) error {
+// AddPassphrase adds a passphrase to an info file
+func (info *InfoFile) AddPassphrase(salt []byte, confirmationHash []byte, wrappedKey []byte) error {
 	key := InfoFileKey{
 		Salt:             salt,
 		ConfirmationHash: confirmationHash,
@@ -78,8 +78,8 @@ func InfoAddPassphrase(info *InfoFile, salt []byte, confirmationHash []byte, wra
 	return nil
 }
 
-// InfoAddGPGWrappedKey adds a GPG-wrapped key to an info file
-func InfoAddGPGWrappedKey(info *InfoFile, gpgKey string, wrappedKey []byte) error {
+// AddGPGWrappedKey adds a GPG-wrapped key to an info file
+func (info *InfoFile) AddGPGWrappedKey(gpgKey string, wrappedKey []byte) error {
 	key := InfoFileKey{
 		GPGKey:    gpgKey,
 		MasterKey: wrappedKey,
@@ -93,8 +93,60 @@ func InfoAddGPGWrappedKey(info *InfoFile, gpgKey string, wrappedKey []byte) erro
 	return nil
 }
 
-// InfoValidate validates the info object
-func InfoValidate(info *InfoFile) error {
+// RemoveKey removes a key from the info file
+func (info *InfoFile) RemoveKey(keyId string) error {
+	found := false
+
+	// Check if we're removing a passphrase
+	passphraseId := isKeyIdPassphrase(keyId)
+	if passphraseId >= 0 {
+		// Iterate through the keys looking for the right one
+		i := 0
+		n := 0
+		for _, k := range info.Keys {
+			// Add all GPG keys
+			if k.GPGKey != "" {
+				info.Keys[n] = k
+				n++
+				continue
+			}
+
+			if i == passphraseId {
+				found = true
+			} else {
+				info.Keys[n] = k
+				n++
+			}
+			i++
+		}
+
+		// Truncate the slice
+		info.Keys = info.Keys[:n]
+	} else {
+		// Iterate through the keys looking for the right one
+		n := 0
+		for _, k := range info.Keys {
+			if k.GPGKey != "" && k.GPGKey == keyId {
+				found = true
+				continue
+			}
+			info.Keys[n] = k
+			n++
+		}
+
+		// Truncate the slice
+		info.Keys = info.Keys[:n]
+	}
+
+	if !found {
+		return errors.New("Could not find a key with the given ID")
+	}
+
+	return nil
+}
+
+// Validate validates the info object
+func (info *InfoFile) Validate() error {
 	// Check the contents
 	if info == nil {
 		return errors.New("empty info object")

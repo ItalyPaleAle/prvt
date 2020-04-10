@@ -68,12 +68,8 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			// Check if the file exists already
 			// We are expecting this to be empty
 			infoExisting, err := store.GetInfoFile()
-			if err == nil {
-				utils.ExitWithError(utils.ErrorApp, "Error initializing repository", errors.New("store is already initialized"))
-				return
-			}
-			if infoExisting != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error initializing repository", errors.New("store is already initialized"))
+			if err == nil && infoExisting != nil {
+				utils.ExitWithError(utils.ErrorApp, "Error initializing repository", errors.New("A repository is already initialized in this store"))
 				return
 			}
 

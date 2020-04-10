@@ -93,9 +93,9 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 			}
 
 			// Remove the key
-			errMessage, err = RemoveKey(info, flagKeyId)
+			err = info.RemoveKey(flagKeyId)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				utils.ExitWithError(utils.ErrorUser, "Cannot remove the key", err)
 				return
 			}
 

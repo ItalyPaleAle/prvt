@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/infofile"
 )
 
 // Get returns a store for the given connection string
@@ -65,10 +66,10 @@ type Fs interface {
 	SetMasterKey(key []byte)
 
 	// GetInfoFile returns the contents of the info file
-	GetInfoFile() (info *InfoFile, err error)
+	GetInfoFile() (info *infofile.InfoFile, err error)
 
 	// SetInfoFile stores the info file
-	SetInfoFile(info *InfoFile) (err error)
+	SetInfoFile(info *infofile.InfoFile) (err error)
 
 	// Get returns a stream to a file in the filesystem
 	// It also returns a tag (which might be empty) that should be passed to the Set method if you want to subsequentially update the contents of the file

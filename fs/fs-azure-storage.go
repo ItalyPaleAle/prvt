@@ -30,6 +30,7 @@ import (
 	"regexp"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/infofile"
 
 	"github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -89,7 +90,7 @@ func (f *AzureStorage) SetMasterKey(key []byte) {
 	f.masterKey = key
 }
 
-func (f *AzureStorage) GetInfoFile() (info *InfoFile, err error) {
+func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Create the blob URL
 	u, err := url.Parse(f.storageURL + "/_info.json")
 	if err != nil {
@@ -105,6 +106,7 @@ func (f *AzureStorage) GetInfoFile() (info *InfoFile, err error) {
 		} else {
 			// Blob not found
 			if stgErr.Response().StatusCode == http.StatusNotFound {
+				err = nil
 				return
 			}
 			err = fmt.Errorf("azure Storage error while downloading the file: %s", stgErr.Response().Status)
@@ -123,14 +125,14 @@ func (f *AzureStorage) GetInfoFile() (info *InfoFile, err error) {
 	}
 
 	// Parse the JSON data
-	info = &InfoFile{}
+	info = &infofile.InfoFile{}
 	if err = json.Unmarshal(data, info); err != nil {
 		info = nil
 		return
 	}
 
 	// Validate the content
-	if err = InfoValidate(info); err != nil {
+	if err = info.Validate(); err != nil {
 		info = nil
 		return
 	}
@@ -141,7 +143,7 @@ func (f *AzureStorage) GetInfoFile() (info *InfoFile, err error) {
 	return
 }
 
-func (f *AzureStorage) SetInfoFile(info *InfoFile) (err error) {
+func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 	// Encode the content as JSON
 	data, err := json.Marshal(info)
 	if err != nil {
@@ -198,6 +200,7 @@ func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.Metadat
 			// Blob not found
 			if stgErr.Response().StatusCode == http.StatusNotFound {
 				found = false
+				err = nil
 				return
 			}
 			err = fmt.Errorf("azure Storage error while downloading the file: %s", stgErr.Response().Status)

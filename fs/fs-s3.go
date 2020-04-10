@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/infofile"
 
 	"github.com/minio/minio-go"
 )
@@ -90,7 +91,7 @@ func (f *S3) SetMasterKey(key []byte) {
 	f.masterKey = key
 }
 
-func (f *S3) GetInfoFile() (info *InfoFile, err error) {
+func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Request the file from S3
 	obj, err := f.client.GetObject(f.bucketName, "_info.json", minio.GetObjectOptions{})
 	if err != nil {
@@ -104,14 +105,14 @@ func (f *S3) GetInfoFile() (info *InfoFile, err error) {
 	}
 
 	// Parse the JSON data
-	info = &InfoFile{}
+	info = &infofile.InfoFile{}
 	if err = json.Unmarshal(data, info); err != nil {
 		info = nil
 		return
 	}
 
 	// Validate the content
-	if err = InfoValidate(info); err != nil {
+	if err = info.Validate(); err != nil {
 		info = nil
 		return
 	}
@@ -122,7 +123,7 @@ func (f *S3) GetInfoFile() (info *InfoFile, err error) {
 	return
 }
 
-func (f *S3) SetInfoFile(info *InfoFile) (err error) {
+func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 	// Encode the content as JSON
 	data, err := json.Marshal(info)
 	if err != nil {
