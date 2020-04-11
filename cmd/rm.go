@@ -96,11 +96,9 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			}()
 
 			// Print each message
-			count := 0
 			for el := range res {
 				switch el.Status {
 				case repository.RepositoryStatusOK:
-					count++
 					fmt.Println("Removed:", el.Path)
 				case repository.RepositoryStatusNotFound:
 					fmt.Println("Not found:", el.Path)

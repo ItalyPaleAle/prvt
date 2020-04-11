@@ -20,6 +20,7 @@ package cmd
 import (
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
+	"github.com/ItalyPaleAle/prvt/repository"
 	"github.com/ItalyPaleAle/prvt/server"
 	"github.com/ItalyPaleAle/prvt/utils"
 
@@ -74,10 +75,16 @@ You can use the optional "--address" and "--port" flags to control what address 
 			// Set up the index
 			index.Instance.SetStore(store)
 
+			// Set up the repository
+			repo := repository.Repository{
+				Store: store,
+			}
+
 			// Start the server
 			srv := server.Server{
 				Store:   store,
 				Verbose: flagVerbose,
+				Repo:    repo,
 			}
 			err = srv.Start(flagBindAddress, flagBindPort)
 			if err != nil {

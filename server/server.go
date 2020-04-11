@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gobuffalo/packr/v2"
@@ -35,6 +36,7 @@ import (
 type Server struct {
 	Store   fs.Fs
 	Verbose bool
+	Repo    repository.Repository
 }
 
 func (s *Server) Start(address, port string) error {
@@ -55,7 +57,8 @@ func (s *Server) Start(address, port string) error {
 	{
 		// APIs
 		apis := router.Group("/api")
-		apis.GET("/tree/*path", s.TreeHandler)
+		apis.GET("/tree/*path", s.GetTreeHandler)
+		apis.DELETE("/tree/*path", s.DeleteTreeHandler)
 	}
 
 	// UI
