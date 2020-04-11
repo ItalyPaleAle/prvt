@@ -223,17 +223,17 @@ func (i *Index) FileExists(path string) (bool, error) {
 }
 
 // DeleteFile removes a file or folder from the index
-// It returns the list of objects to remove
+// It returns the list of objects to remove as first argument, and their paths as second
 // To remove a folder, make sure the path ends with /*
-func (i *Index) DeleteFile(path string) ([]string, error) {
+func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
-		return nil, errors.New("path must start with /")
+		return nil, nil, errors.New("path must start with /")
 	}
 
 	// Force a refresh of the index
 	if err := i.Refresh(true); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If the path ends with /* we are going to remove the entire folder
@@ -242,11 +242,12 @@ func (i *Index) DeleteFile(path string) ([]string, error) {
 		matchPrefix = true
 		path = path[0 : len(path)-2]
 	} else if strings.HasSuffix(path, "/") {
-		return nil, errors.New("path cannot end with /; to remove a folder, end with /*")
+		return nil, nil, errors.New("path cannot end with /; to remove a folder, end with /*")
 	}
 
 	// Iterate through the list of files to find matches
 	objectsRemoved := make([]string, 0)
+	pathsRemoved := make([]string, 0)
 	// Output index; see: https://stackoverflow.com/a/20551116/192024
 	j := 0
 	for _, el := range i.cache.Elements {
@@ -254,6 +255,7 @@ func (i *Index) DeleteFile(path string) ([]string, error) {
 		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
 			// Add to the result
 			objectsRemoved = append(objectsRemoved, el.Name)
+			pathsRemoved = append(pathsRemoved, el.Path)
 		} else {
 			// Maintain in the list
 			i.cache.Elements[j] = el
@@ -264,10 +266,10 @@ func (i *Index) DeleteFile(path string) ([]string, error) {
 
 	// Save
 	if err := i.save(i.cache); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return objectsRemoved, nil
+	return objectsRemoved, pathsRemoved, nil
 }
 
 // ListFolder returns the list of elements in a folder

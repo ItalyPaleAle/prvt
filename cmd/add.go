@@ -114,6 +114,7 @@ You must specify a destination, which is a folder inside the repository where yo
 				close(res)
 			}()
 
+			// Print each message
 			for el := range res {
 				switch el.Status {
 				case repository.RepositoryStatusOK:

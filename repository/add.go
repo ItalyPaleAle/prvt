@@ -100,13 +100,6 @@ func (repo *Repository) AddFile(folder, target, destinationFolder string) (int, 
 	return RepositoryStatusOK, nil
 }
 
-// PathResultMessage is the message passed to the res channel in AddPath
-type PathResultMessage struct {
-	Path   string
-	Status int
-	Err    error
-}
-
 // AddPath adds a path (a file or a folder, recursively) and reports each element added in the res channel
 func (repo *Repository) AddPath(folder, target, destinationFolder string, res chan<- PathResultMessage) {
 	path := filepath.Join(folder, target)
@@ -117,6 +110,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 		res <- PathResultMessage{
 			Path:   path,
 			Status: RepositoryStatusInternalError,
+			Err:    err,
 		}
 		return
 	}
@@ -171,6 +165,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 		list, err := f.Readdir(-1)
 		f.Close()
 		for _, el := range list {
+			// Recursion
 			repo.AddPath(path, el.Name(), destinationFolder+target+"/", res)
 		}
 	}

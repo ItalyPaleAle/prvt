@@ -24,9 +24,11 @@ import (
 // Constants
 const (
 	// The method ignored the file
-	RepositoryStatusIgnored = iota - 2
+	RepositoryStatusIgnored = iota - 3
 	// The file was already existing
 	RepositoryStatusExisting
+	// The file could not be found
+	RepositoryStatusNotFound
 	// Everything went well
 	RepositoryStatusOK
 	// An internal (application) error happened
@@ -38,4 +40,11 @@ const (
 // Repository is the object that manages the repository
 type Repository struct {
 	Store fs.Fs
+}
+
+// PathResultMessage is the message passed to the res channel in AddPath/RemovePath
+type PathResultMessage struct {
+	Path   string
+	Status int
+	Err    error
 }
