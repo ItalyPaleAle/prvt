@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -26,15 +25,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type itemErrorResponse struct {
-	Path  string `json:"path,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
-type deleteTreeResponse struct {
-	Removed  []string            `json:"removed,omitempty"`
-	NotFound []string            `json:"notFound,omitempty"`
-	Error    []itemErrorResponse `json:"error,omitempty"`
+type deleteTreeReponse struct {
+	Path   string `json:"path"`
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 
 // DeleteTreeHandler is the handler for DELETE /api/tree/:path, which removes an object
@@ -55,42 +49,24 @@ func (s *Server) DeleteTreeHandler(c *gin.Context) {
 	}()
 
 	// Response
-	response := deleteTreeResponse{}
+	response := make([]deleteTreeReponse, 0)
 	for el := range res {
+		r := deleteTreeReponse{
+			Path: el.Path,
+		}
 		switch el.Status {
 		case repository.RepositoryStatusOK:
-			if response.Removed == nil {
-				response.Removed = []string{el.Path}
-			} else {
-				response.Removed = append(response.Removed, el.Path)
-			}
+			r.Status = "removed"
 		case repository.RepositoryStatusNotFound:
-			if response.NotFound == nil {
-				response.NotFound = []string{el.Path}
-			} else {
-				response.NotFound = append(response.NotFound, el.Path)
-			}
+			r.Status = "not-found"
 		case repository.RepositoryStatusInternalError:
-			errEl := itemErrorResponse{
-				Path:  el.Path,
-				Error: fmt.Sprintf("Internal error: %s", el.Err),
-			}
-			if response.Error == nil {
-				response.Error = []itemErrorResponse{errEl}
-			} else {
-				response.Error = append(response.Error, errEl)
-			}
+			r.Status = "internal-error"
+			r.Error = el.Err.Error()
 		case repository.RepositoryStatusUserError:
-			errEl := itemErrorResponse{
-				Path:  el.Path,
-				Error: fmt.Sprintf("Error: %s", el.Err),
-			}
-			if response.Error == nil {
-				response.Error = []itemErrorResponse{errEl}
-			} else {
-				response.Error = append(response.Error, errEl)
-			}
+			r.Status = "error"
+			r.Error = el.Err.Error()
 		}
+		response = append(response, r)
 	}
 
 	c.JSON(http.StatusOK, response)
