@@ -44,6 +44,13 @@ func (s *Server) FileHandler(c *gin.Context) {
 		return
 	}
 
+	// Check if we have the dl=1 option, which forces a download
+	forceDownload := false
+	dlQs := c.Query("dl")
+	if dlQs == "1" || dlQs == "true" || dlQs == "t" || dlQs == "y" || dlQs == "yes" {
+		forceDownload = true
+	}
+
 	// Load and decrypt the file, then pipe it to the response writer
 	found, _, err := s.Store.Get(fileId, c.Writer, func(metadata *crypto.Metadata) {
 		// Send headers before the data is sent
@@ -56,6 +63,9 @@ func (s *Server) FileHandler(c *gin.Context) {
 			c.Header("Content-Length", strconv.FormatInt(metadata.Size, 10))
 		}
 		contentDisposition := "inline"
+		if forceDownload {
+			contentDisposition = "attachment"
+		}
 		if metadata.Name != "" {
 			fileName := strings.ReplaceAll(metadata.Name, "\"", "")
 			contentDisposition += "; filename=\"" + fileName + "\""
