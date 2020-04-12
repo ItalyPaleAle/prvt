@@ -25,18 +25,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type deleteTreeReponse struct {
-	Path   string `json:"path"`
-	Status string `json:"status"`
-	Error  string `json:"error,omitempty"`
-}
-
 // DeleteTreeHandler is the handler for DELETE /api/tree/:path, which removes an object
 // The :path value must be an exact object, or must end with "/*" to remove a folder
 func (s *Server) DeleteTreeHandler(c *gin.Context) {
-	// Get the path (can be empty if requesting the root)
+	// Get the path
 	path := c.Param("path")
 	// Ensure that the path starts with /
+	// The path will be validated by the Repo.RemovePath command (in the index module)
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
@@ -49,9 +44,9 @@ func (s *Server) DeleteTreeHandler(c *gin.Context) {
 	}()
 
 	// Response
-	response := make([]deleteTreeReponse, 0)
+	response := make([]treeOperationReponse, 0)
 	for el := range res {
-		r := deleteTreeReponse{
+		r := treeOperationReponse{
 			Path: el.Path,
 		}
 		switch el.Status {

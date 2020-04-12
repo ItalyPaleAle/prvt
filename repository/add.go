@@ -19,6 +19,7 @@ package repository
 
 import (
 	"errors"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -27,6 +28,50 @@ import (
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
 )
+
+// AddStream adds a document to the repository by reading it from a stream
+func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (int, error) {
+	// Generate a file id
+	fileId, err := index.GenerateFileId()
+	if err != nil {
+		return RepositoryStatusInternalError, err
+	}
+
+	// Sanitize the file name added to the index
+	sanitizedFilename := utils.SanitizePath(filename)
+	sanitizedPath := utils.SanitizePath(destinationFolder + filename)
+
+	// Sanitize the mime type
+	mimeType = utils.SanitizeMimeType(mimeType)
+
+	// Check if the file exists in the index already
+	exists, err := index.Instance.FileExists(sanitizedPath)
+	if err != nil {
+		return RepositoryStatusInternalError, err
+	}
+	if exists {
+		return RepositoryStatusExisting, nil
+	}
+
+	// Write the data to an encrypted file
+	metadata := &crypto.Metadata{
+		Name:        sanitizedFilename,
+		ContentType: mimeType,
+		Size:        size,
+	}
+	_, err = repo.Store.Set(fileId, in, nil, metadata)
+	if err != nil {
+		return RepositoryStatusInternalError, err
+	}
+
+	// Add to the index
+	err = index.Instance.AddFile(sanitizedPath, fileId)
+	if err != nil {
+		return RepositoryStatusInternalError, err
+	}
+
+	return RepositoryStatusOK, nil
+}
 
 // AddFile adds a file to the repository
 // This accepts any regular file, and it does not ignore any file
@@ -42,30 +87,12 @@ func (repo *Repository) AddFile(folder, target, destinationFolder string) (int, 
 		return RepositoryStatusUserError, errors.New("target does not exist: " + target)
 	}
 
-	// Generate a file id
-	fileId, err := index.GenerateFileId()
-	if err != nil {
-		return RepositoryStatusInternalError, err
-	}
-
-	// Sanitize the file name added to the index
-	sanitizedTarget := utils.SanitizePath(target)
-	sanitizedPath := utils.SanitizePath(destinationFolder + target)
-
-	// Check if the file exists in the index already
-	exists, err = index.Instance.FileExists(sanitizedPath)
-	if err != nil {
-		return RepositoryStatusInternalError, err
-	}
-	if exists {
-		return RepositoryStatusExisting, nil
-	}
-
 	// Get a stream to the input file
 	in, err := os.Open(path)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
+	defer in.Close()
 
 	// Get the mime type
 	extension := filepath.Ext(target)
@@ -79,25 +106,10 @@ func (repo *Repository) AddFile(folder, target, destinationFolder string) (int, 
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
+	size := stat.Size()
 
-	// Write the data to an encrypted file
-	metadata := &crypto.Metadata{
-		Name:        sanitizedTarget,
-		ContentType: mimeType,
-		Size:        stat.Size(),
-	}
-	_, err = repo.Store.Set(fileId, in, nil, metadata)
-	if err != nil {
-		return RepositoryStatusInternalError, err
-	}
-
-	// Add to the index
-	err = index.Instance.AddFile(sanitizedPath, fileId)
-	if err != nil {
-		return RepositoryStatusInternalError, err
-	}
-
-	return RepositoryStatusOK, nil
+	// Add the file's stream
+	return repo.AddStream(in, target, destinationFolder, mimeType, size)
 }
 
 // AddPath adds a path (a file or a folder, recursively) and reports each element added in the res channel
@@ -162,8 +174,17 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 			}
 			return
 		}
+		defer f.Close()
+
 		list, err := f.Readdir(-1)
-		f.Close()
+		if err != nil {
+			res <- PathResultMessage{
+				Path:   path,
+				Status: RepositoryStatusInternalError,
+				Err:    err,
+			}
+			return
+		}
 		for _, el := range list {
 			// Recursion
 			repo.AddPath(path, el.Name(), destinationFolder+target+"/", res)

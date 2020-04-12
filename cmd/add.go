@@ -27,6 +27,7 @@ import (
 	"github.com/ItalyPaleAle/prvt/repository"
 	"github.com/ItalyPaleAle/prvt/utils"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )
 
@@ -103,10 +104,21 @@ You must specify a destination, which is a folder inside the repository where yo
 			// Iterate through the args and add them all
 			res := make(chan repository.PathResultMessage)
 			go func() {
+				var err error
+				var expanded string
 				for _, e := range args {
 					// Get the target and folder
-					folder := filepath.Dir(e)
-					target := filepath.Base(e)
+					expanded, err = homedir.Expand(e)
+					if err != nil {
+						res <- repository.PathResultMessage{
+							Path:   e,
+							Status: repository.RepositoryStatusInternalError,
+							Err:    err,
+						}
+						break
+					}
+					folder := filepath.Dir(expanded)
+					target := filepath.Base(expanded)
 
 					repo.AddPath(folder, target, flagDestination, res)
 				}
