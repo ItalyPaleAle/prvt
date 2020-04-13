@@ -1,4 +1,4 @@
-<div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 text-sm" role="alert">
+<div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 text-sm relative" role="alert">
     <p class="font-bold text-lg mb-1">{title}</p>
     <p>{message}</p>
     {#if list && list.length}
@@ -19,15 +19,26 @@
             <p class="text-xs my-2 cursor-pointer" on:click={() => showDetails = true}><i class="fa fa-caret-right" aria-hidden="true"></i> Show details</p>
         {/if}
     {/if}
+    <span class="absolute top-0 bottom-0 right-0 mx-2 my-2 px-2 py-2 text-xl text-green-500 cursor-pointer" on:click={() => dispatch('close')} title="Close this box">
+        <i class="fa fa-times" aria-hidden="true"></i>
+        <span class="sr-only">Close this box</span>
+    </span>
 </div>
 
 <script>
+// Props for the view
 export let title = ''
 export let message = ''
 export let list = []
 
+// Event dispatcher
+import {createEventDispatcher} from 'svelte'
+const dispatch = createEventDispatcher()
+
+// State
 let showDetails = false
 
+// Format status messages
 function formatStatus(status) {
     switch (status) {
         case 'added':

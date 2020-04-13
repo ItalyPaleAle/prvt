@@ -3,7 +3,12 @@
     Loading…
 {:then list}
     {#if operationResult}
-        <OperationResult title={operationResult.title} message={operationResult.message} list={operationResult.list} />
+        <OperationResult
+            title={operationResult.title}
+            message={operationResult.message}
+            list={operationResult.list}
+            on:close={() => operationResult = null}
+        />
     {/if}
     <ul>
         {#if levelUp !== null}
