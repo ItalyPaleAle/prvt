@@ -18,7 +18,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -115,8 +114,6 @@ func (s *Server) addLocalPath(paths []string, destination string, res chan<- rep
 
 // Add a file by a stream
 func (s *Server) addUploadedFile(uploadFile *multipart.FileHeader, destination string, res chan<- repository.PathResultMessage) {
-	fmt.Println(uploadFile.Filename, uploadFile.Header, uploadFile.Size)
-
 	// Filename
 	filename := filepath.Base(uploadFile.Filename)
 	if filename == "" || filename == ".." || filename == "." || filename == "/" {
