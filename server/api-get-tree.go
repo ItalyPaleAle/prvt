@@ -25,8 +25,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TreeHandler is the handler for GET /api/tree/:path, which returns the contents of a path
-func (s *Server) TreeHandler(c *gin.Context) {
+// GetTreeHandler is the handler for GET /api/tree/:path, which returns the contents of a path
+func (s *Server) GetTreeHandler(c *gin.Context) {
 	// Get the path (can be empty if requesting the root)
 	path := c.Param("path")
 	// Ensure that the path starts with /

@@ -27,13 +27,16 @@ import (
 	"time"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gobuffalo/packr/v2"
 )
 
 type Server struct {
-	Store fs.Fs
+	Store   fs.Fs
+	Verbose bool
+	Repo    repository.Repository
 }
 
 func (s *Server) Start(address, port string) error {
@@ -41,14 +44,22 @@ func (s *Server) Start(address, port string) error {
 	gin.SetMode(gin.ReleaseMode)
 
 	// Start gin server
-	router := gin.Default()
+	router := gin.New()
+
+	// Add middlewares: logger (if desired) and recovery
+	if s.Verbose {
+		router.Use(gin.Logger())
+	}
+	router.Use(gin.Recovery())
 
 	// Add routes
 	router.GET("/file/:fileId", s.FileHandler)
 	{
 		// APIs
 		apis := router.Group("/api")
-		apis.GET("/tree/*path", s.TreeHandler)
+		apis.GET("/tree/*path", s.GetTreeHandler)
+		apis.POST("/tree/*path", s.PostTreeHandler)
+		apis.DELETE("/tree/*path", s.DeleteTreeHandler)
 	}
 
 	// UI

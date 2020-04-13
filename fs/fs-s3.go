@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/infofile"
 
 	"github.com/minio/minio-go"
 )
@@ -38,6 +39,7 @@ type S3 struct {
 	masterKey  []byte
 	client     *minio.Client
 	bucketName string
+	dataPath   string
 }
 
 func (f *S3) Init(connection string) error {
@@ -81,11 +83,15 @@ func (f *S3) Init(connection string) error {
 	return nil
 }
 
+func (f *S3) SetDataPath(path string) {
+	f.dataPath = path
+}
+
 func (f *S3) SetMasterKey(key []byte) {
 	f.masterKey = key
 }
 
-func (f *S3) GetInfoFile() (info *InfoFile, err error) {
+func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Request the file from S3
 	obj, err := f.client.GetObject(f.bucketName, "_info.json", minio.GetObjectOptions{})
 	if err != nil {
@@ -99,22 +105,25 @@ func (f *S3) GetInfoFile() (info *InfoFile, err error) {
 	}
 
 	// Parse the JSON data
-	info = &InfoFile{}
+	info = &infofile.InfoFile{}
 	if err = json.Unmarshal(data, info); err != nil {
 		info = nil
 		return
 	}
 
 	// Validate the content
-	if err = InfoValidate(info); err != nil {
+	if err = info.Validate(); err != nil {
 		info = nil
 		return
 	}
 
+	// Set the data path
+	f.dataPath = info.DataPath
+
 	return
 }
 
-func (f *S3) SetInfoFile(info *InfoFile) (err error) {
+func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 	// Encode the content as JSON
 	data, err := json.Marshal(info)
 	if err != nil {
@@ -139,10 +148,16 @@ func (f *S3) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (foun
 		return
 	}
 
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
 	found = true
 
 	// Request the file from S3
-	obj, err := f.client.GetObject(f.bucketName, name, minio.GetObjectOptions{})
+	obj, err := f.client.GetObject(f.bucketName, folder+name, minio.GetObjectOptions{})
 	if err != nil {
 		return
 	}
@@ -169,6 +184,12 @@ func (f *S3) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Me
 		return nil, err
 	}
 
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
 	// Encrypt the data and upload it
 	pr, pw := io.Pipe()
 	go func() {
@@ -178,7 +199,7 @@ func (f *S3) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Me
 		}
 		pw.Close()
 	}()
-	_, err = f.client.PutObject(f.bucketName, name, pr, -1, minio.PutObjectOptions{})
+	_, err = f.client.PutObject(f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +213,13 @@ func (f *S3) Delete(name string, tag interface{}) (err error) {
 		return
 	}
 
-	err = f.client.RemoveObject(f.bucketName, name)
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
+	err = f.client.RemoveObject(f.bucketName, folder+name)
 
 	return
 }

@@ -35,6 +35,9 @@ func PathExists(path string) (bool, error) {
 func IsRegularFile(path string) (bool, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
 		return false, err
 	}
 	switch mode := stat.Mode(); {

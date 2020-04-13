@@ -16,7 +16,7 @@ prvt is free software, released under GNU General Public License version 3.0.
 
 ![The prvt web-based file viewer](./screenshot.png)
 
-## Installation
+# Installation
 
 ## Pre-compiled binaries
 
@@ -39,14 +39,14 @@ You can also fetch prvt with `go get`:
 go get -u github.com/ItalyPaleAle/prvt
 ```
 
-## Using prvt
+# Using prvt
 
-### Initialize the repository
+## Initialize the repository
 
-Before you can use prvt, you need to initialize a repository. This is done with the `prvt initrepo` command:
+Before you can use prvt, you need to initialize a repository. This is done with the `prvt repo init` command:
 
 ```sh
-prvt initrepo --store <string>
+prvt repo init --store <string>
 ```
 
 You will be prompted to set a passphrase, which will be used to encrypt and decrypt all files.
@@ -63,7 +63,7 @@ Supported stores at the moment are:
 For example, to store files locally in a folder called "repo" (in the current working directory):
 
 ```sh
-prvt initrepo --store local:repo
+prvt repo init --store local:repo
 ```
 
 To store on Azure Blob Storage in a storage account called "mystorageacct" and in the "myrepo" container:
@@ -71,7 +71,7 @@ To store on Azure Blob Storage in a storage account called "mystorageacct" and i
 ```sh
 export AZURE_STORAGE_ACCOUNT=mystorageacct
 export AZURE_STORAGE_ACCESS_KEY=...
-prvt initrepo --store azure:myrepo
+prvt repo init --store azure:myrepo
 ```
 
 To store on AWS S3 in a bucket called "mybucket":
@@ -80,10 +80,10 @@ To store on AWS S3 in a bucket called "mybucket":
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
 # For using other S3-compatible services, set also `export S3_ENDPOINT=some.service.com`
-prvt initrepo --store s3:mybucket
+prvt repo init --store s3:mybucket
 ```
 
-### Add files
+## Add files
 
 You can now add files to the repository, using the `prvt add` command:
 
@@ -101,7 +101,7 @@ For example, to add the folder "photos" from your desktop:
 prvt add ~/photos --store local:repo --destination /
 ```
 
-### View files in the browser
+## View files in the browser
 
 prvt offers a browser-based interface to view your (encrypted) files, by running a local server. You can start the server with:
 
@@ -113,7 +113,7 @@ By default, the server starts at http://127.0.0.1:3129 You can configure what po
 
 Your browser will try to display supported files within itself, such as photos, supported videos, PDFs, etc. When trying to open other kinds of files, you'll be prompted to download them.
 
-### Delete files from the repo
+## Delete files from the repo
 
 You can remove files from the repo with:
 
@@ -148,14 +148,62 @@ To use a GPG key rather than a passphrase, initialize the repository with the `-
 
 ```sh
 # Use the address
-prvt initrepo --store local:repo --gpg mykey@example.com
+prvt repo init --store local:repo --gpg mykey@example.com
 # Use the public key ID
-prvt initrepo --store local:repo --gpg 0x30F411E2
+prvt repo init --store local:repo --gpg 0x30F411E2
 ```
 
 When a repository is initialized with a GPG key, the other commands that need to access (read or update) data, such as `prvt add`, `prvt serve`, and `prvt rm`, will invoke the GPG utility to obtain the master key and unlock the repository. You will need the private key available in the GPG utility for all these operations to succeed.
 
-## FAQ
+## Managing passphrases and keys
+
+You can have multiple passphrases and keys authorized to unlock a repository, and you can rotate them as you wish.
+
+### Adding a passphrase or key
+
+You can add a new passphrase with the following command. It will prompt you to first type the current passphrase, and then a second time to add a new passphrase:
+
+```sh
+prvt repo key add --store <string>
+```
+
+You can also add a GPG key to a repository:
+
+```sh
+prvt repo key add --store <string> --gpg <address>
+```
+
+### Listing all passphrases and keys
+
+To list all passphrases and keys authorized to unlock your repository use:
+
+```sh
+prvt repo key ls --store <string>
+```
+
+Passphrases are identified by a numeric sequence that starts with `p:`, for example: `p:0`, `p:1`, etc. GPG keys are identified by their address.
+
+### Testing and identifying a passphrase or key
+
+You can test if a passphrase or key can unlock a repository and getting its identifier using:
+
+```sh
+prvt repo key test --store <string>
+```
+
+Using a valid GPG key or a passphrase will unlock the repository, then print the identifier of the key. This can be particularly useful to delete a passphrase or key from the repository.
+
+### Removing a passphrase or key
+
+To remove a passphrase or key, run the following command with the identifier of the passphrase or key:
+
+```sh
+prvt repo key ls --store <string> --key <string>
+```
+
+Note: after running this command, the identifier of the passphrases in the repository might change, since they're always in a sequence.
+
+# FAQ
 
 ### How does prvt encrypt my files?
 
@@ -165,7 +213,7 @@ Check out the [Encryption](./Encryption.md) document for detailed information.
 
 ### Does prvt encrypt the names of files and folders?
 
-Yes. prvt stores all encrypted files with a random UUID as name. The name of the file and its directory are only stored in the index file, which is encrypted itself.
+Yes. prvt stores all encrypted files with a random UUID as name. The actual path of the file and its directory are only stored in the index file, which is encrypted itself.
 
 ### Has the prvt codebase been audited?
 
@@ -175,8 +223,8 @@ However, all the cryptographic operations used by prvt leverage popular, strong 
 
 Check out the [Encryption](./Encryption.md) document for detailed information.
 
-### How many files can I store in a repo?
+### How many files can I store in a repository?
 
-There's no limit on the number of files you can store in a repo.
+There's no limit on the number of files you can store in a repository.
 
-However, the way the index is implemented relies on a single file, which might make opening or updating the files in a repository slow when you have many (thousands) of files. If you are planning to store a very large number of files, consider splitting them into multiple repositories.
+However, the way the index is implemented relies on a single file, which might make opening or updating the files in a repository slow when you have a lot (many thousands) of files. If you are planning to store a very large number of files, consider splitting them into multiple repositories.

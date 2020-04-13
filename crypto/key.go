@@ -37,7 +37,7 @@ func KeyFromPassphrase(passphrase string, salt []byte) (key []byte, confirmation
 	}
 
 	// Derive the key using Argon2id
-	// From the docs: "The draft RFC recommends[2] time=1, and memory=64*1024 is a sensible number. If using that amount of memory (64 MB) is not possible in some contexts then the time parameter can be increased to compensate.""
+	// From the docs: "The draft RFC recommends[2] time=1, and memory=64*1024 is a sensible number. If using that amount of memory (64 MB) is not possible in some contexts then the time parameter can be increased to compensate."
 	// Generate 64 bytes: the first 32 are the key, and the rest is the confirmation hash
 	gen := argon2.IDKey([]byte(passphrase), salt, 1, 64*1024, 4, 64)
 	return gen[0:32], gen[32:64], nil
@@ -45,17 +45,18 @@ func KeyFromPassphrase(passphrase string, salt []byte) (key []byte, confirmation
 
 // NewSalt generates a new, 16-byte salt, useful for Argon2id
 func NewSalt() ([]byte, error) {
-	key := make([]byte, 16)
-	_, err := rand.Read(key)
-	if err != nil {
-		return nil, err
-	}
-	return key, nil
+	return RandomBytes(16)
 }
 
 // NewKey generates a new, 32-byte key (unwrapped), suitable for AES-256
 func NewKey() ([]byte, error) {
-	key := make([]byte, 32)
+	return RandomBytes(32)
+}
+
+// RandomBytes returns a byte slice full with random bytes, of a given length
+// This is useful to generate cryptographic keys, for example
+func RandomBytes(len int) ([]byte, error) {
+	key := make([]byte, len)
 	_, err := rand.Read(key)
 	if err != nil {
 		return nil, err

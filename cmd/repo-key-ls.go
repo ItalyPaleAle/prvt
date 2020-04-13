@@ -18,10 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"errors"
+	"fmt"
+	"strconv"
+
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/index"
-	"github.com/ItalyPaleAle/prvt/repository"
-	"github.com/ItalyPaleAle/prvt/server"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
@@ -30,21 +31,17 @@ import (
 func init() {
 	var (
 		flagStoreConnectionString string
-		flagBindPort              string
-		flagBindAddress           string
-		flagVerbose               bool
 	)
 
 	c := &cobra.Command{
-		Use:   "serve",
-		Short: "Start the server",
-		Long: `Starts a web server on the local machine, so you can access your encrypted files using a web browser.
+		Use:   "ls",
+		Short: "List all keys for the repo",
+		Long: `Prints the list of keys (passphrases and GPG keys) that can unlock the repo.
 
-Usage: "prvt serve --store <string>"
-
-You can use the optional "--address" and "--port" flags to control what address and port the server listens on. To enable connections from remote clients (not running on the local machine), set the address to "0.0.0.0".
+Usage: "prvt repo key ls --store <string>"
 `,
 		DisableAutoGenTag: true,
+
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
 			store, err := fs.Get(flagStoreConnectionString)
@@ -64,32 +61,30 @@ You can use the optional "--address" and "--port" flags to control what address 
 				return
 			}
 
-			// Derive the master key
-			masterKey, _, errMessage, err := GetMasterKey(info)
-			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+			// Require info files version 2 or higher
+			if info.Version < 2 {
+				utils.ExitWithError(utils.ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`))
 				return
 			}
-			store.SetMasterKey(masterKey)
 
-			// Set up the index
-			index.Instance.SetStore(store)
+			// Table headers
+			fmt.Println("KEY TYPE    | KEY ID")
+			fmt.Println("------------|------------------------")
 
-			// Set up the repository
-			repo := repository.Repository{
-				Store: store,
+			// Show all keys in a table
+			// First, show all passphrases
+			i := 0
+			for _, k := range info.Keys {
+				if k.GPGKey == "" {
+					fmt.Println("Passphrase  | p:" + strconv.Itoa(i))
+					i++
+				}
 			}
-
-			// Start the server
-			srv := server.Server{
-				Store:   store,
-				Verbose: flagVerbose,
-				Repo:    repo,
-			}
-			err = srv.Start(flagBindAddress, flagBindPort)
-			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
-				return
+			// Now, show all GPG keys
+			for _, k := range info.Keys {
+				if k.GPGKey != "" {
+					fmt.Println("GPG Key     | " + k.GPGKey)
+				}
 			}
 		},
 	}
@@ -97,10 +92,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 	// Flags
 	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
 	c.MarkFlagRequired("store")
-	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
-	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
-	c.Flags().BoolVarP(&flagVerbose, "verbose", "v", false, "show request log")
 
 	// Add the command
-	rootCmd.AddCommand(c)
+	repoKeyCmd.AddCommand(c)
 }

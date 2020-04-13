@@ -18,119 +18,18 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"mime"
-	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
+	"github.com/ItalyPaleAle/prvt/repository"
 	"github.com/ItalyPaleAle/prvt/utils"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )
-
-func addFile(store fs.Fs, folder, target, destinationFolder string) (error, string) {
-	// Check if target exists
-	path := filepath.Join(folder, target)
-	exists, err := utils.PathExists(path)
-	if err != nil {
-		return err, utils.ErrorUser
-	}
-	if !exists {
-		return errors.New("target does not exist"), utils.ErrorUser
-	}
-
-	// Check if we should ignore this path
-	if utils.IsIgnoredFile(path) {
-		fmt.Println("Ignoring:", destinationFolder+target)
-		return nil, ""
-	}
-
-	// Check if it's a directory
-	isFile, err := utils.IsRegularFile(path)
-	if err != nil {
-		return err, utils.ErrorUser
-	}
-	if !isFile {
-		f, err := os.Open(path)
-		if err != nil {
-			return err, utils.ErrorApp
-		}
-		list, err := f.Readdir(-1)
-		f.Close()
-		for _, el := range list {
-			err, errTyp := addFile(store, path, el.Name(), destinationFolder+target+"/")
-			if err != nil {
-				return err, errTyp
-			}
-		}
-		return nil, ""
-	}
-
-	// Generate a file id
-	fileId, err := index.GenerateFileId()
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
-	// Sanitize the file name added to the index
-	sanitizedTarget := utils.SanitizePath(target)
-	sanitizedPath := utils.SanitizePath(destinationFolder + target)
-
-	// Check if the file exists in the index already
-	exists, err = index.Instance.FileExists(sanitizedPath)
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-	if exists {
-		fmt.Println("Skipping existing file:", destinationFolder+target)
-		return nil, ""
-	}
-
-	// Get a stream to the input file
-	in, err := os.Open(path)
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
-	// Get the mime type
-	extension := filepath.Ext(target)
-	var mimeType string
-	if extension != "" {
-		mimeType = mime.TypeByExtension(extension)
-	}
-
-	// Get the size of the file
-	stat, err := in.Stat()
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
-	// Write the data to an encrypted file
-	metadata := &crypto.Metadata{
-		Name:        sanitizedTarget,
-		ContentType: mimeType,
-		Size:        stat.Size(),
-	}
-	_, err = store.Set(fileId, in, nil, metadata)
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
-	// Add to the index
-	err = index.Instance.AddFile(sanitizedPath, fileId)
-	if err != nil {
-		return err, utils.ErrorApp
-	}
-
-	fmt.Println("Added:", destinationFolder+target)
-
-	return nil, ""
-}
 
 func init() {
 	var (
@@ -182,12 +81,12 @@ You must specify a destination, which is a folder inside the repository where yo
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Store is not initialized", err)
+				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Derive the master key
-			masterKey, errMessage, err := GetMasterKey(info)
+			masterKey, _, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
@@ -197,18 +96,49 @@ You must specify a destination, which is a folder inside the repository where yo
 			// Set up the index
 			index.Instance.SetStore(store)
 
+			// Set up the repository
+			repo := repository.Repository{
+				Store: store,
+			}
+
 			// Iterate through the args and add them all
-			for _, e := range args {
-				// Get the target and folder
-				folder := filepath.Dir(e)
-				target := filepath.Base(e)
-				err, errType := addFile(store, folder, target, flagDestination)
-				if err != nil {
-					if errType == "" {
-						errType = utils.ErrorApp
+			res := make(chan repository.PathResultMessage)
+			go func() {
+				var err error
+				var expanded string
+				for _, e := range args {
+					// Get the target and folder
+					expanded, err = homedir.Expand(e)
+					if err != nil {
+						res <- repository.PathResultMessage{
+							Path:   e,
+							Status: repository.RepositoryStatusInternalError,
+							Err:    err,
+						}
+						break
 					}
-					utils.ExitWithError(errType, err.Error(), err)
-					return
+					folder := filepath.Dir(expanded)
+					target := filepath.Base(expanded)
+
+					repo.AddPath(folder, target, flagDestination, res)
+				}
+
+				close(res)
+			}()
+
+			// Print each message
+			for el := range res {
+				switch el.Status {
+				case repository.RepositoryStatusOK:
+					fmt.Println("Added:", el.Path)
+				case repository.RepositoryStatusIgnored:
+					fmt.Println("Ignoring:", el.Path)
+				case repository.RepositoryStatusExisting:
+					fmt.Println("Skipping existing file:", el.Path)
+				case repository.RepositoryStatusInternalError:
+					fmt.Printf("Internal error adding file '%s': %s\n", el.Path, el.Err)
+				case repository.RepositoryStatusUserError:
+					fmt.Printf("Error adding file '%s': %s\n", el.Path, el.Err)
 				}
 			}
 		},

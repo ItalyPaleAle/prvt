@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -38,6 +39,7 @@ import (
 type Local struct {
 	basePath  string
 	masterKey []byte
+	dataPath  string
 }
 
 func (f *Local) Init(connection string) error {
@@ -77,14 +79,21 @@ func (f *Local) Init(connection string) error {
 	return nil
 }
 
+func (f *Local) SetDataPath(path string) {
+	f.dataPath = path
+}
+
 func (f *Local) SetMasterKey(key []byte) {
 	f.masterKey = key
 }
 
-func (f *Local) GetInfoFile() (info *InfoFile, err error) {
+func (f *Local) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Read the file
 	data, err := ioutil.ReadFile(f.basePath + "_info.json")
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
 		return
 	}
 
@@ -94,22 +103,25 @@ func (f *Local) GetInfoFile() (info *InfoFile, err error) {
 	}
 
 	// Parse the JSON data
-	info = &InfoFile{}
+	info = &infofile.InfoFile{}
 	if err = json.Unmarshal(data, info); err != nil {
 		info = nil
 		return
 	}
 
 	// Validate the content
-	if err = InfoValidate(info); err != nil {
+	if err = info.Validate(); err != nil {
 		info = nil
 		return
 	}
 
+	// Set the data path
+	f.dataPath = info.DataPath
+
 	return
 }
 
-func (f *Local) SetInfoFile(info *InfoFile) (err error) {
+func (f *Local) SetInfoFile(info *infofile.InfoFile) (err error) {
 	// Encode the content as JSON
 	data, err := json.Marshal(info)
 	if err != nil {
@@ -133,10 +145,10 @@ func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (f
 
 	found = true
 
-	// If the file doesn't start with _, it lives in a sub-folder
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
 	folder := ""
 	if len(name) > 4 && name[0] != '_' {
-		folder = name[0:2] + "/" + name[2:4] + "/"
+		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 	}
 
 	// Open the file
@@ -174,10 +186,10 @@ func (f *Local) Set(name string, in io.Reader, tag interface{}, metadata *crypto
 		return
 	}
 
-	// If the file doesn't start with _, place it in a sub-folder
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
 	folder := ""
 	if len(name) > 4 && name[0] != '_' {
-		folder = name[0:2] + "/" + name[2:4] + "/"
+		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 
 		// Ensure the folder exists
 		err = utils.EnsureFolder(f.basePath + folder)
@@ -207,10 +219,10 @@ func (f *Local) Delete(name string, tag interface{}) (err error) {
 		return
 	}
 
-	// If the file doesn't start with _, it lives in a sub-folder
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
 	folder := ""
 	if len(name) > 4 && name[0] != '_' {
-		folder = name[0:2] + "/" + name[2:4] + "/"
+		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 	}
 
 	// Delete the file

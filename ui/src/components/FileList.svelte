@@ -2,30 +2,55 @@
     <i class="fa fa-spinner fa-spin fa-fw" aria-hidden="true"></i>
     Loading…
 {:then list}
-    {#if levelUp !== null}
-        <a class="block p-3 my-1 leading-normal rounded shadow bg-white" href="#/tree/{levelUp}">
-            <i class="fa fa-level-up" aria-hidden="true"></i> Up one level
-        </a>
+    {#if operationResult}
+        <OperationResult title={operationResult.title} message={operationResult.message} list={operationResult.list} />
     {/if}
-    {#each list as el}
-        {#if el.isDir}
-            <a class="block p-3 my-1 leading-normal rounded shadow bg-white" href="#/tree/{path ? path + '/' : ''}{el.path}">
-                <i class="fa fa-folder" aria-hidden="true"></i> {el.path}
-            </a>
-        {:else if el.fileId}
-            <a class="block p-3 my-1 leading-normal rounded shadow bg-white" href="/file/{el.fileId}">
-                <i class="fa fa-file-o" aria-hidden="true"></i> {el.path}
-            </a>
+    <ul>
+        {#if levelUp !== null}
+            <li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
+                <a class="flex-grow p-3" href="#/tree/{levelUp}">
+                    <i class="fa fa-level-up fa-fw" aria-hidden="true"></i> Up one level
+                </a>
+                <span class="flex-grow-0 p-3 bg-gray-100 text-gray-600">
+                    <i class="fa fa-fw" aria-hidden="true"></i>
+                </span>
+            </li>
         {/if}
-    {/each}
+        {#each list as el}
+            {#if el.isDir}
+                <li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
+                    <a class="flex-grow p-3" href="#/tree/{path ? path + '/' : ''}{el.path}">
+                        <i class="fa fa-folder fa-fw" aria-hidden="true"></i> {el.path}
+                    </a>
+                    <span class="flex-grow-0 p-3 cursor-pointer bg-gray-100 text-gray-600" on:click={deleteTree(el.path, true)}>
+                        <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
+                    </span>
+                </li>
+            {:else if el.fileId}
+                <li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
+                    <a class="flex-grow p-3" href="/file/{el.fileId}">
+                        <i class="fa fa-file-o fa-fw" aria-hidden="true"></i> {el.path}
+                    </a>
+                    <span class="flex-grow-0 p-3 cursor-pointer bg-gray-100 text-gray-600" on:click={deleteTree(el.path)}>
+                        <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
+                    </span>
+                </li>
+            {/if}
+        {/each}
+    </ul>
 {:catch err}
     Error: {err}
 {/await}
 
 <script>
+import OperationResult from './OperationResult.svelte'
+
 // Props for the view
 // Path is the path to list
 export let path = ''
+
+// Operation result object
+let operationResult = null
 
 // "Level up" link
 let levelUp = null
@@ -51,6 +76,9 @@ $: {
 
     // Request the tree
     requesting = requestTree(path)
+    
+    // Reset operation result object
+    operationResult = null
 }
 
 function requestTree(reqPath) {
@@ -74,5 +102,47 @@ function requestTree(reqPath) {
                 return (a.path || '').localeCompare(b.path || '')
             })
         })
+}
+
+function deleteTree(element, isDir) {
+    const reqPath = path + '/' + element
+
+    // First, ask for confirmation
+    const confirmMessage = isDir ? 'Are you sure you want to delete the folder "/' + reqPath + '" and ALL of its content? This is irreversible' : 'Are you sure you want to delete the file "/' + reqPath + '"? This is irreversible.'
+    if (!confirm(confirmMessage)) {
+        return
+    }
+
+    // Sets "requesting" to a promise that does a sequence of operations
+    requesting = Promise.resolve()
+        // Submit the request
+        .then(() => fetch('/api/tree/' + encodeURIComponent(reqPath + (isDir ? '/*' : '')), {
+            method: 'DELETE'
+        }))
+        // Check the response
+        .then((resp) => {
+            if (resp.status != 200) {
+                throw Error('Invalid response status code')
+            }
+
+            return resp.json()
+        })
+        .then((list) => {
+            if (!list || !Array.isArray(list) || !list.length) {
+                throw Error('Invalid response')
+            }
+
+            operationResult = {
+                title: 'Deleted',
+                message: isDir ? 'The folder "/' + reqPath + '" has been deleted.' : 'The file "/' + reqPath + '" has been deleted.',
+                list
+            }
+        })
+        // Catch errors
+        .catch((err) => {
+            alert('Could not delete the element: ' + err)
+        })
+        // Refresh the list of files regardless of errors
+        .then(() => requestTree(path))
 }
 </script>

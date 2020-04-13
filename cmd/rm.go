@@ -22,6 +22,7 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
+	"github.com/ItalyPaleAle/prvt/repository"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
@@ -64,12 +65,12 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Store is not initialized", err)
+				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Derive the master key
-			masterKey, errMessage, err := GetMasterKey(info)
+			masterKey, _, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
@@ -79,34 +80,33 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			// Set up the index
 			index.Instance.SetStore(store)
 
+			// Set up the repository
+			repo := repository.Repository{
+				Store: store,
+			}
+
 			// Iterate through the args and remove all files
-			for _, e := range args {
-				// Remove from the index
-				objects, err := index.Instance.DeleteFile(e)
-				if err != nil {
-					utils.ExitWithError(utils.ErrorApp, "Failed to remove path from index: "+e, err)
-					return
-				}
-				if objects == nil || len(objects) < 1 {
-					fmt.Println("Nothing removed:", e)
-					continue
+			res := make(chan repository.PathResultMessage)
+			go func() {
+				for _, e := range args {
+					repo.RemovePath(e, res)
 				}
 
-				// Delete the files
-				for _, o := range objects {
-					err = store.Delete(o, nil)
-					if err != nil {
-						utils.ExitWithError(utils.ErrorApp, "Failed to remove object from store: "+o+" (for path "+e+")", err)
-						return
-					}
+				close(res)
+			}()
+
+			// Print each message
+			for el := range res {
+				switch el.Status {
+				case repository.RepositoryStatusOK:
+					fmt.Println("Removed:", el.Path)
+				case repository.RepositoryStatusNotFound:
+					fmt.Println("Not found:", el.Path)
+				case repository.RepositoryStatusInternalError:
+					fmt.Printf("Internal error removing path '%s': %s\n", el.Path, el.Err)
+				case repository.RepositoryStatusUserError:
+					fmt.Printf("Error removing path '%s': %s\n", el.Path, el.Err)
 				}
-				var removed string
-				if len(objects) == 1 {
-					removed = "(1 file)"
-				} else {
-					removed = fmt.Sprintf("(%d files)", len(objects))
-				}
-				fmt.Println("Removed path:", e, removed)
 			}
 		},
 	}

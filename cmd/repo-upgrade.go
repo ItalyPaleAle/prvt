@@ -18,11 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
@@ -31,20 +29,14 @@ import (
 func init() {
 	var (
 		flagStoreConnectionString string
-		flagGPGKey                string
 	)
 
 	c := &cobra.Command{
-		Use:   "initrepo",
-		Short: "Initialize a new repository",
-		Long: `Initializes a new, empty repository, and sets the encryption key to use.
+		Use:   "upgrade",
+		Short: "Upgrade a repository",
+		Long: `Upgrades a repository to the latest info file format.
 
-Usage: "prvt initrepo --store <string>"
-
-See the help page for prvt ("prvt --help") for details on stores and how to configure them.
-
-If you want to use a GPG key to protect this repository (including GPG keys stored in security tokens or smart cards), use the "--gpg" flag with the address or ID of a public GPG key. For example: "prvt initrepo --store <string> --gpg mykey@example.com" 
-In order to use GPG keys, you need to have GPG version 2 installed separately. You also need a GPG keypair (public and private) in your keyring.
+Usage: "prvt repo upgrade --store <string>"
 `,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -55,25 +47,21 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 				return
 			}
 
-			// Create the info file after generating a new master key
-			info, errMessage, err := NewMasterKey(flagGPGKey)
+			// Request the info file
+			info, err := store.GetInfoFile()
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				return
+			}
+			if info == nil {
+				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				return
+			}
+
+			// Upgrade the info file
+			errMessage, err := UpgradeInfoFile(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
-				return
-			}
-
-			// Set up the index
-			index.Instance.SetStore(store)
-
-			// Check if the file exists already
-			// We are expecting this to be empty
-			infoExisting, err := store.GetInfoFile()
-			if err == nil {
-				utils.ExitWithError(utils.ErrorApp, "Error initializing store", errors.New("store is already initialized"))
-				return
-			}
-			if infoExisting != nil {
-				utils.ExitWithError(utils.ErrorUser, "Error initializing store", errors.New("store is already initialized"))
 				return
 			}
 
@@ -84,14 +72,14 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 				return
 			}
 
-			fmt.Println("Initialized new store")
+			fmt.Println("Repository upgraded")
 		},
 	}
+
 	// Flags
 	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
 	c.MarkFlagRequired("store")
-	c.Flags().StringVarP(&flagGPGKey, "gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
 
 	// Add the command
-	rootCmd.AddCommand(c)
+	repoCmd.AddCommand(c)
 }

@@ -41,6 +41,20 @@ func SanitizePath(path string) string {
 	return path
 }
 
+var mimeTypeRegex = regexp.MustCompile("^(application|audio|font|image|model|text|video)\\/([a-z0-9-+*.]+)")
+
+// SanitizeMimeType sanitizes a mime type
+func SanitizeMimeType(mime string) string {
+	// Lowercase the string and trim whitespaces to start
+	mime = strings.TrimSpace(strings.ToLower(mime))
+
+	// Ensure the format is correct
+	// Base reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
+	mime = mimeTypeRegex.FindString(mime)
+
+	return mime
+}
+
 // IsIgnoredFile returns true if the file should be ignored and not added to the repository
 // Ignored files include OS metadata files etc
 func IsIgnoredFile(file string) bool {
