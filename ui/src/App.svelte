@@ -1,6 +1,6 @@
 <Navbar />
 
-<div class="container w-full lg:w-3/5 px-2 pt-8 lg:pt-16 mt-16">
+<div class="container w-full lg:w-3/5 px-2 pt-4 lg:pt-12 mt-10">
     <Router {routes} />
 
     <Footer />

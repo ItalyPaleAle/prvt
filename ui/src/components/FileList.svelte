@@ -7,34 +7,29 @@
     {/if}
     <ul>
         {#if levelUp !== null}
-            <li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
-                <a class="flex-grow p-3" href="#/tree/{levelUp}">
-                    <i class="fa fa-level-up fa-fw" aria-hidden="true"></i> Up one level
-                </a>
-                <span class="flex-grow-0 p-3 bg-gray-100 text-gray-600">
-                    <i class="fa fa-fw" aria-hidden="true"></i>
-                </span>
-            </li>
+            <ListItem
+                label="Up one level"
+                icon="fa-level-up"
+                link="#/tree/{levelUp}"
+            />
         {/if}
         {#each list as el}
             {#if el.isDir}
-                <li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
-                    <a class="flex-grow p-3" href="#/tree/{path ? path + '/' : ''}{el.path}">
-                        <i class="fa fa-folder fa-fw" aria-hidden="true"></i> {el.path}
-                    </a>
-                    <span class="flex-grow-0 p-3 cursor-pointer bg-gray-100 text-gray-600" on:click={deleteTree(el.path, true)}>
-                        <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
-                    </span>
-                </li>
+                <ListItem
+                    label={el.path}
+                    icon="fa-folder"
+                    link="#/tree/{path ? path + '/' : ''}{el.path}"
+                    hasAction={true}
+                    on:action={deleteTree(el.path, true)}
+                />
             {:else if el.fileId}
-                <li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
-                    <a class="flex-grow p-3" href="/file/{el.fileId}">
-                        <i class="fa fa-file-o fa-fw" aria-hidden="true"></i> {el.path}
-                    </a>
-                    <span class="flex-grow-0 p-3 cursor-pointer bg-gray-100 text-gray-600" on:click={deleteTree(el.path)}>
-                        <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
-                    </span>
-                </li>
+                <ListItem
+                    label={el.path}
+                    icon="fa-file-o"
+                    link="/file/{el.fileId}"
+                    hasAction={true}
+                    on:action={deleteTree(el.path)}
+                />
             {/if}
         {/each}
     </ul>
@@ -43,7 +38,9 @@
 {/await}
 
 <script>
+// Components
 import OperationResult from './OperationResult.svelte'
+import ListItem from './ListItem.svelte'
 
 // Props for the view
 // Path is the path to list
