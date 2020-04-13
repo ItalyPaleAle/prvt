@@ -19,16 +19,16 @@
                     label={el.path}
                     icon="fa-folder"
                     link="#/tree/{path ? path + '/' : ''}{el.path}"
-                    hasAction={true}
-                    on:action={deleteTree(el.path, true)}
+                    actions={[{label: 'Delete folder', event: 'delete', icon: 'fa-trash'}]}
+                    on:delete={deleteTree(el.path, true)}
                 />
             {:else if el.fileId}
                 <ListItem
                     label={el.path}
                     icon="fa-file-o"
                     link="/file/{el.fileId}"
-                    hasAction={true}
-                    on:action={deleteTree(el.path)}
+                    actions={[{label: 'Delete file', event: 'delete', icon: 'fa-trash'}]}
+                    on:delete={deleteTree(el.path)}
                 />
             {/if}
         {/each}
