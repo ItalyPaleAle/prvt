@@ -78,7 +78,7 @@ func (i *Index) Refresh(force bool) error {
 	}()
 
 	// Check if we already have the index in cache and its age (unless we're forcing a refresh)
-	if !force && i.cache != nil && time.Now().Add(cacheDuration*time.Second).Before(i.cacheTime) {
+	if !force && i.cache != nil && time.Now().Add(-cacheDuration*time.Second).Before(i.cacheTime) {
 		// Cache exists and it's fresh
 		return nil
 	}
