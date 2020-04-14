@@ -1,6 +1,15 @@
 <li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
     <a class="flex-grow p-3" href="{link}">
-        <i class="fa {icon || ''} fa-fw" aria-hidden="true"></i> {label}
+        <span class="flex flex-row">
+            <span class="flex-grow">
+                <i class="fa {icon || ''} fa-fw" aria-hidden="true"></i> {label}
+            </span>
+            {#if date}
+                <span class="flex-grow-0 text-gray-500 text-xs" title="{format(date, 'PPpp')}">
+                    {formatDistanceToNow(date)} ago
+                </span>
+            {/if}
+        </span>
     </a>
     {#if actions && actions.length}
         <span class="flex-grow-0 p-3 cursor-pointer bg-gray-100 text-gray-500" class:text-gray-800={expandActions} on:click={actionsMenuClick}>
@@ -26,10 +35,14 @@
 </li>
 
 <script>
+import formatDistanceToNow from 'date-fns/formatDistanceToNow'
+import format from 'date-fns/format'
+
 // Props for the view
 export let label = ''
 export let icon = ''
 export let link = ''
+export let date = null
 export let actions = null
 
 // Stores

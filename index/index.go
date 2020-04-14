@@ -38,11 +38,11 @@ const cacheDuration = 300
 
 // FolderList contains the result of the ListFolder method
 type FolderList struct {
-	Path      string `json:"path"`
-	Directory bool   `json:"isDir,omitempty"`
-	FileId    string `json:"fileId,omitempty"`
-	Date      string `json:"date,omitempty"`
-	MimeType  string `json:"mimeType,omitempty"`
+	Path      string     `json:"path"`
+	Directory bool       `json:"isDir,omitempty"`
+	FileId    string     `json:"fileId,omitempty"`
+	Date      *time.Time `json:"date,omitempty"`
+	MimeType  string     `json:"mimeType,omitempty"`
 }
 
 // Index manages the index for all files and folders
@@ -340,9 +340,10 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 				}
 
 				// Date
-				date := ""
+				var date *time.Time
 				if el.Date != nil && el.Date.Seconds > 0 {
-					date = el.Date.String()
+					o := time.Unix(el.Date.Seconds, 0).UTC()
+					date = &o
 				}
 
 				// Since we have a file, we're sure there aren't more with the same path
