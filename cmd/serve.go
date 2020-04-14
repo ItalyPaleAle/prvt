@@ -82,9 +82,10 @@ You can use the optional "--address" and "--port" flags to control what address 
 
 			// Start the server
 			srv := server.Server{
-				Store:   store,
-				Verbose: flagVerbose,
-				Repo:    repo,
+				Store:    store,
+				Verbose:  flagVerbose,
+				Repo:     repo,
+				Infofile: info,
 			}
 			err = srv.Start(flagBindAddress, flagBindPort)
 			if err != nil {

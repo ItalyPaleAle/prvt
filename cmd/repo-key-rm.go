@@ -66,8 +66,7 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 			}
 
 			// Require info files version 2 or higher
-			if info.Version < 2 {
-				utils.ExitWithError(utils.ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`))
+			if !requireInfoFileVersion(info, 2, flagStoreConnectionString) {
 				return
 			}
 

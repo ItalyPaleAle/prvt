@@ -85,6 +85,11 @@ You must specify a destination, which is a folder inside the repository where yo
 				return
 			}
 
+			// Require info files version 3 or higher before any operation that changes the store (which would update the index to the protobuf-based format)
+			if !requireInfoFileVersion(info, 3, flagStoreConnectionString) {
+				return
+			}
+
 			// Derive the master key
 			masterKey, _, errMessage, err := GetMasterKey(info)
 			if err != nil {

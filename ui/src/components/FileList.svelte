@@ -124,7 +124,16 @@ function deleteTree(element, isDir) {
         // Check the response
         .then((resp) => {
             if (resp.status != 200) {
-                throw Error('Invalid response status code')
+                return resp.json()
+                    .catch(() => {
+                        throw Error('Invalid response status code')
+                    })
+                    .then((body) => {
+                        if (body && body.error) {
+                            throw Error(body.error)
+                        }
+                        throw Error('Invalid response status code')
+                    })
             }
 
             return resp.json()
