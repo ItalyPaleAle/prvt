@@ -19,9 +19,7 @@ package index
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -113,13 +111,6 @@ func (i *Index) Refresh(force bool) error {
 		return nil
 	}
 	i.cache = &IndexFile{}
-
-	if isJSON {
-		fmt.Println(string(data))
-	} else {
-		datab64 := base64.StdEncoding.EncodeToString(data)
-		fmt.Println(datab64)
-	}
 
 	// Parse a legacy JSON file or a new protobuf-encoded one
 	if isJSON {
