@@ -93,7 +93,7 @@ prvt add <file> [<file> ...] --store <string> --destination <string>
 
 You can add multiple files and folders, which will be added recursively.
 
-The destination flag is required and it's the path in the repo where you want your files to be added; it must begin with a slash (`/`).
+The destination flag is required and it's the path in the repository where you want your files to be added; it must begin with a slash (`/`).
 
 For example, to add the folder "photos" from your desktop:
 
@@ -113,15 +113,15 @@ By default, the server starts at http://127.0.0.1:3129 You can configure what po
 
 Your browser will try to display supported files within itself, such as photos, supported videos, PDFs, etc. When trying to open other kinds of files, you'll be prompted to download them.
 
-## Delete files from the repo
+## Delete files from the repository
 
-You can remove files from the repo with:
+You can remove files from the repository with:
 
 ```sh
 prvt rm <path> --store <string>
 ```
 
-Where the path is the path of the file or folder within the repo. To remove a file, specify its exact path. To remove a folder recursively, specify the name of the folder, ending with `/*`.
+Where the path is the path of the file or folder within the repository. To remove a file, specify its exact path. To remove a folder recursively, specify the name of the folder, ending with `/*`.
 
 For example, to remove a single file:
 
