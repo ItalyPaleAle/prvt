@@ -184,6 +184,9 @@ function fileTypeIcon(mimeType) {
         case 'application/rtf':
             return 'fa-file-text-o'
 
+        case 'application/epub+zip':
+            return 'fa-file-epub-o'
+
         case 'text/html':
         case 'text/javascript':
         case 'text/css':

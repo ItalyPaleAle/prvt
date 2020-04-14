@@ -20,7 +20,6 @@ package repository
 import (
 	"errors"
 	"io"
-	"mime"
 	"os"
 	"path/filepath"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
 
+	mime "github.com/cubewise-code/go-mime"
 	"github.com/gofrs/uuid"
 )
 

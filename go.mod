@@ -7,6 +7,7 @@ replace github.com/spf13/cobra => github.com/ItalyPaleAle/cobra v0.0.6-0.2020021
 require (
 	github.com/Azure/azure-pipeline-go v0.2.2
 	github.com/Azure/azure-storage-blob-go v0.8.0
+	github.com/cubewise-code/go-mime v0.0.0-20190322015324-9c5316ef3e8e
 	github.com/gin-gonic/gin v1.6.2
 	github.com/go-ini/ini v1.55.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.8.0
