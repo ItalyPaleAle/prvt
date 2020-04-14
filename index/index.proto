@@ -1,3 +1,6 @@
+// IMPORTANT: Run this command after making changes to the proto file:
+// protoc index.proto --go_out=.
+
 syntax = "proto3";
 package prvt_index;
 
