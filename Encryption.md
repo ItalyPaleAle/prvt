@@ -2,7 +2,7 @@
 
 prvt stores files using strong end-to-end encryption.
 
-The files are encrypted on the local machine before being sent to the cloud or to the target directory. To view the files, one would need the encryption key (ie.. the passphrase or GPG private key), as well as the encrypted files and their index.
+The files are encrypted on the local machine before being sent to the cloud or to the target directory. To view the files, one would need the encryption key (ie. the passphrase or GPG private key), as well as the encrypted files and their index.
 
 When viewing files using the web-based interface, files are downloaded and then decrypted locally by prvt's local server, before being sent to the browser in cleartext.
 
@@ -129,30 +129,16 @@ This is done to protect your privacy, by hiding the original name of the file an
 
 To map files back to the original paths, prvt uses an encrypted index file. This is the `_index` file in the repository, and it's encrypted using the same pipeline as the data files, and as such it contains the same headers too.
 
-Decrypted, the `_index` file is a JSON document that contains two keys:
+Decrypted, the `_index` file is a structured document encoded with Protocol Buffer that contains a dictionary with two main keys:
 
-- The version (`v`) of the index file. Currently, this is always `1`.
-- A list of elements (`e`) present in the repository. This is an array of objects, each containing two keys:
-    - The original path (`p`) of the file within the repo's tree (for example, `/folder/sub/file.jpeg`).
-    - The name (`n`) of the encrypted file in the repository (a UUID, stored as a string).
+- The version of the index file. The latest version, used from prvt version 0.4, is `2`.
+- A list of elements present in the repository. This is an array of objects, each containing up to four keys:
+    - The original path of the file within the repository's tree (for example, `/folder/sub/file.jpeg`).
+    - The UUID of the encrypted file in the repository, stored as binary data.
+    - The date when the file was added to the repository, stored as UNIX timestamp.
+    - The mime type of the file, as determined from its extension.
 
-For example (the document below has been pretty-printed for clarity for this example only):
-
-```json
-{
-  "v": 1,
-  "e": [
-    {
-      "p": "/photos/IMG0342.jpeg",
-      "n": "6d0acb54-195c-483c-9b25-7511af9a433f"
-    },
-    {
-      "p": "/documents/something.pdf",
-      "n": "e2175556-4e58-4116-a264-376d69ea4437"
-    }
-  ]
-}
-```
+The `_index` file uses Protocol Buffers for encoding, so it's a binary file and not human-readable. The proto file defining the data structure is saved at [`index/index.proto`](/index/index.proto).
 
 Thanks to this index, prvt can show a tree of all directories and files, and knows what encrypted document to request for each file.
 
@@ -163,7 +149,7 @@ The `_info.json` file is the only file in the repository that is not encrypted.
 This file is a JSON document containing four keys:
 
 - The name of the app (`app`) that created it. This is always `prvt`.
-- The version (`ver`) of the info file. The latest value, prvt version 0.3, is `2`.
+- The version (`ver`) of the info file. The latest value, from prvt version 0.4, is `3`.
 - The data path (`dp`), which is the name of the sub-folder where the encrypted data is stored. The default value is `data`. (This value can't be set using the prvt CLI, but it's defined here to enable backwards compatibility with repositories created by previous versions of prvt.)
 - The list of passphrases and keys (`k`).
 
