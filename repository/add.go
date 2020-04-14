@@ -27,12 +27,14 @@ import (
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
+
+	"github.com/gofrs/uuid"
 )
 
 // AddStream adds a document to the repository by reading it from a stream
 func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (int, error) {
 	// Generate a file id
-	fileId, err := index.GenerateFileId()
+	fileId, err := uuid.NewV4()
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
@@ -59,13 +61,13 @@ func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder,
 		ContentType: mimeType,
 		Size:        size,
 	}
-	_, err = repo.Store.Set(fileId, in, nil, metadata)
+	_, err = repo.Store.Set(fileId.String(), in, nil, metadata)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
 
 	// Add to the index
-	err = index.Instance.AddFile(sanitizedPath, fileId)
+	err = index.Instance.AddFile(sanitizedPath, fileId.Bytes())
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}

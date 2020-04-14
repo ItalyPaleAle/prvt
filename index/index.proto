@@ -1,0 +1,24 @@
+syntax = "proto3";
+package prvt_index;
+
+import "google/protobuf/timestamp.proto";
+
+// Go package name
+option go_package = "index";
+
+// IndexElement message
+message IndexElement {
+    string path = 1 [json_name="p"];
+    bytes object = 2;
+    google.protobuf.Timestamp date = 3 [json_name="d"];
+    string mime_type = 4 [json_name="m"];
+
+    // This is added for compatibility with the version 1 JSON format
+    string object_string = 102 [json_name="n",deprecated=true];
+}
+  
+// IndexFile message
+message IndexFile {
+    uint32 version = 1 [json_name="v"];
+    repeated IndexElement elements = 2 [json_name="e"];
+}
