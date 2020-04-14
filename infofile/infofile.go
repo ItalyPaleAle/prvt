@@ -198,7 +198,7 @@ func (info *InfoFile) Validate() error {
 		}
 	} else {
 		// Unsupported version
-		return errors.New("unsupported info file version")
+		return errors.New("unsupported info file version – you might be trying to access a repository created with a newer version of prvt")
 	}
 
 	return nil

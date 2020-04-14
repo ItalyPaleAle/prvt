@@ -67,7 +67,7 @@ func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder,
 	}
 
 	// Add to the index
-	err = index.Instance.AddFile(sanitizedPath, fileId.Bytes())
+	err = index.Instance.AddFile(sanitizedPath, fileId.Bytes(), mimeType)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}

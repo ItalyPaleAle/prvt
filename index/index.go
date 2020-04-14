@@ -24,13 +24,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/uuid"
-
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
 
+	"github.com/gofrs/uuid"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // How long to cache files for, in seconds
@@ -41,6 +41,8 @@ type FolderList struct {
 	Path      string `json:"path"`
 	Directory bool   `json:"isDir,omitempty"`
 	FileId    string `json:"fileId,omitempty"`
+	Date      string `json:"date,omitempty"`
+	MimeType  string `json:"mimeType,omitempty"`
 }
 
 // Index manages the index for all files and folders
@@ -121,13 +123,13 @@ func (i *Index) Refresh(force bool) error {
 
 		// Need to iterate through all Elements and convert the Name from the UUID represented as string to bytes
 		for _, el := range i.cache.Elements {
-			if el.ObjectString != "" && len(el.Object) == 0 {
-				u, err := uuid.FromString(el.ObjectString)
+			if el.FileIdString != "" && len(el.FileId) == 0 {
+				u, err := uuid.FromString(el.FileIdString)
 				if err != nil {
 					return err
 				}
-				el.ObjectString = ""
-				el.Object = u.Bytes()
+				el.FileIdString = ""
+				el.FileId = u.Bytes()
 			}
 		}
 	} else {
@@ -173,7 +175,7 @@ func (i *Index) save(obj *IndexFile) error {
 }
 
 // AddFile adds a file to the index
-func (i *Index) AddFile(path string, fileId []byte) error {
+func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	// path must be at least 2 characters (with / being one)
 	if len(path) < 2 {
 		return errors.New("path name is too short")
@@ -204,7 +206,11 @@ func (i *Index) AddFile(path string, fileId []byte) error {
 	// Add the file to the index and return the id
 	fileEl := &IndexElement{
 		Path:   path,
-		Object: fileId,
+		FileId: fileId,
+		Date: &timestamppb.Timestamp{
+			Seconds: time.Now().Unix(),
+		},
+		MimeType: mimeType,
 	}
 	elements := append(i.cache.Elements, fileEl)
 	updated := &IndexFile{
@@ -275,11 +281,11 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 		// Need to remove
 		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
 			// Add to the result
-			object, err := uuid.FromBytes(el.Object)
+			fileId, err := uuid.FromBytes(el.FileId)
 			if err != nil {
 				return nil, nil, err
 			}
-			objectsRemoved = append(objectsRemoved, object.String())
+			objectsRemoved = append(objectsRemoved, fileId.String())
 			pathsRemoved = append(pathsRemoved, el.Path)
 		} else {
 			// Maintain in the list
@@ -327,15 +333,25 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 				// Means we have a file
 				oneLevel = el.Path[len(path):]
 
-				// Since we have a file, we're sure there aren't more with the same path
-				object, err := uuid.FromBytes(el.Object)
+				// File ID
+				fileId, err := uuid.FromBytes(el.FileId)
 				if err != nil {
 					return nil, err
 				}
+
+				// Date
+				date := ""
+				if el.Date != nil && el.Date.Seconds > 0 {
+					date = el.Date.String()
+				}
+
+				// Since we have a file, we're sure there aren't more with the same path
 				result = append(result, FolderList{
 					Path:      oneLevel,
 					Directory: false,
-					FileId:    object.String(),
+					FileId:    fileId.String(),
+					Date:      date,
+					MimeType:  el.MimeType,
 				})
 			} else {
 				// We have a directory
