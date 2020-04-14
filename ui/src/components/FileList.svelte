@@ -108,7 +108,7 @@ function requestTree(reqPath) {
 }
 
 function deleteTree(element, isDir) {
-    const reqPath = path + '/' + element
+    const reqPath = (path ? path + '/' : '') + element
 
     // First, ask for confirmation
     const confirmMessage = isDir ? 'Are you sure you want to delete the folder "/' + reqPath + '" and ALL of its content? This is irreversible' : 'Are you sure you want to delete the file "/' + reqPath + '"? This is irreversible.'
