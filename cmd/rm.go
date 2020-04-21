@@ -117,8 +117,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 	}
 
 	// Flags
-	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
-	c.MarkFlagRequired("store")
+	addStoreFlag(c, &flagStoreConnectionString)
 
 	// Add the command
 	rootCmd.AddCommand(c)

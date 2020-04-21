@@ -88,8 +88,7 @@ Usage: "prvt repo key ls --store <string>"
 	}
 
 	// Flags
-	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
-	c.MarkFlagRequired("store")
+	addStoreFlag(c, &flagStoreConnectionString)
 
 	// Add the command
 	repoKeyCmd.AddCommand(c)

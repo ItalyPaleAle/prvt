@@ -150,8 +150,7 @@ You must specify a destination, which is a folder inside the repository where yo
 	}
 
 	// Flags
-	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
-	c.MarkFlagRequired("store")
+	addStoreFlag(c, &flagStoreConnectionString)
 	c.Flags().StringVarP(&flagDestination, "destination", "d", "", "destination folder")
 	c.MarkFlagRequired("destination")
 

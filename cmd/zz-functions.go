@@ -19,9 +19,12 @@ package cmd
 
 import (
 	"errors"
+	"os"
 
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
+
+	"github.com/spf13/cobra"
 )
 
 // Requires a minimum version of the info file to continue
@@ -36,4 +39,14 @@ func requireInfoFileVersion(info *infofile.InfoFile, version uint16, connectionS
 	}
 
 	return true
+}
+
+// Adds the --store flag, with a default value read from the environment
+func addStoreFlag(c *cobra.Command, flag *string) {
+	// Check if we have a value in the PRVT_STORE env var
+	env := os.Getenv("PRVT_STORE")
+	c.Flags().StringVarP(flag, "store", "s", env, "connection string for the store")
+	if env == "" {
+		c.MarkFlagRequired("store")
+	}
 }

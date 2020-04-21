@@ -96,8 +96,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 	}
 
 	// Flags
-	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
-	c.MarkFlagRequired("store")
+	addStoreFlag(c, &flagStoreConnectionString)
 	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
 	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
 	c.Flags().BoolVarP(&flagVerbose, "verbose", "v", false, "show request log")
