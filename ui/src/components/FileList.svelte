@@ -2,12 +2,12 @@
     <i class="fa fa-spinner fa-spin fa-fw" aria-hidden="true"></i>
     Loading…
 {:then list}
-    {#if operationResult}
+    {#if $operationResult}
         <OperationResult
-            title={operationResult.title}
-            message={operationResult.message}
-            list={operationResult.list}
-            on:close={() => operationResult = null}
+            title={$operationResult.title}
+            message={$operationResult.message}
+            list={$operationResult.list}
+            on:close={() => $operationResult = null}
         />
     {/if}
     <ul>
@@ -48,28 +48,20 @@
 import OperationResult from './OperationResult.svelte'
 import ListItem from './ListItem.svelte'
 
+// Stores
+import {operationResult} from '../stores'
+
 // Props for the view
 // Path is the path to list
 export let path = ''
-
-// Operation result object
-let operationResult = null
 
 // "Level up" link
 let levelUp = null
 
 // Promise requesting the list of files
 let requesting
-$: {
-    // Clean the path
-    path = path || ''
-    if (path.charAt(0) == '/') {
-        path = path.slice(1)
-    }
-    if (path.charAt(path.length) == '/') {
-        path = path.slice(0, -1)
-    }
 
+$: {
     // If the path isn't empty, we can go one level up
     levelUp = null
     if (path != '') {
@@ -79,9 +71,14 @@ $: {
 
     // Request the tree
     requesting = requestTree(path)
-    
-    // Reset operation result object
-    operationResult = null
+
+    // Reset operation result object unless this is the first time it's shown
+    if ($operationResult && !$operationResult.shown) {
+        $operationResult.shown = true
+    }
+    else {
+        $operationResult = null
+    }
 }
 
 function requestTree(reqPath) {
@@ -144,7 +141,7 @@ function deleteTree(element, isDir) {
                 throw Error('Invalid response')
             }
 
-            operationResult = {
+            $operationResult = {
                 title: 'Deleted',
                 message: isDir ? 'The folder "/' + reqPath + '" has been deleted.' : 'The file "/' + reqPath + '" has been deleted.',
                 list

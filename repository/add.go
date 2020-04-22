@@ -122,7 +122,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	exists, err := utils.PathExists(path)
 	if err != nil {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusInternalError,
 			Err:    err,
 		}
@@ -130,7 +130,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	}
 	if !exists {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusUserError,
 			Err:    errors.New("target does not exist"),
 		}
@@ -140,7 +140,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	// Check if we should ignore this path
 	if utils.IsIgnoredFile(path) {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusIgnored,
 		}
 		return
@@ -150,7 +150,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	isFile, err := utils.IsRegularFile(path)
 	if err != nil {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusInternalError,
 			Err:    err,
 		}
@@ -170,7 +170,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 		f, err := os.Open(path)
 		if err != nil {
 			res <- PathResultMessage{
-				Path:   path,
+				Path:   destinationFolder + target,
 				Status: RepositoryStatusInternalError,
 				Err:    err,
 			}
@@ -181,7 +181,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 		list, err := f.Readdir(-1)
 		if err != nil {
 			res <- PathResultMessage{
-				Path:   path,
+				Path:   destinationFolder + target,
 				Status: RepositoryStatusInternalError,
 				Err:    err,
 			}

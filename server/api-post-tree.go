@@ -142,7 +142,7 @@ func (s *Server) addUploadedFile(uploadFile *multipart.FileHeader, destination s
 	in, err := uploadFile.Open()
 	if err != nil {
 		res <- repository.PathResultMessage{
-			Path:   filename,
+			Path:   destination + filename,
 			Status: repository.RepositoryStatusInternalError,
 			Err:    err,
 		}
@@ -152,7 +152,7 @@ func (s *Server) addUploadedFile(uploadFile *multipart.FileHeader, destination s
 	// Add the file
 	result, err := s.Repo.AddStream(in, filename, destination, mime, size)
 	res <- repository.PathResultMessage{
-		Path:   filename,
+		Path:   destination + filename,
 		Status: result,
 		Err:    err,
 	}

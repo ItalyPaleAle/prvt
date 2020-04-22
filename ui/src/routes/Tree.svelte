@@ -1,13 +1,21 @@
-
-<h1 class="font-sans font-bold break-normal text-gray-700 px-2 text-xl mt-12 lg:mt-0 md:text-2xl">/{path}</h1>
-<hr class="bg-gray-300 my-5">
+<PageTitle title="{'/' + path}">
+  <a class="py-2 px-4 bg-white shadow text-gray-700" href="{'#/add/' + path}">
+    <i class="fa fa-cloud-upload" aria-hidden="true" title="Add a file"></i>
+    <span class="sr-only">Add a file</span>
+  </a>
+</PageTitle>
 <FileList path={path} />
 
 <script>
+import PageTitle from '../components/PageTitle.svelte'
 import FileList from '../components/FileList.svelte'
+
+import {cleanPath} from '../utils'
 
 // Props for this view
 export let params = {}
 let path = ''
-$: path = decodeURIComponent(params && params.wild || '')
+
+// Clean the path
+$: path = cleanPath(params && params.wild)
 </script>
