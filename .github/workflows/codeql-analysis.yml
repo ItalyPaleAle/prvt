@@ -1,0 +1,111 @@
+name: "Code scanning - CodeQL"
+
+on:
+  push:
+  schedule:
+    - cron: '0 15 * * 4'
+
+jobs:
+  CodeQL-Build:
+
+    strategy:
+      fail-fast: false
+
+    # CodeQL runs on ubuntu-latest and windows-latest
+    runs-on: ubuntu-18.04
+
+    steps:
+    #Checkout repo
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      # Override language selection by uncommenting this and choosing your languages
+      with:
+        languages: go, javascript
+
+    # Set variables
+    - name: Set variables
+      run: |
+        # Trim the first 10 characters, which are "refs/tags/"
+        BUILD_ID="${GITHUB_REF:10}"
+        # Just like BUILD_ID, but without the "v" at the beginning
+        BUILD_VERSION="${GITHUB_REF:11}"
+        BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%S')
+        COMMIT_HASH=$(echo $GITHUB_SHA | head -c 7)
+        echo ::set-env name=BUILD_ID::$BUILD_ID
+        echo ::set-env name=BUILD_VERSION::$BUILD_VERSION
+        echo ::set-env name=BUILD_TIME::$BUILD_TIME
+        echo ::set-env name=COMMIT_HASH::$COMMIT_HASH
+
+    # Build web UI
+    - name: Build web UI
+      run: |
+        # Build using Docker
+        docker run \
+          --rm \
+          -v "$PWD"/ui:/usr/src/myapp \
+          -w /usr/src/myapp \
+          ${{env.NODE_BUILDER_IMAGE}} \
+            sh -c '
+              set -e
+
+              echo -e "###\nInstalling npm dependencies\n"
+              npm ci
+
+              echo -e "\n###\nBuilding UI\n"
+              APP_VERSION="${{env.BUILD_VERSION}}" npm run build
+              '
+        echo -e "\n###\nCompilation done\n"
+        ls -al ui/dist
+
+    # Build app
+    - name: Build app
+      run: |
+        mkdir -p .bin
+        # Build using Docker
+        docker run \
+          --rm \
+          -v "$PWD":/usr/src/myapp \
+          -w /usr/src/myapp \
+          ${{env.GO_BUILDER_IMAGE}} \
+            sh -c '
+              set -e
+
+              echo -e "###\nInstall the zip utility\n"
+              apk add zip
+
+              echo -e "\n###\nFetching packr2\n"
+              mkdir -p .packr
+              wget -O - https://github.com/gobuffalo/packr/releases/download/v${{env.PACKR_VERSION}}/packr_${{env.PACKR_VERSION}}_linux_amd64.tar.gz | tar xvz -C .packr
+              chmod +x .packr/packr2
+
+              echo -e "\n###\nRunning packr2\n"
+              .packr/packr2
+
+              echo -e "\n###\nFetching modules\n"
+              GO111MODULE=on \
+                go get
+
+              echo -e "\n###\nBuilding linux/amd64\n"
+              # Disable CGO so the binary is fully static
+              mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
+              CGO_ENABLED=0 \
+              GOOS=linux \
+              GOARCH=amd64 \
+              GO111MODULE=on \
+                go build \
+                  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                  -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64/prvt
+              cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
+              cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
+              (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-amd64)
+              '
+        echo -e "\n###\nCompilation done\n"
+        ls -al .bin
+
+    # Perform CodeQL Analysis
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
