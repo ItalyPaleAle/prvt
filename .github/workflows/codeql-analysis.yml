@@ -4,6 +4,10 @@ on:
   push:
   schedule:
     - cron: '0 15 * * 4'
+env:
+  GO_BUILDER_IMAGE: 'golang:1.14-alpine'
+  NODE_BUILDER_IMAGE: 'node:12-alpine'
+  PACKR_VERSION: 2.7.1
 
 jobs:
   CodeQL-Build:
