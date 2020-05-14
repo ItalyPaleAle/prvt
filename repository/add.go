@@ -167,6 +167,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 		}
 	} else {
 		// Recursively read all the elements in the directory
+		// Do not defer the call to Close, or it will be closed at the end of the function, after the recursion
 		f, err := os.Open(path)
 		if err != nil {
 			res <- PathResultMessage{
@@ -176,9 +177,9 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 			}
 			return
 		}
-		defer f.Close()
 
 		list, err := f.Readdir(-1)
+		f.Close() // Close here
 		if err != nil {
 			res <- PathResultMessage{
 				Path:   destinationFolder + target,
