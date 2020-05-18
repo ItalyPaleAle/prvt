@@ -1,11 +1,10 @@
 <PageTitle title="Add" />
 
-<h2 class="font-bold break-normal text-gray-700 px-2 text-lg sm:text-xl mb-4">Destination folder</h2>
-<div class="w-full max-w-md bg-white shadow p-4 ml-6 mb-6">
+<div class="w-full max-w-md bg-white shadow p-4 ml-2 mb-6">
   <div class="sm:flex sm:items-center">
     <div class="sm:w-1/3">
       <label class="block text-gray-700 sm:text-right mb-1 sm:mb-0 pr-4" for="destination">
-        Folder
+        Destination folder
       </label>
     </div>
     <div class="sm:w-2/3">
@@ -15,7 +14,7 @@
   <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto">Type the folder where the file should be uploaded. If it doesn't exist, it will be created.</p>
 </div>
 
-<div class="w-full max-w-md bg-white shadow p-4 ml-6 mb-6">
+<div class="w-full max-w-md bg-white shadow p-4 ml-2 mb-6">
   <ul class="flex border-b border-gray-300 mb-4">
     <li class="mr-3 cursor-pointer">
       <span class={addType == 'upload' ? activeTabStyle : idleTabStyle} on:click={() => addType = 'upload'}>Upload file</span>
@@ -87,7 +86,7 @@ let addType = 'upload'
 
 // Classes for the active and idle tab
 let activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-gray-200 bg-gray-200 text-orange-500'
-let idleTabStyle = 'inline-block py-2 px-4 border rounded-t border-white text-orange-500 hover:border-gray-100 hover:bg-gray-100'
+let idleTabStyle = 'inline-block py-2 px-4 border rounded-t border-white text-gray-500 hover:border-gray-100 hover:bg-gray-100'
 
 // Clean the path
 $: path = cleanPath(params && params.wild)

@@ -1,12 +1,16 @@
-<li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
+<li class="flex flex-row my-1 leading-normal rounded shadow bg-white w-full max-w-full">
     <a class="flex-grow p-3" href="{link}">
         <span class="flex flex-row">
-            <span class="flex-grow">
-                <i class="fa {icon || ''} fa-fw" aria-hidden="true"></i> {label}
+            <span class="flex-grow-0">
+                <i class="fa {icon || ''} fa-fw" aria-hidden="true"></i>
+            </span>
+            <span class="flex-grow truncate w-0">
+                {label}
             </span>
             {#if date}
-                <span class="flex-grow-0 text-gray-500 text-xs" title="{format(date, 'PPpp')}">
-                    {formatDistanceToNow(date)} ago
+                <span class="flex-grow-0 text-gray-500 text-xs ml-2" title="{format(date, 'PPpp')}">
+                    <!-- Replace with non-breking spaces -->
+                    {formatDistanceToNow(date).replace(' ', ' ')} ago
                 </span>
             {/if}
         </span>
