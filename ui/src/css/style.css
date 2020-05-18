@@ -6,6 +6,10 @@
 /* Fork-Awesome */
 @import "fork-awesome/css/fork-awesome.css";
 
+/* Themes */
+@import "./theme-blue.css";
+@import "./theme-orange.css";
+
 /* Remove outline from links */
 a {
     outline: 0;

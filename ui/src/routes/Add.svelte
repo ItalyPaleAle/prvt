@@ -8,7 +8,7 @@
       </label>
     </div>
     <div class="sm:w-2/3">
-      <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-orange-500" id="destination" type="text" bind:value={destination} />
+      <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-accent-200" id="destination" type="text" bind:value={destination} />
     </div>
   </div>
   <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto">Type the folder where the file should be uploaded. If it doesn't exist, it will be created.</p>
@@ -31,13 +31,13 @@
         </label>
       </div>
       <div class="sm:w-2/3">
-        <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-orange-500" id="uploadfile" type="file" />
+        <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-accent-200" id="uploadfile" type="file" />
       </div>
     </div>
     <div class="sm:flex sm:items-center">
       <div class="sm:w-1/3"></div>
       <div class="sm:w-2/3">
-        <button class="shadow bg-orange-500 hover:bg-orange-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" type="button" on:click={uploadHandler}>
+        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" type="button" on:click={uploadHandler}>
           Upload
         </button>
       </div>
@@ -50,14 +50,14 @@
         </label>
       </div>
       <div class="sm:w-2/3">
-        <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-orange-500" id="localpath" type="text" />
+        <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-accent-200" id="localpath" type="text" />
       </div>
     </div>
     <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto  mb-6">Type the path to the file or folder in your local disk.</p>
     <div class="sm:flex sm:items-center">
       <div class="sm:w-1/3"></div>
       <div class="sm:w-2/3">
-        <button class="shadow bg-orange-500 hover:bg-orange-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" type="button" on:click={addLocalHandler}>
+        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" type="button" on:click={addLocalHandler}>
           Add
         </button>
       </div>
@@ -85,7 +85,7 @@ let destination = ''
 let addType = 'upload'
 
 // Classes for the active and idle tab
-let activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-gray-200 bg-gray-200 text-orange-500'
+let activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-gray-200 bg-gray-200 text-accent-200'
 let idleTabStyle = 'inline-block py-2 px-4 border rounded-t border-white text-gray-500 hover:border-gray-100 hover:bg-gray-100'
 
 // Clean the path
