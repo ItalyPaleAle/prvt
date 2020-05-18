@@ -1,5 +1,11 @@
 <PageTitle title="Add" />
 
+{#if error}
+  <div class="ml-2 w-full max-w-md">
+    <ErrorBox message={error} on:close={() => error = null} />
+  </div>
+{/if}
+
 <div class="w-full max-w-md bg-white shadow p-4 ml-2 mb-6">
   <div class="sm:flex sm:items-center">
     <div class="sm:w-1/3">
@@ -68,6 +74,7 @@
 <script>
 // Components
 import PageTitle from '../components/PageTitle.svelte'
+import ErrorBox from '../components/ErrorBox.svelte'
 
 // Libraries
 import {push} from 'svelte-spa-router'
@@ -82,6 +89,7 @@ import {operationResult} from '../stores'
 export let params = {}
 let path = ''
 let destination = ''
+let error = null
 let addType = 'upload'
 
 // Classes for the active and idle tab
@@ -123,12 +131,17 @@ function requestHandler(body) {
             }
             push('/tree' + dest)
         })
+        .catch(e => error = e)
 }
 
 // Handler for file upload
 function uploadHandler() {
     // Request body
     const file = document.getElementById('uploadfile')
+    if (!file || !file.files || !file.files.length) {
+        error = 'No file selected'
+        return
+    }
     const body = new FormData()
     body.set('file', file.files[0])
 
@@ -140,6 +153,10 @@ function uploadHandler() {
 function addLocalHandler() {
     // Request body
     const path = document.getElementById('localpath')
+    if (!path || !path.value) {
+        error = 'Value for path is empty'
+        return
+    }
     const body = new FormData()
     body.set('localpath', path.value)
 
