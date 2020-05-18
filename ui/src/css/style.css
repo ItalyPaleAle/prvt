@@ -5,3 +5,8 @@
 
 /* Fork-Awesome */
 @import "fork-awesome/css/fork-awesome.css";
+
+/* Remove outline from links */
+a {
+    outline: 0;
+}
