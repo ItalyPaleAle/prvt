@@ -45,7 +45,6 @@ export default {
     },
 
     set: (val) => {
-        console.log(val)
         setTheme(val)
         for (let i = 0; i < subscriptions.length; i++) {
             if (subscriptions[i]) {
