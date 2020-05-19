@@ -6,22 +6,22 @@
   </div>
 {/if}
 
-<div class="w-full max-w-md bg-white shadow p-4 ml-2 mb-6">
+<div class="w-full max-w-md bg-shade-neutral shadow p-4 ml-2 mb-6">
   <div class="sm:flex sm:items-center">
     <div class="sm:w-1/3">
-      <label class="block text-gray-700 sm:text-right mb-1 sm:mb-0 pr-4" for="destination">
+      <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="destination">
         Destination folder
       </label>
     </div>
     <div class="sm:w-2/3">
-      <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-accent-200" id="destination" type="text" bind:value={destination} />
+      <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="destination" type="text" bind:value={destination} />
     </div>
   </div>
   <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto">Type the folder where the file should be uploaded. If it doesn't exist, it will be created.</p>
 </div>
 
-<div class="w-full max-w-md bg-white shadow p-4 ml-2 mb-6">
-  <ul class="flex border-b border-gray-300 mb-4">
+<div class="w-full max-w-md bg-shade-neutral shadow p-4 ml-2 mb-6">
+  <ul class="flex border-b border-shade-300 mb-4">
     <li class="mr-3 cursor-pointer">
       <span class={addType == 'upload' ? activeTabStyle : idleTabStyle} on:click={() => addType = 'upload'}>Upload file</span>
     </li>
@@ -32,18 +32,18 @@
   {#if addType == 'upload'}
     <div class="sm:flex sm:items-center mb-6">
       <div class="sm:w-1/3">
-        <label class="block text-gray-700 sm:text-right mb-1 sm:mb-0 pr-4" for="uploadfile">
+        <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="uploadfile">
           File
         </label>
       </div>
       <div class="sm:w-2/3">
-        <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-accent-200" id="uploadfile" type="file" />
+        <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="uploadfile" type="file" />
       </div>
     </div>
     <div class="sm:flex sm:items-center">
       <div class="sm:w-1/3"></div>
       <div class="sm:w-2/3">
-        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" type="button" on:click={uploadHandler}>
+        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded" type="button" on:click={uploadHandler}>
           Upload
         </button>
       </div>
@@ -51,19 +51,19 @@
   {:else if addType == 'local'}
     <div class="sm:flex sm:items-center">
       <div class="sm:w-1/3">
-        <label class="block text-gray-700 sm:text-right mb-1 sm:mb-0 pr-4" for="localpath">
+        <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="localpath">
           Path
         </label>
       </div>
       <div class="sm:w-2/3">
-        <input class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-accent-200" id="localpath" type="text" />
+        <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="localpath" type="text" />
       </div>
     </div>
     <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto  mb-6">Type the path to the file or folder in your local disk.</p>
     <div class="sm:flex sm:items-center">
       <div class="sm:w-1/3"></div>
       <div class="sm:w-2/3">
-        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" type="button" on:click={addLocalHandler}>
+        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded" type="button" on:click={addLocalHandler}>
           Add
         </button>
       </div>
@@ -93,8 +93,8 @@ let error = null
 let addType = 'upload'
 
 // Classes for the active and idle tab
-let activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-gray-200 bg-gray-200 text-accent-200'
-let idleTabStyle = 'inline-block py-2 px-4 border rounded-t border-white text-gray-500 hover:border-gray-100 hover:bg-gray-100'
+let activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-shade-200 bg-shade-200 text-text-200'
+let idleTabStyle = 'inline-block py-2 px-4 border rounded-t border-shade-neutral text-text-100 hover:border-shade-100 hover:bg-shade-100'
 
 // Clean the path
 $: path = cleanPath(params && params.wild)

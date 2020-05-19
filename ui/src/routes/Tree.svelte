@@ -1,7 +1,7 @@
 <PageTitle title="{'/' + path}">
-  <a class="py-2 px-4 bg-white shadow text-gray-700 hover:bg-gray-100" href="{'#/add/' + path}">
-    <i class="fa fa-cloud-upload" aria-hidden="true" title="Add a file"></i>
-    <span class="sr-only">Add a file</span>
+  <a class="py-2 px-4 bg-shade-neutral shadow text-accent-200 hover:bg-shade-100" href="{'#/add/' + path}">
+    <i class="fa fa-cloud-upload" aria-hidden="true" title="Add files"></i>
+    <span class="sr-only">Add files</span>
   </a>
 </PageTitle>
 <FileList path={path} />

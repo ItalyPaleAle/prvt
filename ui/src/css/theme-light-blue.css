@@ -1,0 +1,24 @@
+.theme-light-blue {
+    --color-shade-neutral: #ffffff;
+    --color-shade-base: #f7fafc;
+    --color-shade-100: #f7fafc;
+    --color-shade-200: #edf2f7;
+    --color-shade-300: #e2e8f0;
+
+    --color-text-base: #1a202c;
+    --color-text-100: #a0aec0;
+    --color-text-200: #718096;
+    --color-text-300: #4a5568;
+
+    --color-accent-100: #63b3ed;
+    --color-accent-200: #4299e1;
+    --color-accent-300: #3182ce;
+
+    --color-error-100: #fff5f5;
+    --color-error-200: #f56565;
+    --color-error-300: #c53030;
+
+    --color-success-100: #f0fff4;
+    --color-success-200: #48bb78;
+    --color-success-300: #2f855a;
+}
