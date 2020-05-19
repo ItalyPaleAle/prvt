@@ -9,7 +9,7 @@
             </span>
             {#if date}
                 <span class="flex-grow-0 text-text-100 text-xs ml-2" title="{format(date, 'PPpp')}">
-                    <!-- Replace with non-breking spaces -->
+                    <!-- Replace spaces with non-breking spaces -->
                     {formatDistanceToNow(date).replace(' ', ' ')} ago
                 </span>
             {/if}
