@@ -1,8 +1,10 @@
 // Default theme
-const defaultTheme = 'light-blue'
+const defaultTheme = 'auto-blue'
 
 // List of supported themes
 export const themes = [
+    'auto-blue',
+    'auto-orange',
     'dark-blue',
     'dark-orange',
     'midnight',

@@ -24,8 +24,8 @@
         50% 100%;
     background-repeat: no-repeat;
     background-image:
-        linear-gradient(360deg, var(--picker-color-left) 100%, lightgrey 100%),
-        linear-gradient(360deg, var(--picker-color-right) 100%, lightgrey 100%);
+        var(--picker-gradient-left),
+        var(--picker-gradient-right);
     background-position: left top, right top;
 }
 </style>

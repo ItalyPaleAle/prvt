@@ -7,9 +7,11 @@
 @import "fork-awesome/css/fork-awesome.css";
 
 /* Themes */
+@import "./theme-auto-blue.css";
+@import "./theme-auto-orange.css";
 @import "./theme-dark-blue.css";
-@import "./theme-midnight.css";
 @import "./theme-dark-orange.css";
+@import "./theme-midnight.css";
 @import "./theme-light-blue.css";
 @import "./theme-light-orange.css";
 

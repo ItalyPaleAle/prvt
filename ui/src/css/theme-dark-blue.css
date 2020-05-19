@@ -22,6 +22,6 @@
     --color-success-200: #22543d;
     --color-success-300: #22543d;
 
-    --picker-color-right: #2b6cb0;
-    --picker-color-left: #2d3748;
+    --picker-gradient-right: linear-gradient(360deg, #3182ce 100%, lightgrey 100%);
+    --picker-gradient-left: linear-gradient(360deg, #2d3748 100%, lightgrey 100%);
 }
