@@ -43,7 +43,7 @@
     <div class="sm:flex sm:items-center">
       <div class="sm:w-1/3"></div>
       <div class="sm:w-2/3">
-        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded" type="button" on:click={uploadHandler}>
+        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled={running} on:click={uploadHandler}>
           Upload
         </button>
       </div>
@@ -63,7 +63,7 @@
     <div class="sm:flex sm:items-center">
       <div class="sm:w-1/3"></div>
       <div class="sm:w-2/3">
-        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded" type="button" on:click={addLocalHandler}>
+        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled={running} on:click={addLocalHandler}>
           Add
         </button>
       </div>
@@ -91,6 +91,7 @@ let path = ''
 let destination = ''
 let error = null
 let addType = 'upload'
+let running = false
 
 // Classes for the active and idle tab
 let activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-shade-200 bg-shade-200 text-text-200'
@@ -104,11 +105,19 @@ $: destination = '/' + path
 
 // Handler for all requests
 function requestHandler(body) {
+    // Only one request at a time
+    if (running) {
+        return
+    }
+
     // Ensure the destination starts with /
     let dest = destination
     if (dest.charAt(0) != '/') {
         dest = '/' + dest
     }
+
+    error = null
+    running = true
 
     // Upload the file
     return fetch('/api/tree' + encodeURIComponent(dest), {
@@ -123,7 +132,9 @@ function requestHandler(body) {
             if (!list || !Array.isArray(list) || !list.length) {
                 throw Error('Invalid response')
             }
-            
+
+            running = false
+
             $operationResult = {
                 title: 'Added',
                 message: 'File(s) have been added',
@@ -131,7 +142,10 @@ function requestHandler(body) {
             }
             push('/tree' + dest)
         })
-        .catch(e => error = e)
+        .catch((e) => {
+            running = false
+            error = e
+        })
 }
 
 // Handler for file upload

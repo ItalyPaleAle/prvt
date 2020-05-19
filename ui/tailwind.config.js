@@ -26,6 +26,8 @@ module.exports = {
             center: true,
         }
     },
-    variants: {},
+    variants: {
+        opacity: ['responsive', 'hover', 'focus', 'disabled'],
+    },
     plugins: []
 }
