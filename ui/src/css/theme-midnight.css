@@ -1,4 +1,4 @@
-.theme-dark-midnight {
+.theme-midnight {
     --color-shade-neutral: #2a4365;
     --color-shade-base: #2c5282;
     --color-shade-100: #2b6cb0;
@@ -21,4 +21,7 @@
     --color-success-100: #4fd1c5;
     --color-success-200: #285e61;
     --color-success-300: #285e61;
+
+    --picker-color-right: #975a16;
+    --picker-color-left: #2c5282;
 }
