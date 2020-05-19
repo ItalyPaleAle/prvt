@@ -56,7 +56,7 @@ type InfoFile struct {
 func New() (*InfoFile, error) {
 	info := &InfoFile{
 		App:      "prvt",
-		Version:  2,
+		Version:  3,
 		DataPath: "data",
 	}
 	return info, nil
@@ -178,8 +178,8 @@ func (info *InfoFile) Validate() error {
 				return errors.New("invalid confirmation hash in info file")
 			}
 		}
-	} else if info.Version == 2 {
-		// Parse version 2
+	} else if info.Version == 2 || info.Version == 3 {
+		// Parse version 2 and 3
 		if len(info.Keys) == 0 {
 			return errors.New("repository does not have any key")
 		}
@@ -198,7 +198,7 @@ func (info *InfoFile) Validate() error {
 		}
 	} else {
 		// Unsupported version
-		return errors.New("unsupported info file version")
+		return errors.New("unsupported info file version – you might be trying to access a repository created with a newer version of prvt")
 	}
 
 	return nil

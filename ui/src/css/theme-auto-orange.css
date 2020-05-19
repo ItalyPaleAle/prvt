@@ -1,0 +1,11 @@
+.theme-auto-orange {
+    @apply theme-light-orange;
+    
+    --picker-gradient-left: linear-gradient(360deg, #edf2f7 20%, #4a5568 80%) !important;
+}
+
+@media(prefers-color-scheme: dark) {
+    .theme-auto-orange {
+        @apply theme-dark-orange;
+    }
+}

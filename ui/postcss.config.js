@@ -12,6 +12,7 @@ module.exports = {
                 './dist/index.html',
                 './src/**/*.svelte',
                 './src/**/*.html',
+                './src/**/*.js',
             ],
 
             // Include any special characters you're using in this regular expression

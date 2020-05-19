@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
@@ -64,8 +63,7 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			}
 
 			// Require info files version 2 or higher
-			if info.Version < 2 {
-				utils.ExitWithError(utils.ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`))
+			if !requireInfoFileVersion(info, 2, flagStoreConnectionString) {
 				return
 			}
 
@@ -110,8 +108,7 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 	}
 
 	// Flags
-	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
-	c.MarkFlagRequired("store")
+	addStoreFlag(c, &flagStoreConnectionString)
 	c.Flags().StringVarP(&flagGPGKey, "gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
 
 	// Add the command

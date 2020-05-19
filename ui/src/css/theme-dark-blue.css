@@ -1,0 +1,27 @@
+.theme-dark-blue {
+    --color-shade-neutral: #1a202c;
+    --color-shade-base: #2d3748;
+    --color-shade-100: #4a5568;
+    --color-shade-200: #718096;
+    --color-shade-300: #a0aeC0;
+
+    --color-text-base: #f7fafc;
+    --color-text-100: #edf2f7;
+    --color-text-200: #e2e8f0;
+    --color-text-300: #cbd5e0;
+
+    --color-accent-100: #2b6cb0;
+    --color-accent-200: #3182ce;
+    --color-accent-300: #4299e1; 
+
+    --color-error-100: #f56565;
+    --color-error-200: #742a2a;
+    --color-error-300: #742a2a;
+
+    --color-success-100: #48bb78;
+    --color-success-200: #22543d;
+    --color-success-300: #22543d;
+
+    --picker-gradient-right: linear-gradient(360deg, #3182ce 100%, lightgrey 100%);
+    --picker-gradient-left: linear-gradient(360deg, #2d3748 100%, lightgrey 100%);
+}

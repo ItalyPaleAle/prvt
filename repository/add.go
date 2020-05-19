@@ -20,19 +20,21 @@ package repository
 import (
 	"errors"
 	"io"
-	"mime"
 	"os"
 	"path/filepath"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
+
+	mime "github.com/cubewise-code/go-mime"
+	"github.com/gofrs/uuid"
 )
 
 // AddStream adds a document to the repository by reading it from a stream
 func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (int, error) {
 	// Generate a file id
-	fileId, err := index.GenerateFileId()
+	fileId, err := uuid.NewV4()
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
@@ -59,13 +61,13 @@ func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder,
 		ContentType: mimeType,
 		Size:        size,
 	}
-	_, err = repo.Store.Set(fileId, in, nil, metadata)
+	_, err = repo.Store.Set(fileId.String(), in, nil, metadata)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
 
 	// Add to the index
-	err = index.Instance.AddFile(sanitizedPath, fileId)
+	err = index.Instance.AddFile(sanitizedPath, fileId.Bytes(), mimeType)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
@@ -120,7 +122,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	exists, err := utils.PathExists(path)
 	if err != nil {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusInternalError,
 			Err:    err,
 		}
@@ -128,7 +130,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	}
 	if !exists {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusUserError,
 			Err:    errors.New("target does not exist"),
 		}
@@ -138,7 +140,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	// Check if we should ignore this path
 	if utils.IsIgnoredFile(path) {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusIgnored,
 		}
 		return
@@ -148,7 +150,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 	isFile, err := utils.IsRegularFile(path)
 	if err != nil {
 		res <- PathResultMessage{
-			Path:   path,
+			Path:   destinationFolder + target,
 			Status: RepositoryStatusInternalError,
 			Err:    err,
 		}
@@ -165,21 +167,22 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 		}
 	} else {
 		// Recursively read all the elements in the directory
+		// Do not defer the call to Close, or it will be closed at the end of the function, after the recursion
 		f, err := os.Open(path)
 		if err != nil {
 			res <- PathResultMessage{
-				Path:   path,
+				Path:   destinationFolder + target,
 				Status: RepositoryStatusInternalError,
 				Err:    err,
 			}
 			return
 		}
-		defer f.Close()
 
 		list, err := f.Readdir(-1)
+		f.Close() // Close here
 		if err != nil {
 			res <- PathResultMessage{
-				Path:   path,
+				Path:   destinationFolder + target,
 				Status: RepositoryStatusInternalError,
 				Err:    err,
 			}

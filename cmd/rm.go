@@ -69,6 +69,11 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 				return
 			}
 
+			// Require info files version 3 or higher before any operation that changes the store (which would update the index to the protobuf-based format)
+			if !requireInfoFileVersion(info, 3, flagStoreConnectionString) {
+				return
+			}
+
 			// Derive the master key
 			masterKey, _, errMessage, err := GetMasterKey(info)
 			if err != nil {
@@ -112,8 +117,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 	}
 
 	// Flags
-	c.Flags().StringVarP(&flagStoreConnectionString, "store", "s", "", "connection string for the store")
-	c.MarkFlagRequired("store")
+	addStoreFlag(c, &flagStoreConnectionString)
 
 	// Add the command
 	rootCmd.AddCommand(c)

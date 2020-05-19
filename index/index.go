@@ -19,7 +19,6 @@ package index
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"strings"
@@ -27,28 +26,23 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
+
+	"github.com/gofrs/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // How long to cache files for, in seconds
 const cacheDuration = 300
 
-// IndexElements represents a value in the index
-type IndexElement struct {
-	Path string `json:"p"`
-	Name string `json:"n"`
-}
-
-// CachedIndex contains the cached values for the index files
-type IndexFile struct {
-	Version  int            `json:"v"`
-	Elements []IndexElement `json:"e"`
-}
-
 // FolderList contains the result of the ListFolder method
 type FolderList struct {
-	Path      string `json:"path"`
-	Directory bool   `json:"isDir,omitempty"`
-	FileId    string `json:"fileId,omitempty"`
+	Path      string     `json:"path"`
+	Directory bool       `json:"isDir,omitempty"`
+	FileId    string     `json:"fileId,omitempty"`
+	Date      *time.Time `json:"date,omitempty"`
+	MimeType  string     `json:"mimeType,omitempty"`
 }
 
 // Index manages the index for all files and folders
@@ -87,7 +81,13 @@ func (i *Index) Refresh(force bool) error {
 	now := time.Now()
 	var data []byte
 	buf := &bytes.Buffer{}
-	found, tag, err := i.store.Get("_index", buf, nil)
+	isJSON := false
+	found, tag, err := i.store.Get("_index", buf, func(metadata *crypto.Metadata) {
+		// Check if we're decoding a legacy JSON file
+		if metadata.ContentType == "application/json" {
+			isJSON = true
+		}
+	})
 	if found {
 		// Check error here because otherwise we might have an error also if the index wasn't found
 		if err != nil {
@@ -106,16 +106,37 @@ func (i *Index) Refresh(force bool) error {
 	// Empty index
 	if len(data) == 0 {
 		i.cache = &IndexFile{
-			Version:  1,
-			Elements: []IndexElement{},
+			Version:  2,
+			Elements: make([]*IndexElement, 0),
 		}
 		i.cacheTime = now
 		return nil
 	}
 	i.cache = &IndexFile{}
-	err = json.Unmarshal(data, i.cache)
-	if err != nil {
-		return err
+
+	// Parse a legacy JSON file or a new protobuf-encoded one
+	if isJSON {
+		err = protojson.Unmarshal(data, i.cache)
+		if err != nil {
+			return err
+		}
+
+		// Need to iterate through all Elements and convert the Name from the UUID represented as string to bytes
+		for _, el := range i.cache.Elements {
+			if el.FileIdString != "" && len(el.FileId) == 0 {
+				u, err := uuid.FromString(el.FileIdString)
+				if err != nil {
+					return err
+				}
+				el.FileIdString = ""
+				el.FileId = u.Bytes()
+			}
+		}
+	} else {
+		err = proto.Unmarshal(data, i.cache)
+		if err != nil {
+			return err
+		}
 	}
 	i.cacheTime = now
 	i.cacheTag = tag
@@ -127,16 +148,16 @@ func (i *Index) Refresh(force bool) error {
 func (i *Index) save(obj *IndexFile) error {
 	now := time.Now()
 
-	// Represent the data as JSON
-	data, err := json.Marshal(obj)
+	// Encode the data as a protocol buffer message
+	data, err := proto.Marshal(obj)
 	if err != nil {
 		return err
 	}
 
 	// Encrypt and save the updated index, if the tag is the same
 	metadata := &crypto.Metadata{
-		Name:        "index.json",
-		ContentType: "application/json",
+		Name:        "index",
+		ContentType: "application/protobuf",
 		Size:        int64(len(data)),
 	}
 	buf := bytes.NewBuffer(data)
@@ -154,7 +175,7 @@ func (i *Index) save(obj *IndexFile) error {
 }
 
 // AddFile adds a file to the index
-func (i *Index) AddFile(path string, fileId string) error {
+func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	// path must be at least 2 characters (with / being one)
 	if len(path) < 2 {
 		return errors.New("path name is too short")
@@ -183,13 +204,17 @@ func (i *Index) AddFile(path string, fileId string) error {
 	}
 
 	// Add the file to the index and return the id
-	fileEl := IndexElement{
-		Path: path,
-		Name: fileId,
+	fileEl := &IndexElement{
+		Path:   path,
+		FileId: fileId,
+		Date: &timestamppb.Timestamp{
+			Seconds: time.Now().Unix(),
+		},
+		MimeType: mimeType,
 	}
 	elements := append(i.cache.Elements, fileEl)
 	updated := &IndexFile{
-		Version:  1,
+		Version:  2,
 		Elements: elements,
 	}
 	if err := i.save(updated); err != nil {
@@ -256,7 +281,11 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 		// Need to remove
 		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
 			// Add to the result
-			objectsRemoved = append(objectsRemoved, el.Name)
+			fileId, err := uuid.FromBytes(el.FileId)
+			if err != nil {
+				return nil, nil, err
+			}
+			objectsRemoved = append(objectsRemoved, fileId.String())
 			pathsRemoved = append(pathsRemoved, el.Path)
 		} else {
 			// Maintain in the list
@@ -304,11 +333,26 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 				// Means we have a file
 				oneLevel = el.Path[len(path):]
 
+				// File ID
+				fileId, err := uuid.FromBytes(el.FileId)
+				if err != nil {
+					return nil, err
+				}
+
+				// Date
+				var date *time.Time
+				if el.Date != nil && el.Date.Seconds > 0 {
+					o := time.Unix(el.Date.Seconds, 0).UTC()
+					date = &o
+				}
+
 				// Since we have a file, we're sure there aren't more with the same path
 				result = append(result, FolderList{
 					Path:      oneLevel,
 					Directory: false,
-					FileId:    el.Name,
+					FileId:    fileId.String(),
+					Date:      date,
+					MimeType:  el.MimeType,
 				})
 			} else {
 				// We have a directory

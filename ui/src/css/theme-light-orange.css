@@ -1,0 +1,27 @@
+.theme-light-orange {
+    --color-shade-neutral: #ffffff;
+    --color-shade-base: #f7fafc;
+    --color-shade-100: #f7fafc;
+    --color-shade-200: #edf2f7;
+    --color-shade-300: #e2e8f0;
+
+    --color-text-base: #1a202c;
+    --color-text-100: #a0aec0;
+    --color-text-200: #718096;
+    --color-text-300: #4a5568;
+
+    --color-accent-100: #f6ad55;
+    --color-accent-200: #ed8936;
+    --color-accent-300: #dd6b20;
+
+    --color-error-100: #fff5f5;
+    --color-error-200: #f56565;
+    --color-error-300: #c53030;
+
+    --color-success-100: #f0fff4;
+    --color-success-200: #48bb78;
+    --color-success-300: #2f855a;
+
+    --picker-gradient-right: linear-gradient(360deg, #dd6b20 100%, lightgrey 100%);
+    --picker-gradient-left: linear-gradient(360deg, #f7fafc 100%, lightgrey 100%);
+}

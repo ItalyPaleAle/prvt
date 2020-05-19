@@ -26,6 +26,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ItalyPaleAle/prvt/infofile"
+
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/repository"
 
@@ -34,9 +36,10 @@ import (
 )
 
 type Server struct {
-	Store   fs.Fs
-	Verbose bool
-	Repo    repository.Repository
+	Store    fs.Fs
+	Verbose  bool
+	Repo     repository.Repository
+	Infofile *infofile.InfoFile
 }
 
 func (s *Server) Start(address, port string) error {
@@ -58,8 +61,8 @@ func (s *Server) Start(address, port string) error {
 		// APIs
 		apis := router.Group("/api")
 		apis.GET("/tree/*path", s.GetTreeHandler)
-		apis.POST("/tree/*path", s.PostTreeHandler)
-		apis.DELETE("/tree/*path", s.DeleteTreeHandler)
+		apis.POST("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.PostTreeHandler)
+		apis.DELETE("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.DeleteTreeHandler)
 	}
 
 	// UI

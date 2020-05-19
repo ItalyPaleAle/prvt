@@ -5,3 +5,19 @@
 
 /* Fork-Awesome */
 @import "fork-awesome/css/fork-awesome.css";
+
+/* Themes */
+/*! purgecss start ignore */
+@import "./theme-auto-blue.css";
+@import "./theme-auto-orange.css";
+@import "./theme-dark-blue.css";
+@import "./theme-dark-orange.css";
+@import "./theme-midnight.css";
+@import "./theme-light-blue.css";
+@import "./theme-light-orange.css";
+/*! purgecss end ignore */
+
+/* Remove outline from links */
+a {
+    outline: 0;
+}

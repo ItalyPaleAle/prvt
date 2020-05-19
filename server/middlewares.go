@@ -15,28 +15,19 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package index
+package server
 
 import (
-	"strings"
+	"net/http"
 
-	"github.com/gofrs/uuid"
+	"github.com/gin-gonic/gin"
 )
 
-// Basename returns the path of a file
-func Basename(path string) string {
-	// The next line is never -1 (not found) since path must start with /
-	index := strings.LastIndex(path, "/")
-	folder := path[0:(index + 1)]
-
-	return folder
-}
-
-// GenerateFileId generates a new ID for a file
-func GenerateFileId() (string, error) {
-	fileIdUuid, err := uuid.NewV4()
-	if err != nil {
-		return "", err
+// Requires a minimum version of the info file to continue
+func (s *Server) MiddlewareRequireInfoFileVersion(version uint16) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		if s.Infofile.Version < version {
+			c.AbortWithStatusJSON(http.StatusMethodNotAllowed, map[string]string{"error": `This repository needs to be upgraded. Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`})
+		}
 	}
-	return fileIdUuid.String(), nil
 }

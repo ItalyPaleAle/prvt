@@ -2,12 +2,12 @@
     <i class="fa fa-spinner fa-spin fa-fw" aria-hidden="true"></i>
     Loading…
 {:then list}
-    {#if operationResult}
+    {#if $operationResult}
         <OperationResult
-            title={operationResult.title}
-            message={operationResult.message}
-            list={operationResult.list}
-            on:close={() => operationResult = null}
+            title={$operationResult.title}
+            message={$operationResult.message}
+            list={$operationResult.list}
+            on:close={() => $operationResult = null}
         />
     {/if}
     <ul>
@@ -24,16 +24,18 @@
                     label={el.path}
                     icon="fa-folder"
                     link="#/tree/{path ? path + '/' : ''}{el.path}"
-                    actions={[{label: 'Delete folder', event: 'delete', icon: 'fa-trash'}]}
-                    on:delete={deleteTree(el.path, true)}
+                    actions={actionsFolder}
+                    on:delete={() => deleteTree(el.path, true)}
                 />
             {:else if el.fileId}
                 <ListItem
                     label={el.path}
-                    icon="fa-file-o"
+                    icon="{fileTypeIcon(el.mimeType)}"
                     link="/file/{el.fileId}"
-                    actions={[{label: 'Delete file', event: 'delete', icon: 'fa-trash'}]}
-                    on:delete={deleteTree(el.path)}
+                    date={el.date ? new Date(el.date) : null}
+                    actions={actionsFile}
+                    on:delete={() => deleteTree(el.path)}
+                    on:download={() => downloadFile(el)}
                 />
             {/if}
         {/each}
@@ -43,32 +45,36 @@
 {/await}
 
 <script>
+// Utils
+import {fileTypeIcon} from '../utils'
+
 // Components
 import OperationResult from './OperationResult.svelte'
 import ListItem from './ListItem.svelte'
+
+// Stores
+import {operationResult} from '../stores'
 
 // Props for the view
 // Path is the path to list
 export let path = ''
 
-// Operation result object
-let operationResult = null
-
 // "Level up" link
 let levelUp = null
 
+// Actions presets
+const actionsFolder = [
+    {label: 'Delete folder', event: 'delete', icon: 'fa-trash'}
+]
+const actionsFile = [
+    {label: 'Download', event: 'download', icon: 'fa-download'},
+    {label: 'Delete file', event: 'delete', icon: 'fa-trash'}
+]
+
 // Promise requesting the list of files
 let requesting
-$: {
-    // Clean the path
-    path = path || ''
-    if (path.charAt(0) == '/') {
-        path = path.slice(1)
-    }
-    if (path.charAt(path.length) == '/') {
-        path = path.slice(0, -1)
-    }
 
+$: {
     // If the path isn't empty, we can go one level up
     levelUp = null
     if (path != '') {
@@ -78,9 +84,14 @@ $: {
 
     // Request the tree
     requesting = requestTree(path)
-    
-    // Reset operation result object
-    operationResult = null
+
+    // Reset operation result object unless this is the first time it's shown
+    if ($operationResult && !$operationResult.shown) {
+        $operationResult.shown = true
+    }
+    else {
+        $operationResult = null
+    }
 }
 
 function requestTree(reqPath) {
@@ -106,6 +117,10 @@ function requestTree(reqPath) {
         })
 }
 
+function downloadFile(element) {
+    location.href = '/file/' + element.fileId + '?dl=1'
+}
+
 function deleteTree(element, isDir) {
     const reqPath = (path ? path + '/' : '') + element
 
@@ -124,7 +139,16 @@ function deleteTree(element, isDir) {
         // Check the response
         .then((resp) => {
             if (resp.status != 200) {
-                throw Error('Invalid response status code')
+                return resp.json()
+                    .catch(() => {
+                        throw Error('Invalid response status code')
+                    })
+                    .then((body) => {
+                        if (body && body.error) {
+                            throw Error(body.error)
+                        }
+                        throw Error('Invalid response status code')
+                    })
             }
 
             return resp.json()
@@ -134,7 +158,7 @@ function deleteTree(element, isDir) {
                 throw Error('Invalid response')
             }
 
-            operationResult = {
+            $operationResult = {
                 title: 'Deleted',
                 message: isDir ? 'The folder "/' + reqPath + '" has been deleted.' : 'The file "/' + reqPath + '" has been deleted.',
                 list

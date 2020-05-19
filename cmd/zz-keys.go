@@ -73,13 +73,35 @@ func NewInfoFile(gpgKey string) (info *infofile.InfoFile, errMessage string, err
 	return info, "", nil
 }
 
-// UpgradeInfoFile upgrades an info file from version 1 to 2
+// UpgradeInfoFile upgrades an info file to the latest version
 func UpgradeInfoFile(info *infofile.InfoFile) (errMessage string, err error) {
-	// Can only upgrade info files version 1
-	if info.Version != 1 {
+	// Can only upgrade info files version 1 and 2
+	if info.Version != 1 && info.Version != 2 {
 		return "Unsupported repository version", errors.New("This repository has already been upgraded or is using an unsupported version")
 	}
 
+	// Upgrade 1 -> 2
+	if info.Version < 2 {
+		errMessage, err = upgradeInfoFileV1(info)
+		if err != nil {
+			return errMessage, err
+		}
+	}
+
+	// Upgrade 2 -> 3
+	// Nothing to do here, as the change is just in the index file
+	// However, we still want to update the info file so older versions of prvt won't try to open a protobuf-encoded index file
+	/*if info.Version < 3 {
+	}*/
+
+	// Update the version
+	info.Version = 3
+
+	return "", nil
+}
+
+// Upgrade an info file from version 1 to 2
+func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 	// GPG keys are already migrated into the Keys slice
 	// But passphrases need to be migrated
 	if len(info.Salt) > 0 && len(info.ConfirmationHash) > 0 {
@@ -123,9 +145,6 @@ func UpgradeInfoFile(info *infofile.InfoFile) (errMessage string, err error) {
 		info.Salt = nil
 		info.ConfirmationHash = nil
 	}
-
-	// Update the version
-	info.Version = 2
 
 	return "", nil
 }

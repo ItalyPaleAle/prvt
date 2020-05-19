@@ -203,6 +203,23 @@ prvt repo key ls --store <string> --key <string>
 
 Note: after running this command, the identifier of the passphrases in the repository might change, since they're always in a sequence.
 
+## Using environmental variables
+
+You can set pre-defined values with environmental variables to reduce repetitions.
+
+### `PRVT_STORE`
+
+Use the `PRVT_STORE` environmental variable to set a default value for the `--store <string>` flag for all commands that require it.
+
+For example:
+
+```sh
+export PRVT_STORE="local:repo"
+prvt repo init
+```
+
+The value defined with environmental variables acts as a fallback, and you can override it by explicitly set the `--store <string>` flag.
+
 # FAQ
 
 ### How does prvt encrypt my files?

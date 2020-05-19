@@ -1,15 +1,28 @@
-<li class="flex flex-row my-1 leading-normal rounded shadow bg-white">
+<li class="flex flex-row my-1 leading-normal rounded shadow bg-shade-neutral w-full max-w-full hover:bg-shade-100">
     <a class="flex-grow p-3" href="{link}">
-        <i class="fa {icon || ''} fa-fw" aria-hidden="true"></i> {label}
+        <span class="flex flex-row">
+            <span class="flex-grow-0">
+                <i class="fa {icon || ''} fa-fw" aria-hidden="true"></i>
+            </span>
+            <span class="flex-grow truncate w-0">
+                {label}
+            </span>
+            {#if date}
+                <span class="flex-grow-0 text-text-100 text-xs ml-2" title="{format(date, 'PPpp')}">
+                    <!-- Replace spaces with non-breking spaces -->
+                    {formatDistanceToNow(date).replace(' ', ' ')} ago
+                </span>
+            {/if}
+        </span>
     </a>
     {#if actions && actions.length}
-        <span class="flex-grow-0 p-3 cursor-pointer bg-gray-100 text-gray-500" class:text-gray-800={expandActions} on:click={actionsMenuClick}>
+        <span class="flex-grow-0 p-3 cursor-pointer bg-shade-100 {expandActions ? 'text-accent-200' : 'text-text-100'}" on:click={actionsMenuClick}>
             <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
             {#if expandActions}
                 <div class="absolute text-sm">
-                    <ul class="py-1 my-2 mx-2 w-48 bg-white rounded shadow">
+                    <ul class="py-1 my-2 mx-2 w-48 bg-shade-neutral rounded shadow">
                         {#each actions as action}
-                            <li class="block px-4 py-2 text-gray-800 hover:bg-gray-200" on:click={() => dispatch(action.event)}>
+                            <li class="block px-4 py-2 text-text-base hover:bg-shade-200" on:click={() => dispatch(action.event)}>
                                 <i class="fa {action.icon || ''} fa-fw" aria-hidden="true"></i>
                                 {action.label}
                             </li>
@@ -19,17 +32,21 @@
             {/if}
         </span>
     {:else}
-        <span class="flex-grow-0 p-3 bg-gray-100 text-gray-600">
+        <span class="flex-grow-0 p-3 bg-shade-100 text-text-200">
             <i class="fa fa-fw" aria-hidden="true"></i>
         </span>
     {/if}
 </li>
 
 <script>
+import formatDistanceToNow from 'date-fns/formatDistanceToNow'
+import format from 'date-fns/format'
+
 // Props for the view
 export let label = ''
 export let icon = ''
 export let link = ''
+export let date = null
 export let actions = null
 
 // Stores

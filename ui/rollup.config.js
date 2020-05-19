@@ -55,7 +55,8 @@ export default {
 
         // Support external dependencies from npm
         resolve({
-            browser: true
+            browser: true,
+            dev: true
         }),
         commonjs(),
 
