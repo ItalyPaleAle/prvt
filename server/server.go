@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/ItalyPaleAle/prvt/infofile"
 
@@ -76,10 +75,10 @@ func (s *Server) Start(address, port string) error {
 
 	// HTTP Server
 	server := &http.Server{
-		Addr:           address + ":" + port,
-		Handler:        router,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		Addr:    address + ":" + port,
+		Handler: router,
+		//ReadTimeout:    10 * time.Second,
+		//WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
