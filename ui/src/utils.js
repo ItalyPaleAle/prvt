@@ -10,6 +10,12 @@ export function cleanPath(path) {
     return decodeURIComponent(path)
 }
 
+// Encodes the path so it can put in a URL for requests to the server
+export function encodePath(path) {
+    // Run "encodeURIComponent" and then revert back %2F to /
+    return encodeURIComponent(path).replace(/\%2[Ff]/g, '/')
+}
+
 // Returns the icon for the given file mime type
 export function fileTypeIcon(mimeType) {
     // Default is file-o

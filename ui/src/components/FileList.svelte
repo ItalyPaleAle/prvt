@@ -41,14 +41,15 @@
         {/each}
     </ul>
 {:catch err}
-    Error: {err}
+    <ErrorBox message={err} />
 {/await}
 
 <script>
 // Utils
-import {fileTypeIcon} from '../utils'
+import {encodePath, fileTypeIcon} from '../utils'
 
 // Components
+import ErrorBox from './ErrorBox.svelte'
 import OperationResult from './OperationResult.svelte'
 import ListItem from './ListItem.svelte'
 
@@ -96,12 +97,16 @@ $: {
 
 function requestTree(reqPath) {
     // Request the tree
-    return fetch('/api/tree/' + encodeURIComponent(reqPath))
+    return fetch('/api/tree/' + encodePath(reqPath))
         // Get response as JSON
         .then((resp) => {
             return resp.json()
         })
         .then((list) => {
+            // Check if we have an error message
+            if (list && list.error) {
+                return Promise.reject(list.error)
+            }
             // Ensure the list is valid
             if (!Array.isArray(list)) {
                 return Promise.reject('Invalid response: not an array')
@@ -133,7 +138,7 @@ function deleteTree(element, isDir) {
     // Sets "requesting" to a promise that does a sequence of operations
     requesting = Promise.resolve()
         // Submit the request
-        .then(() => fetch('/api/tree/' + encodeURIComponent(reqPath + (isDir ? '/*' : '')), {
+        .then(() => fetch('/api/tree/' + encodePath(reqPath + (isDir ? '/*' : '')), {
             method: 'DELETE'
         }))
         // Check the response

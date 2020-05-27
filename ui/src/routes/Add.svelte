@@ -80,7 +80,7 @@ import ErrorBox from '../components/ErrorBox.svelte'
 import {push} from 'svelte-spa-router'
 
 // Utils
-import {cleanPath} from '../utils'
+import {encodePath, cleanPath} from '../utils'
 
 // Stores
 import {operationResult} from '../stores'
@@ -112,7 +112,7 @@ function requestHandler(body) {
 
     // Ensure the destination starts with /
     let dest = destination
-    if (dest.charAt(0) != '/') {
+    if (dest && dest.charAt(0) != '/') {
         dest = '/' + dest
     }
 
@@ -120,7 +120,7 @@ function requestHandler(body) {
     running = true
 
     // Upload the file
-    return fetch('/api/tree' + encodeURIComponent(dest), {
+    return fetch('/api/tree' + encodePath(dest), {
             method: 'POST',
             body
         })
@@ -130,6 +130,9 @@ function requestHandler(body) {
         })
         .then((list) => {
             if (!list || !Array.isArray(list) || !list.length) {
+                if (list && list.error) {
+                    return Promise.reject(list.error)
+                }
                 throw Error('Invalid response')
             }
 
