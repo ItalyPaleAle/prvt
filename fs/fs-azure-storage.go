@@ -99,7 +99,7 @@ func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {
 	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
 	// Download the file
-	resp, err := blockBlobURL.Download(context.TODO(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
+	resp, err := blockBlobURL.Download(context.Background(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {
 			err = fmt.Errorf("network error while downloading the file: %s", err.Error())
@@ -158,7 +158,7 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
 	// Upload
-	_, err = azblob.UploadBufferToBlockBlob(context.TODO(), data, blockBlobURL, azblob.UploadToBlockBlobOptions{})
+	_, err = azblob.UploadBufferToBlockBlob(context.Background(), data, blockBlobURL, azblob.UploadToBlockBlobOptions{})
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {
 			return fmt.Errorf("network error while uploading the file: %s", err.Error())
@@ -171,6 +171,10 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	return f.GetWithContext(context.Background(), name, out, metadataCb)
+}
+
+func (f *AzureStorage) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -192,7 +196,7 @@ func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.Metadat
 	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
 	// Download the file
-	resp, err := blockBlobURL.Download(context.TODO(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
+	resp, err := blockBlobURL.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {
 			err = fmt.Errorf("network error while downloading the file: %s", err.Error())
@@ -232,6 +236,10 @@ func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.Metadat
 }
 
 func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
+	return f.SetWithContext(context.Background(), name, in, tag, metadata)
+}
+
+func (f *AzureStorage) SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -282,7 +290,7 @@ func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata 
 		}
 	}
 
-	resp, err := azblob.UploadStreamToBlockBlob(context.TODO(), pr, blockBlobURL, azblob.UploadStreamToBlockBlobOptions{
+	resp, err := azblob.UploadStreamToBlockBlob(ctx, pr, blockBlobURL, azblob.UploadStreamToBlockBlobOptions{
 		BufferSize:       3 * 1024 * 1024,
 		MaxBuffers:       2,
 		AccessConditions: accessConditions,
@@ -334,6 +342,6 @@ func (f *AzureStorage) Delete(name string, tag interface{}) (err error) {
 	}
 
 	// Delete the blob
-	_, err = blockBlobURL.Delete(context.TODO(), azblob.DeleteSnapshotsOptionInclude, accessConditions)
+	_, err = blockBlobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionInclude, accessConditions)
 	return
 }

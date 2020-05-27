@@ -19,6 +19,7 @@ package fs
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -143,6 +144,10 @@ func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *S3) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	return f.GetWithContext(context.Background(), name, out, metadataCb)
+}
+
+func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -157,7 +162,7 @@ func (f *S3) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (foun
 	found = true
 
 	// Request the file from S3
-	obj, err := f.client.GetObject(f.bucketName, folder+name, minio.GetObjectOptions{})
+	obj, err := f.client.GetObjectWithContext(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
 	if err != nil {
 		return
 	}
@@ -179,6 +184,10 @@ func (f *S3) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (foun
 }
 
 func (f *S3) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
+	return f.SetWithContext(context.Background(), name, in, tag, metadata)
+}
+
+func (f *S3) SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return nil, err
@@ -199,7 +208,7 @@ func (f *S3) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Me
 		}
 		pw.Close()
 	}()
-	_, err = f.client.PutObject(f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
+	_, err = f.client.PutObjectWithContext(ctx, f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return nil, err
 	}

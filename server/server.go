@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/infofile"
 
@@ -89,11 +90,13 @@ func (s *Server) Start(address, port string) error {
 		signal.Notify(s, os.Interrupt, syscall.SIGTERM)
 		<-s
 
-		// We received an interrupt signal, shut down.
-		if err := server.Shutdown(context.Background()); err != nil {
+		// We received an interrupt signal, shut down
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		if err := server.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
 			fmt.Printf("HTTP server shutdown error: %v\n", err)
 		}
+		cancel()
 		close(idleConnsClosed)
 	}()
 

@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package server
 
 import (
+	"context"
 	"errors"
 	"mime/multipart"
 	"net/http"
@@ -35,6 +36,8 @@ import (
 // - A file transmitted in the request body (in the "file" field)
 // - The path to a file or folder in the local filesystem (in the "localpath" field(s))
 func (s *Server) PostTreeHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	// Get the path (can be empty if targeting the root)
 	path := c.Param("path")
 	// Ensure that the path starts with / and ends with "/"
@@ -54,9 +57,9 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 		localPaths := c.PostFormArray("localpath")
 		uploadFile, _ := c.FormFile("file")
 		if len(localPaths) > 0 && uploadFile == nil {
-			s.addLocalPath(localPaths, path, res)
+			s.addLocalPath(ctx, localPaths, path, res)
 		} else if len(localPaths) == 0 && uploadFile != nil {
-			s.addUploadedFile(uploadFile, path, res)
+			s.addUploadedFile(ctx, uploadFile, path, res)
 		} else {
 			c.AbortWithError(http.StatusBadRequest, errors.New("need to specify one and only one of 'file' or 'localpath' form fields"))
 			return
@@ -90,7 +93,7 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 }
 
 // Adds files from the local filesystem, passing the path
-func (s *Server) addLocalPath(paths []string, destination string, res chan<- repository.PathResultMessage) {
+func (s *Server) addLocalPath(ctx context.Context, paths []string, destination string, res chan<- repository.PathResultMessage) {
 	// Iterate through the paths and add them all
 	var err error
 	var expanded string
@@ -108,12 +111,12 @@ func (s *Server) addLocalPath(paths []string, destination string, res chan<- rep
 		folder := filepath.Dir(expanded)
 		target := filepath.Base(expanded)
 
-		s.Repo.AddPath(folder, target, destination, res)
+		s.Repo.AddPath(ctx, folder, target, destination, res)
 	}
 }
 
 // Add a file by a stream
-func (s *Server) addUploadedFile(uploadFile *multipart.FileHeader, destination string, res chan<- repository.PathResultMessage) {
+func (s *Server) addUploadedFile(ctx context.Context, uploadFile *multipart.FileHeader, destination string, res chan<- repository.PathResultMessage) {
 	// Filename
 	filename := filepath.Base(uploadFile.Filename)
 	if filename == "" || filename == ".." || filename == "." || filename == "/" {
@@ -150,7 +153,7 @@ func (s *Server) addUploadedFile(uploadFile *multipart.FileHeader, destination s
 	}
 
 	// Add the file
-	result, err := s.Repo.AddStream(in, filename, destination, mime, size)
+	result, err := s.Repo.AddStream(ctx, in, filename, destination, mime, size)
 	res <- repository.PathResultMessage{
 		Path:   destination + filename,
 		Status: result,

@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package fs
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -138,6 +139,10 @@ func (f *Local) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	return f.GetWithContext(context.Background(), name, out, metadataCb)
+}
+
+func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -172,7 +177,7 @@ func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (f
 	}
 
 	// Decrypt the data
-	err = crypto.DecryptFile(out, file, f.masterKey, metadataCb)
+	err = crypto.DecryptFile(utils.WriterFuncWithContext(ctx, out), file, f.masterKey, metadataCb)
 	if err != nil {
 		return
 	}
@@ -181,6 +186,10 @@ func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (f
 }
 
 func (f *Local) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
+	return f.SetWithContext(context.Background(), name, in, tag, metadata)
+}
+
+func (f *Local) SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -205,7 +214,7 @@ func (f *Local) Set(name string, in io.Reader, tag interface{}, metadata *crypto
 	}
 
 	// Encrypt the data and write it to file
-	err = crypto.EncryptFile(file, in, f.masterKey, metadata)
+	err = crypto.EncryptFile(file, utils.ReaderFuncWithContext(ctx, in), f.masterKey, metadata)
 	if err != nil {
 		return nil, err
 	}

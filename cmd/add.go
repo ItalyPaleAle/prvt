@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -107,6 +108,7 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 
 			// Iterate through the args and add them all
+			ctx := context.Background()
 			res := make(chan repository.PathResultMessage)
 			go func() {
 				var err error
@@ -125,7 +127,7 @@ You must specify a destination, which is a folder inside the repository where yo
 					folder := filepath.Dir(expanded)
 					target := filepath.Base(expanded)
 
-					repo.AddPath(folder, target, flagDestination, res)
+					repo.AddPath(ctx, folder, target, flagDestination, res)
 				}
 
 				close(res)

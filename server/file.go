@@ -30,6 +30,8 @@ import (
 
 // FileHandler is the handler for GET /file/:fileId, which returns a (decrypted) file
 func (s *Server) FileHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	// Get the fileId
 	fileId := c.Param("fileId")
 	if fileId == "" {
@@ -52,7 +54,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 	}
 
 	// Load and decrypt the file, then pipe it to the response writer
-	found, _, err := s.Store.Get(fileId, c.Writer, func(metadata *crypto.Metadata) {
+	found, _, err := s.Store.GetWithContext(ctx, fileId, c.Writer, func(metadata *crypto.Metadata) {
 		// Send headers before the data is sent
 		if metadata.ContentType != "" {
 			c.Header("Content-Type", metadata.ContentType)

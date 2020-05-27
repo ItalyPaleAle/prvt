@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package fs
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -75,9 +76,15 @@ type Fs interface {
 	// It also returns a tag (which might be empty) that should be passed to the Set method if you want to subsequentially update the contents of the file
 	Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
+	// GetWithContext is like Get, but accepts a custom context
+	GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
+
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
 	Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)
+
+	// SetWithContext is like Set, but accepts a custom context
+	SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)
 
 	// Delete a file from the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)

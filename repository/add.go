@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package repository
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -32,7 +33,7 @@ import (
 )
 
 // AddStream adds a document to the repository by reading it from a stream
-func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (int, error) {
+func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (int, error) {
 	// Generate a file id
 	fileId, err := uuid.NewV4()
 	if err != nil {
@@ -61,7 +62,7 @@ func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder,
 		ContentType: mimeType,
 		Size:        size,
 	}
-	_, err = repo.Store.Set(fileId.String(), in, nil, metadata)
+	_, err = repo.Store.SetWithContext(ctx, fileId.String(), in, nil, metadata)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
@@ -77,7 +78,7 @@ func (repo *Repository) AddStream(in io.ReadCloser, filename, destinationFolder,
 
 // AddFile adds a file to the repository
 // This accepts any regular file, and it does not ignore any file
-func (repo *Repository) AddFile(folder, target, destinationFolder string) (int, error) {
+func (repo *Repository) AddFile(ctx context.Context, folder, target, destinationFolder string) (int, error) {
 	path := filepath.Join(folder, target)
 
 	// Check if target exists and it's a regular file
@@ -111,11 +112,11 @@ func (repo *Repository) AddFile(folder, target, destinationFolder string) (int, 
 	size := stat.Size()
 
 	// Add the file's stream
-	return repo.AddStream(in, target, destinationFolder, mimeType, size)
+	return repo.AddStream(ctx, in, target, destinationFolder, mimeType, size)
 }
 
 // AddPath adds a path (a file or a folder, recursively) and reports each element added in the res channel
-func (repo *Repository) AddPath(folder, target, destinationFolder string, res chan<- PathResultMessage) {
+func (repo *Repository) AddPath(ctx context.Context, folder, target, destinationFolder string, res chan<- PathResultMessage) {
 	path := filepath.Join(folder, target)
 
 	// Check if target exists
@@ -159,7 +160,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 
 	// For files, add that
 	if isFile {
-		status, err := repo.AddFile(folder, target, destinationFolder)
+		status, err := repo.AddFile(ctx, folder, target, destinationFolder)
 		res <- PathResultMessage{
 			Path:   destinationFolder + target,
 			Status: status,
@@ -190,7 +191,7 @@ func (repo *Repository) AddPath(folder, target, destinationFolder string, res ch
 		}
 		for _, el := range list {
 			// Recursion
-			repo.AddPath(path, el.Name(), destinationFolder+target+"/", res)
+			repo.AddPath(ctx, path, el.Name(), destinationFolder+target+"/", res)
 		}
 	}
 
