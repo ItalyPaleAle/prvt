@@ -17,7 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package server
 
 import (
+	"context"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -30,8 +32,6 @@ import (
 
 // FileHandler is the handler for GET /file/:fileId, which returns a (decrypted) file
 func (s *Server) FileHandler(c *gin.Context) {
-	ctx := c.Request.Context()
-
 	// Get the fileId
 	fileId := c.Param("fileId")
 	if fileId == "" {
@@ -53,8 +53,14 @@ func (s *Server) FileHandler(c *gin.Context) {
 		forceDownload = true
 	}
 
-	// Load and decrypt the file, then pipe it to the response writer
-	found, _, err := s.Store.GetWithContext(ctx, fileId, c.Writer, func(metadata *crypto.Metadata) {
+	// Load and decrypt the file, then pipe it to the response writer, but not for HEAD requests
+	var out io.Writer
+	if c.Request.Method != "HEAD" {
+		out = c.Writer
+	}
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+	found, _, err := s.Store.GetWithContext(ctx, fileId, out, func(metadata *crypto.Metadata) {
 		// Send headers before the data is sent
 		if metadata.ContentType != "" {
 			c.Header("Content-Type", metadata.ContentType)
@@ -63,6 +69,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 		}
 		if metadata.Size > 0 {
 			c.Header("Content-Length", strconv.FormatInt(metadata.Size, 10))
+			// If the file is more than 128KB, allow
 		}
 		contentDisposition := "inline"
 		if forceDownload {
@@ -73,8 +80,17 @@ func (s *Server) FileHandler(c *gin.Context) {
 			contentDisposition += "; filename=\"" + fileName + "\""
 		}
 		c.Header("Content-Disposition", contentDisposition)
+
+		// If this is a HEAD request, stop requesting the body
+		if c.Request.Method == "HEAD" {
+			cancel()
+		}
 	})
 	if err != nil {
+		if c.Request.Method == "HEAD" && err == crypto.ErrMetadataOnly {
+			c.AbortWithStatus(200)
+			return
+		}
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}

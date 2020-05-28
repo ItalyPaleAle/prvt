@@ -29,6 +29,8 @@ import (
 	"github.com/minio/sio"
 )
 
+var ErrMetadataOnly = errors.New("output stream is nil, only metadata was returned")
+
 // EncryptFile decrypts a stream (in), streaming the result to out
 // The function requires a masterKey, a 32-byte key for AES-256, which is used to un-wrap the unique key for the file
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file, the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
@@ -135,6 +137,11 @@ func (w *decryptWriter) Write(p []byte) (n int, err error) {
 			w.Cb(&metadata)
 		}
 		w.metadataRead = true
+	}
+
+	// If the output stream is nil, we only wanted the headers, so return
+	if w.OutStream == nil {
+		return 0, ErrMetadataOnly
 	}
 
 	// Pipe the (rest of the) data to the out stream

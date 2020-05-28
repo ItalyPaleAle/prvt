@@ -57,6 +57,7 @@ func (s *Server) Start(address, port string) error {
 
 	// Add routes
 	router.GET("/file/:fileId", s.FileHandler)
+	router.HEAD("/file/:fileId", s.FileHandler)
 	{
 		// APIs
 		apis := router.Group("/api")
