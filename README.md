@@ -18,22 +18,30 @@ prvt is free software, released under GNU General Public License version 3.0.
 
 # Installation
 
-## Pre-compiled binaries
+## Homebrew on macOS
 
-The easiest way to install prvt is to download a pre-compiled binary, available for Windows, macOS, and Linux. Check out the [Releases](https://github.com/ItalyPaleAle/prvt/releases) section.
-
-### Running on macOS
-
-The pre-compiled binary is not signed with an Apple developer certificate, and recent versions of macOS will refuse to run it. You can fix this by running:
+The simplest way to install prvt on macOS is to use the Homebrew package manager:
 
 ```sh
-# Use the path where you downloaded prvt to
-xattr -rc /path/to/prvt
+brew install italypaleale/tap/prvt
 ```
+
+## Pre-compiled binaries
+
+You can download a pre-compiled binary for Windows, macOS, and Linux. Check out the [Releases](https://github.com/ItalyPaleAle/prvt/releases) section.
+
+After downloading the archive for your operating system and architecture, extract it and copy the binary anywhere on your system.
+
+> The pre-compiled binary is not signed with an Apple developer certificate, and recent versions of macOS will refuse to run it. You can fix this by running:
+>
+> ```sh
+> # Use the path where you downloaded prvt to
+> xattr -rc /path/to/prvt
+> ```
 
 ## With go get
 
-You can also fetch prvt with `go get`:
+You can also fetch prvt with `go get`, if you have Go 1.14 or higher installed:
 
 ```sh
 go get -u github.com/ItalyPaleAle/prvt
