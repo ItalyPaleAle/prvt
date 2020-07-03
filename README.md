@@ -18,6 +18,8 @@ prvt is free software, released under GNU General Public License version 3.0.
 
 # Installation
 
+> Do not fetch prvt using `go get`!
+
 ## Homebrew on macOS
 
 The simplest way to install prvt on macOS is to use the Homebrew package manager:
@@ -38,14 +40,6 @@ After downloading the archive for your operating system and architecture, extrac
 > # Use the path where you downloaded prvt to
 > xattr -rc /path/to/prvt
 > ```
-
-## With go get
-
-You can also fetch prvt with `go get`, if you have Go 1.14 or higher installed:
-
-```sh
-go get -u github.com/ItalyPaleAle/prvt
-```
 
 # Using prvt
 
