@@ -92,7 +92,7 @@ The metadata header is at most 1,022 bytes in length.
 
 As mentioned above, each file is encrypted with a unique key that is randomly generated. The key is then wrapped (i.e. encrypted) with a master key.
 
-The master key is a 256-bit symmetric key. prvt uses that to wrap each file's key using AES, as per [RFC 5649](https://tools.ietf.org/html/rfc5649). prvt relies on a module from the [google/tink](https://github.com/google/tink) library ([google/tink/go/subtle/kwp](https://godoc.org/github.com/google/tink/go/subtle/kwp)) to perform the key wrapping and unwrapping.
+The master key is a 256-bit symmetric key. prvt uses that to wrap each file's key using AES, as per [RFC 5649](https://tools.ietf.org/html/rfc5649). prvt relies on a module from the [google/tink](https://github.com/google/tink) library ([google/tink/go/kwp/subtle](https://godoc.org/github.com/google/tink/go/kwp/subtle)) to perform the key wrapping and unwrapping.
 
 Each repository has one and only one master key, which is wrapped and stored in the `_info.json` file.
 
