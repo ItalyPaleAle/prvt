@@ -142,6 +142,16 @@ The `_index` file uses Protocol Buffers for encoding, so it's a binary file and 
 
 Thanks to this index, prvt can show a tree of all directories and files, and knows what encrypted document to request for each file.
 
+### Files in the repository
+
+Please note that prvt creates one encrypted file in the data folder (by default, `data`) for each document that is added to the repository; files are currently not chunked into multiple pieces.
+
+Because of that, it is possible for attackers who have access to your store to understand the number of files stored in a prvt repository and their approximate decrypted size. Additionally, if the file system where encrypted files are stored supports timestamps, attackers can also understand when files were added to the repository.
+
+Currently, these limitations are by design. prvt does not aim to protect against disclosing the number of files in the repository, their approximate size, and the date they were stored is currently. This is considered an acceptable risk.
+
+The data itself remains securely encrypted, and knowing the metadata above does not provide any advantage to attackers trying to decrypt the contents of your repository.
+
 ## The `_info.json` file
 
 The `_info.json` file is the only file in the repository that is not encrypted.
