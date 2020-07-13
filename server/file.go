@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid"
@@ -53,23 +54,27 @@ func (s *Server) FileHandler(c *gin.Context) {
 		forceDownload = true
 	}
 
-	// Load and decrypt the file, then pipe it to the response writer, but not for HEAD requests
+	// Check if we have a range
+	rng, err := utils.ParseRange(c.GetHeader("Range"))
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	// Load and decrypt the file, then pipe it to the response writer (but not for HEAD requests)
 	var out io.Writer
 	if c.Request.Method != "HEAD" {
 		out = c.Writer
 	}
 	ctx, cancel := context.WithCancel(c.Request.Context())
 	defer cancel()
-	found, _, err := s.Store.GetWithContext(ctx, fileId, out, func(metadata *crypto.Metadata) {
+	found, _, err := s.Store.GetWithRange(ctx, fileId, out, func(metadata *crypto.Metadata) {
 		// Send headers before the data is sent
+		// Start with Content-Type and Content-Disposition
 		if metadata.ContentType != "" {
 			c.Header("Content-Type", metadata.ContentType)
 		} else {
 			c.Header("Content-Type", "application/octet-stream")
-		}
-		if metadata.Size > 0 {
-			c.Header("Content-Length", strconv.FormatInt(metadata.Size, 10))
-			// If the file is more than 128KB, allow
 		}
 		contentDisposition := "inline"
 		if forceDownload {
@@ -81,11 +86,17 @@ func (s *Server) FileHandler(c *gin.Context) {
 		}
 		c.Header("Content-Disposition", contentDisposition)
 
+		// Content-Length and Accept-Ranges
+		if metadata.Size > 0 {
+			c.Header("Content-Length", strconv.FormatInt(metadata.Size, 10))
+			c.Header("Accept-Ranges", "bytes")
+		}
+
 		// If this is a HEAD request, stop requesting the body
 		if c.Request.Method == "HEAD" {
 			cancel()
 		}
-	})
+	}, rng)
 	if err != nil {
 		if c.Request.Method == "HEAD" && err == crypto.ErrMetadataOnly {
 			c.AbortWithStatus(200)

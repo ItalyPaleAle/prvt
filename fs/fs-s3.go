@@ -144,10 +144,14 @@ func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *S3) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	return f.GetWithContext(context.Background(), name, out, metadataCb)
+	return f.GetWithRange(context.Background(), name, out, metadataCb, "")
 }
 
 func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	return f.GetWithRange(ctx, name, out, metadataCb, "")
+}
+
+func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb, rng *PackageRange) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -161,8 +165,14 @@ func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, met
 
 	found = true
 
+	// Request a range if needed
+	opts := minio.GetObjectOptions{}
+	if rng != nil {
+		opts.Header().Add("Range", rng.HeaderValue())
+	}
+
 	// Request the file from S3
-	obj, err := f.client.GetObjectWithContext(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
+	obj, err := f.client.GetObjectWithContext(ctx, f.bucketName, folder+name, opts)
 	if err != nil {
 		return
 	}

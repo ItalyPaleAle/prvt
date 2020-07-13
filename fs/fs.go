@@ -79,6 +79,9 @@ type Fs interface {
 	// GetWithContext is like Get, but accepts a custom context
 	GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
+	// GetWithRange is like GetWithContext, but it accepts a range of chunks to retrieve
+	GetWithRange(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb, rng *PackageRange) (found bool, tag interface{}, err error)
+
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
 	Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)

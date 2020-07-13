@@ -139,10 +139,14 @@ func (f *Local) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	return f.GetWithContext(context.Background(), name, out, metadataCb)
+	return f.GetWithRange(context.Background(), name, out, metadataCb, "")
 }
 
 func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	return f.GetWithRange(ctx, name, out, metadataCb, "")
+}
+
+func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb, rng *PackageRange) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
