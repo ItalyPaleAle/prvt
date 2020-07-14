@@ -18,7 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"bytes"
+	"crypto/subtle"
 	"errors"
 	"strconv"
 
@@ -113,7 +113,7 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 
 		// Get the current master key from the passphrase
 		masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
-		if err != nil || bytes.Compare(info.ConfirmationHash, confirmationHash) != 0 {
+		if err != nil || subtle.ConstantTimeCompare(info.ConfirmationHash, confirmationHash) == 0 {
 			return "Cannot unlock the repository", errors.New("Invalid passphrase")
 		}
 
@@ -225,7 +225,7 @@ func GetMasterKey(info *infofile.InfoFile) (masterKey []byte, keyId string, errM
 	if len(info.Salt) != 0 && len(info.ConfirmationHash) != 0 {
 		var confirmationHash []byte
 		masterKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, info.Salt)
-		if err == nil && bytes.Compare(info.ConfirmationHash, confirmationHash) == 0 {
+		if err == nil && subtle.ConstantTimeCompare(info.ConfirmationHash, confirmationHash) == 1 {
 			return masterKey, "LegacyKey", "", nil
 		}
 	}
@@ -245,7 +245,7 @@ func GetMasterKey(info *infofile.InfoFile) (masterKey []byte, keyId string, errM
 		// Try this key
 		var wrappingKey, confirmationHash []byte
 		wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, k.Salt)
-		if err == nil && bytes.Compare(k.ConfirmationHash, confirmationHash) == 0 {
+		if err == nil && subtle.ConstantTimeCompare(k.ConfirmationHash, confirmationHash) == 1 {
 			masterKey, err = crypto.UnwrapKey(wrappingKey, k.MasterKey)
 			if err != nil {
 				return nil, "", "Error while unwrapping the master key", err
