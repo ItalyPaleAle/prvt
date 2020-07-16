@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -172,14 +171,10 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	return f.GetWithRange(context.Background(), name, out, metadataCb, "")
+	return f.GetWithContext(context.Background(), name, out, metadataCb)
 }
 
 func (f *AzureStorage) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	return f.GetWithRange(ctx, name, out, metadataCb, "")
-}
-
-func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb, rng *PackageRange) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -200,26 +195,8 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	}
 	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
-	/*
-		// Check if we have a range
-		var offset int64 = 0
-		var count int64 = azblob.CountToEnd
-		if rng != nil {
-			offset = rng.StartBytes()
-			count = rng.LengthBytes()
-		}
-	*/
-	// Always download the first chunk + 256 byte that contain the header and the metadata
-	// If we are requesting more chunks, download them too
-	var offset int64 = 0
-	var count int64 = azblob.CountToEnd
-	if rng != nil && rng.Start == 0 {
-		// Read one extra byte, so we know if the file continues (will cause us to discard some data)
-		count = rng.LengthBytes() + 1
-	}
-
-	// Fetch the first chunk
-	resp, err := blockBlobURL.Download(ctx, offset, count, azblob.BlobAccessConditions{}, false)
+	// Download the file
+	resp, err := blockBlobURL.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {
 			err = fmt.Errorf("network error while downloading the file: %s", err.Error())
@@ -245,30 +222,66 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 		return
 	}
 
+	// Decrypt the data
+	err = crypto.DecryptFile(out, body, f.masterKey, metadataCb)
+	if err != nil {
+		return
+	}
+
 	// Get the ETag
 	tagObj := resp.ETag()
 	tag = &tagObj
 
-	// Get the header
-	headerLen, wrappedKey, body, err := crypto.GetFileHeader(body)
-	if err != nil {
-		return
-	}
-
-	// Unwrap the file's key
-	key, err := crypto.UnwrapKey(f.masterKey, wrappedKey)
-	if err != nil {
-		return
-	}
-
-	// Decrypt each package
-	// If we have downloaded the first packages only, check how much data we need to discard
-	maxRead := math.MaxInt64
-	if rng != nil {
-		maxRead = rng.LengthBytes()
-	}
-
 	return
+}
+
+func (f *AzureStorage) GetRange(ctx context.Context, name string, out io.Writer, rng *RequestRange) (found bool, err error) {
+	if name == "" {
+		err = errors.New("name is empty")
+		return
+	}
+
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
+	found = true
+
+	// Create the blob URL
+	u, err := url.Parse(f.storageURL + "/" + folder + name)
+	if err != nil {
+		return
+	}
+	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
+
+	// Download the file
+	resp, err := blockBlobURL.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
+	if err != nil {
+		if stgErr, ok := err.(azblob.StorageError); !ok {
+			err = fmt.Errorf("network error while downloading the file: %s", err.Error())
+		} else {
+			// Blob not found
+			if stgErr.Response().StatusCode == http.StatusNotFound {
+				found = false
+				err = nil
+				return
+			}
+			err = fmt.Errorf("azure Storage error while downloading the file: %s", stgErr.Response().Status)
+		}
+		return
+	}
+	body := resp.Body(azblob.RetryReaderOptions{
+		MaxRetryRequests: 3,
+	})
+	defer body.Close()
+
+	// Check if the file exists but it's empty
+	if resp.ContentLength() == 0 {
+		found = false
+		return
+	}
 }
 
 func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {

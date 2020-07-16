@@ -68,7 +68,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 	}
 	ctx, cancel := context.WithCancel(c.Request.Context())
 	defer cancel()
-	found, _, err := s.Store.GetWithRange(ctx, fileId, out, func(metadata *crypto.Metadata) {
+	found, _, err := s.Store.GetWithRange(ctx, fileId, out, func(metadata *crypto.Metadata, metadataSize int) {
 		// Send headers before the data is sent
 		// Start with Content-Type and Content-Disposition
 		if metadata.ContentType != "" {

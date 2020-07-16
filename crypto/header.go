@@ -30,5 +30,5 @@ type Metadata struct {
 	Size        int64  `json:"sz,omitempty"`
 }
 
-// MetadataCb is the callback for the function that receives the metadata
-type MetadataCb func(*Metadata)
+// MetadataCb is the callback for the function that receives the metadata object, as well as the length of the encoded metadata (including the size bytes)
+type MetadataCb func(*Metadata, int)
