@@ -31,4 +31,4 @@ type Metadata struct {
 }
 
 // MetadataCb is the callback for the function that receives the metadata object, as well as the length of the encoded metadata (including the size bytes)
-type MetadataCb func(*Metadata, int)
+type MetadataCb func(*Metadata, int32)

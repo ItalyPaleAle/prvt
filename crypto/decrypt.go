@@ -33,25 +33,21 @@ import (
 var ErrMetadataOnly = errors.New("output stream is nil, only metadata was returned")
 
 // DecryptFile decrypts a stream (in), streaming the result to out
+// If the result stream is nil, it only returns the metadata and stops reading
 // The function requires a masterKey, a 32-byte key for AES-256, which is used to un-wrap the unique key for the file
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file, the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
-func DecryptFile(out io.Writer, in io.Reader, masterKey []byte, metadataCb MetadataCb) error {
+// The function returns the length of the header, the wrapped key, and an error if any
+func DecryptFile(out io.Writer, in io.Reader, masterKey []byte, metadataCb MetadataCb) (int32, []byte, error) {
 	// Get the file header which contains the wrapped key
-	_, wrappedKey, in, err := GetFileHeader(in)
+	headerLen, wrappedKey, in, err := GetFileHeader(in)
 	if err != nil {
-		return err
-	}
-
-	// Unwrap the key for the file, using the master key
-	key, err := UnwrapKey(masterKey, wrappedKey)
-	if err != nil {
-		return err
+		return headerLen, wrappedKey, err
 	}
 
 	// Decrypt the file starting from package #0
-	err = DecryptPackages(out, in, key, 0, metadataCb)
+	err = DecryptPackages(out, in, wrappedKey, masterKey, 0, metadataCb)
 
-	return nil
+	return headerLen, wrappedKey, err
 }
 
 // GetFileHeader returns the wrapped key from the file header read from the stream "in"
@@ -93,12 +89,18 @@ func GetFileHeader(in io.Reader) (int32, []byte, io.Reader, error) {
 }
 
 // DecryptPackages decrypts one or more packages/chunks of encrypted data (64kb + 32 bytes), streaming the result to out
-// The function requires a key that is the un-wrapped key for the file
+// The function requires a wrapped key and the master key
 // It also requires a sequence number, that is the number of the first package/chunk we expect to decrypt
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file (only from package #0), the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
-func DecryptPackages(out io.Writer, in io.Reader, key []byte, seqNum uint32, metadataCb MetadataCb) error {
+func DecryptPackages(out io.Writer, in io.Reader, wrappedKey []byte, masterKey []byte, seqNum uint32, metadataCb MetadataCb) error {
+	// Unwrap the key for the file, using the master key
+	key, err := UnwrapKey(masterKey, wrappedKey)
+	if err != nil {
+		return err
+	}
+
 	// If we're reading from the first package, we need to extract metadata
-	readMetadata := (seqNum == 0)
+	readMetadata := (seqNum == 0 && metadataCb != nil)
 	// Create a writer that has a buffer of 1024 bytes, the maximum size of the metadata object (JSON-encoded)
 	w := &decryptWriter{
 		OutStream:    out,
@@ -161,7 +163,7 @@ func (w *decryptWriter) Write(p []byte) (n int, err error) {
 
 		// Metadata is ready, so invoke the callback
 		if w.Cb != nil {
-			w.Cb(&metadata, int(metadataLen+2))
+			w.Cb(&metadata, int32(metadataLen+2))
 		}
 		w.ReadMetadata = false
 	}

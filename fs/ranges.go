@@ -30,14 +30,14 @@ type RequestRange struct {
 	Start int64
 	// Amount of data requested in plaintext, from the Start byte
 	Length int64
-	// Size of the header added by prvt at the beginning of the file (encoded crypto.Header, including size byte)
+	// Size of the header added by prvt at the beginning of the file (encoded crypto.Header, including size bytes)
 	HeaderOffset int64
 	// Size of the encoded metadata object added at the beginning of the plaintext (encoded crypto.Metadata, including 2 size bytes)
 	MetadataOffset int64
 }
 
 // NewRequestRange returns a new RequestRange object from a HttpRange one
-func NewRequestRange(rng utils.HttpRange, ho, mo int64) *RequestRange {
+func NewRequestRange(rng *utils.HttpRange, ho, mo int64) *RequestRange {
 	return &RequestRange{
 		Start:          rng.Start,
 		Length:         rng.Length,
@@ -47,37 +47,49 @@ func NewRequestRange(rng utils.HttpRange, ho, mo int64) *RequestRange {
 }
 
 // StartPackage returns the start package number
-func (c *RequestRange) StartPackage() int64 {
+func (c *RequestRange) StartPackage() uint32 {
 	// This is rounded down always
-	return (c.Start + c.MetadataOffset) / (64*1024 + 32)
+	return uint32(c.Start+c.MetadataOffset) / (64 * 1024)
 }
 
 // EndPackage returns the end package number
-func (c *RequestRange) EndPackage() int64 {
+func (c *RequestRange) EndPackage() uint32 {
 	// Adding +1 to round up
-	return (c.Start+c.Length+c.MetadataOffset)/(64*1024+32) + 1
+	return uint32(c.Start+c.Length+c.MetadataOffset)/(64*1024) + 1
 }
 
 // LengthPackages returns the number of packages that need to be requested
-func (c *RequestRange) LengthPackages() int64 {
+func (c *RequestRange) LengthPackages() uint32 {
 	return c.EndPackage() - c.StartPackage()
 }
 
 // StartBytes returns the start value in bytes
 // That's the start range for the request to the fs
 func (c *RequestRange) StartBytes() int64 {
-	return (c.StartPackage() * (64*1024 + 32)) + c.HeaderOffset
+	return (int64(c.StartPackage()) * (64*1024 + 32)) + c.HeaderOffset
 }
 
 // EndBytes returns the end value in bytes
 // Thats the end range for the request to the fs
 func (c *RequestRange) EndBytes() int64 {
-	return (c.EndPackage() * (64*1024 + 32)) + c.HeaderOffset
+	return (int64(c.EndPackage()) * (64*1024 + 32)) + c.HeaderOffset
 }
 
 // LengthBytes returns the number of bytes that need to be requested
 func (c *RequestRange) LengthBytes() int64 {
-	return c.LengthPackages() * (64*1024 + 32)
+	return int64(c.LengthPackages()) * (64*1024 + 32)
+}
+
+// SkipBeginning returns the number of bytes that need to be skipped from the beginning of the (decrypted) stream
+// to match the requested range
+func (c *RequestRange) SkipBeginning() int {
+	return int((c.Start + c.MetadataOffset) % (64 * 1024))
+}
+
+// SkipEnd returns the number of bytes that need to be skipped at the end of the (decrypted) stream
+// to match the requested range
+func (c *RequestRange) SkipEnd() int {
+	return int((64 * 1024) - ((c.Start + c.Length + c.MetadataOffset) % (64 * 1024)))
 }
 
 // HeaderValue returns the value for the Range HTTP reader, in bytes

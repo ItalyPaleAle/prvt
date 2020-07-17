@@ -41,9 +41,12 @@ type Local struct {
 	basePath  string
 	masterKey []byte
 	dataPath  string
+	cache     *MetadataCache
 }
 
-func (f *Local) Init(connection string) error {
+func (f *Local) Init(connection string, cache *MetadataCache) error {
+	f.cache = cache
+
 	// Ensure that connection starts with "local:" or "file:"
 	if !strings.HasPrefix(connection, "local:") && !strings.HasPrefix(connection, "file:") {
 		return fmt.Errorf("invalid scheme")

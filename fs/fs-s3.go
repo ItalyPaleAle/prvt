@@ -41,9 +41,12 @@ type S3 struct {
 	client     *minio.Client
 	bucketName string
 	dataPath   string
+	cache      *MetadataCache
 }
 
-func (f *S3) Init(connection string) error {
+func (f *S3) Init(connection string, cache *MetadataCache) error {
+	f.cache = cache
+
 	// Ensure the connection string is valid and extract the parts
 	// connection mus start with "s3:"
 	// Then it must contain the bucket name
