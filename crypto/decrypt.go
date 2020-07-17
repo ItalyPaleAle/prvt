@@ -111,7 +111,8 @@ func DecryptPackages(out io.Writer, in io.Reader, wrappedKey []byte, masterKey [
 
 	// Decrypt the data using minio/sio
 	dec, err := sio.DecryptWriter(bw, sio.Config{
-		Key: key,
+		Key:            key,
+		SequenceNumber: seqNum,
 	})
 	if err != nil {
 		return err

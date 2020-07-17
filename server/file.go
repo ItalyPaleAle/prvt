@@ -64,7 +64,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 	}
 	var rng *fs.RequestRange
 	if rngHeader != nil {
-		rng = fs.NewRequestRange(rngHeader, 0, 0)
+		rng = fs.NewRequestRange(rngHeader)
 	}
 
 	// Load and decrypt the file, then pipe it to the response writer (but not for HEAD requests)
@@ -97,7 +97,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 			// Spec: https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
 			// Content-Length is the length of the range itself
 			c.Header("Content-Length", strconv.FormatInt(rng.Length, 10))
-			c.Header("Content-Range", fmt.Sprintf("bytes %d-%d/%d", rng.Start, rng.Start+rng.Length-1, metadata.Size))
+			c.Header("Content-Range", fmt.Sprintf("bytes %d-%d/%d", rng.Start, rng.Start+rng.Length-1, rng.FileSize))
 			c.Status(http.StatusPartialContent)
 		} else {
 			// Content-Length and Accept-Ranges

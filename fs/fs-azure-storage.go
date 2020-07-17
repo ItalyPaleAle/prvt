@@ -329,15 +329,15 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	}
 	f.mux.Unlock()
 
+	// Add the offsets to the range object and set the file size (it's guaranteed it's set, or we wouldn't have a range request)
+	rng.HeaderOffset = int64(headerLength)
+	rng.MetadataOffset = int64(metadataLength)
+	rng.SetFileSize(metadata.Size)
+
 	// Send the metadata to the callback
 	metadataCb(metadata, metadataLength)
 
-	// Add the offsets to the range object
-	rng.HeaderOffset = int64(headerLength)
-	rng.MetadataOffset = int64(metadataLength)
-
 	// Request the actual ranges that we need
-	fmt.Println("Requesting range", rng.StartBytes(), rng.EndBytes())
 	resp, err = blockBlobURL.Download(ctx, rng.StartBytes(), rng.LengthBytes(), azblob.BlobAccessConditions{}, false)
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {

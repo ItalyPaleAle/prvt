@@ -34,15 +34,41 @@ type RequestRange struct {
 	HeaderOffset int64
 	// Size of the encoded metadata object added at the beginning of the plaintext (encoded crypto.Metadata, including 2 size bytes)
 	MetadataOffset int64
+	// File size, which acts as hard cap if set
+	FileSize int64
+}
+
+func (c *RequestRange) String() string {
+	return fmt.Sprintf(
+		"[Request range]\nStart: %d\nLength: %d\nFileSize: %d\nHeaderOffset: %d\nMetadataOffset: %d",
+		c.Start,
+		c.Length,
+		c.FileSize,
+		c.HeaderOffset,
+		c.MetadataOffset,
+	)
 }
 
 // NewRequestRange returns a new RequestRange object from a HttpRange one
-func NewRequestRange(rng *utils.HttpRange, ho, mo int64) *RequestRange {
+func NewRequestRange(rng *utils.HttpRange) *RequestRange {
 	return &RequestRange{
-		Start:          rng.Start,
-		Length:         rng.Length,
-		HeaderOffset:   ho,
-		MetadataOffset: mo,
+		Start:  rng.Start,
+		Length: rng.Length,
+	}
+}
+
+// SetFileSize sets the FileSize value and ensures that Start and Length don't overflow
+func (c *RequestRange) SetFileSize(size int64) {
+	c.FileSize = size
+	if c.FileSize < 1 {
+		c.FileSize = 0
+		return
+	}
+	if c.Start > c.FileSize {
+		c.Start = c.FileSize
+		c.Length = 0
+	} else if c.Length < c.Start || (c.Start+c.Length) > c.FileSize {
+		c.Length = c.FileSize - c.Start
 	}
 }
 
@@ -84,12 +110,6 @@ func (c *RequestRange) LengthBytes() int64 {
 // to match the requested range
 func (c *RequestRange) SkipBeginning() int {
 	return int((c.Start + c.MetadataOffset) % (64 * 1024))
-}
-
-// SkipEnd returns the number of bytes that need to be skipped at the end of the (decrypted) stream
-// to match the requested range
-func (c *RequestRange) SkipEnd() int {
-	return int((64 * 1024) - ((c.Start + c.Length + c.MetadataOffset) % (64 * 1024)))
 }
 
 // HeaderValue returns the value for the Range HTTP reader, in bytes
