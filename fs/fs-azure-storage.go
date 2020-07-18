@@ -364,33 +364,8 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 		return
 	}
 
-	// Get a pipe to discard some of the data
-	pr, pw := io.Pipe()
-	go func() {
-		// First, discard the first bytes
-		_, err := io.CopyN(ioutil.Discard, pr, int64(rng.SkipBeginning()))
-		if err != nil {
-			pr.CloseWithError(err)
-			return
-		}
-
-		// Then, copy the desired bytes to out
-		_, err = io.CopyN(out, pr, rng.Length)
-		if err != nil {
-			pr.CloseWithError(err)
-			return
-		}
-
-		// Discard the rest
-		_, err = io.Copy(ioutil.Discard, pr)
-		if err != nil {
-			pr.CloseWithError(err)
-			return
-		}
-	}()
-
 	// Decrypt the data
-	err = crypto.DecryptPackages(pw, body, wrappedKey, f.masterKey, rng.StartPackage(), nil)
+	err = crypto.DecryptPackages(out, body, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
 	if err != nil {
 		return
 	}

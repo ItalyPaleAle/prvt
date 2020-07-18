@@ -40,7 +40,7 @@ type RequestRange struct {
 
 func (c *RequestRange) String() string {
 	return fmt.Sprintf(
-		"[Request range]\nStart: %d\nLength: %d\nFileSize: %d\nHeaderOffset: %d\nMetadataOffset: %d",
+		"RequestRange{Start: %d, Length: %d, FileSize: %d, HeaderOffset: %d, MetadataOffset: %d}",
 		c.Start,
 		c.Length,
 		c.FileSize,
@@ -68,7 +68,9 @@ func (c *RequestRange) SetFileSize(size int64) {
 		c.Start = c.FileSize
 		c.Length = 0
 	} else if c.Length < c.Start || (c.Start+c.Length) > c.FileSize {
-		c.Length = c.FileSize - c.Start
+		if c.Length > (c.FileSize - c.Start) {
+			c.Length = c.FileSize - c.Start
+		}
 	}
 }
 

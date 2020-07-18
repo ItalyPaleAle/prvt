@@ -45,7 +45,7 @@ func DecryptFile(out io.Writer, in io.Reader, masterKey []byte, metadataCb Metad
 	}
 
 	// Decrypt the file starting from package #0
-	err = DecryptPackages(out, in, wrappedKey, masterKey, 0, metadataCb)
+	err = DecryptPackages(out, in, wrappedKey, masterKey, 0, 0, -1, metadataCb)
 
 	return headerLen, wrappedKey, err
 }
@@ -92,7 +92,7 @@ func GetFileHeader(in io.Reader) (int32, []byte, io.Reader, error) {
 // The function requires a wrapped key and the master key
 // It also requires a sequence number, that is the number of the first package/chunk we expect to decrypt
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file (only from package #0), the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
-func DecryptPackages(out io.Writer, in io.Reader, wrappedKey []byte, masterKey []byte, seqNum uint32, metadataCb MetadataCb) error {
+func DecryptPackages(out io.Writer, in io.Reader, wrappedKey []byte, masterKey []byte, seqNum, offset uint32, length int64, metadataCb MetadataCb) error {
 	// Unwrap the key for the file, using the master key
 	key, err := UnwrapKey(masterKey, wrappedKey)
 	if err != nil {
@@ -106,6 +106,8 @@ func DecryptPackages(out io.Writer, in io.Reader, wrappedKey []byte, masterKey [
 		OutStream:    out,
 		Cb:           metadataCb,
 		ReadMetadata: readMetadata,
+		Offset:       offset,
+		Length:       length,
 	}
 	bw := bufio.NewWriterSize(w, 1024)
 
@@ -135,16 +137,25 @@ func DecryptPackages(out io.Writer, in io.Reader, wrappedKey []byte, masterKey [
 }
 
 // decryptWriter manages the data decrypted by sio, optionally returning the metadata
+// If there's a length greater than -1, it only returns as many bytes from the decrypted streams
+// Likewise, an offset greater than 0 makes it skip the first N bytes from the beginning of the stream (if there's an offset, there's no metadata parsing happening)
 type decryptWriter struct {
 	OutStream    io.Writer
 	Cb           MetadataCb
 	ReadMetadata bool
+	Offset       uint32
+	Length       int64
 }
 
 func (w *decryptWriter) Write(p []byte) (n int, err error) {
-	start := 0
-	// If the app wants us to start by reading metadata (from package #0)
-	if w.ReadMetadata {
+	var start uint32 = 0
+	// If we have an offset, we don't read metadata
+	if w.Offset > 0 {
+		w.ReadMetadata = false
+	} else if w.ReadMetadata {
+		// If the app wants us to start by reading metadata (from package #0)
+		// This is ignored if we have an offset
+
 		// Ensure we have at least 3 bytes
 		if len(p) < 3 {
 			return 0, errors.New("decrypted stream ended too quickly")
@@ -155,7 +166,7 @@ func (w *decryptWriter) Write(p []byte) (n int, err error) {
 		if metadataLen > 1022 {
 			return 0, errors.New("invalid metadata length")
 		}
-		start = int(metadataLen) + 2
+		start = uint32(metadataLen) + 2
 		metadata := Metadata{}
 		err = json.Unmarshal(p[2:start], &metadata)
 		if err != nil {
@@ -174,9 +185,39 @@ func (w *decryptWriter) Write(p []byte) (n int, err error) {
 		return 0, ErrMetadataOnly
 	}
 
+	// Skip the bytes if we need to
+	// Note that if we're here, we haven't read metadata so start is 0
+	if w.Offset > 0 {
+		l := uint32(len(p))
+		if l <= w.Offset {
+			// Do not copy anything
+			w.Offset -= l
+			return len(p), nil
+		} else {
+			// Skip the first bytes
+			start += w.Offset
+			w.Offset = 0
+		}
+	}
+
 	// Pipe the (rest of the) data to the out stream
-	if start < len(p) {
-		_, err = w.OutStream.Write(p[start:])
+	if start < uint32(len(p)) {
+		// Check if we need to copy certain bytes only (if Length >= 0)
+		if w.Length == 0 {
+			return len(p), nil
+		} else if w.Length > 0 {
+			l := int64(len(p)) - int64(start)
+			if w.Length >= l {
+				w.Length -= l
+				_, err = w.OutStream.Write(p[start:])
+			} else {
+				end := w.Length + int64(start)
+				_, err = w.OutStream.Write(p[start:end])
+				w.Length = 0
+			}
+		} else {
+			_, err = w.OutStream.Write(p[start:])
+		}
 		if err != nil {
 			return 0, err
 		}
