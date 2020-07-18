@@ -47,8 +47,8 @@ func Get(connection string) (store Fs, err error) {
 
 	switch connection[0:pos] {
 	case "file", "local":
-		//store = &Local{}
-		//err = store.Init(connection, cache)
+		store = &Local{}
+		err = store.Init(connection, cache)
 	case "azure", "azureblob":
 		store = &AzureStorage{}
 		err = store.Init(connection, cache)

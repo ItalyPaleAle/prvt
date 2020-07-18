@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package fs
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
@@ -42,6 +44,7 @@ type Local struct {
 	masterKey []byte
 	dataPath  string
 	cache     *MetadataCache
+	mux       sync.Mutex
 }
 
 func (f *Local) Init(connection string, cache *MetadataCache) error {
@@ -168,6 +171,7 @@ func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, 
 		}
 		return
 	}
+	defer file.Close()
 
 	// Check if the file has any content
 	stat, err := file.Stat()
@@ -180,15 +184,122 @@ func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, 
 	}
 
 	// Decrypt the data
-	err = crypto.DecryptFile(utils.WriterFuncWithContext(ctx, out), file, f.masterKey, metadataCb)
+	var metadataLength int32
+	var metadata *crypto.Metadata
+	headerLength, wrappedKey, err := crypto.DecryptFile(out, file, f.masterKey, func(md *crypto.Metadata, sz int32) {
+		metadata = md
+		metadataLength = sz
+		metadataCb(md, sz)
+	})
 	if err != nil {
 		return
 	}
 
+	// Store the metadata in cache
+	// Adding a lock here to prevent the case when adding this key causes the eviction of another one that's in use
+	f.mux.Lock()
+	f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+	f.mux.Unlock()
+
 	return
 }
 
-func (f *Local) GetRange(ctx context.Context, name string, out io.Writer, rng *RequestRange) (found bool, err error) {
+func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	if name == "" {
+		err = errors.New("name is empty")
+		return
+	}
+
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if len(name) > 4 && name[0] != '_' {
+		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
+	}
+
+	found = true
+
+	// Open the file
+	file, err := os.Open(f.basePath + folder + name)
+	if err != nil {
+		if os.IsNotExist(err) {
+			found = false
+			err = nil
+		}
+		return
+	}
+	defer file.Close()
+
+	// Check if the file has any content
+	stat, err := file.Stat()
+	if err != nil {
+		return
+	}
+	if stat.Size() == 0 {
+		found = false
+		return
+	}
+
+	// Look up the file's metadata in the cache
+	f.mux.Lock()
+	headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
+	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
+		// Need to read the metadata and cache it
+		// For that, we need to read the header and the first package, which are at most 64kb + (32+256) bytes
+		read := make([]byte, 64*1024+32+256)
+		_, err = io.ReadFull(file, read)
+		// Ignore ErrUnexpectedEOF which means that the file is shorter than what we were looking for
+		if err != nil && err != io.ErrUnexpectedEOF {
+			return
+		}
+
+		// Decrypt the data
+		buf := bytes.NewBuffer(read)
+		headerLength, wrappedKey, err = crypto.DecryptFile(nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) {
+			metadata = md
+			metadataLength = sz
+		})
+		if err != nil && err != crypto.ErrMetadataOnly {
+			f.mux.Unlock()
+			return
+		}
+
+		// Store the metadata in cache
+		f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+	}
+	f.mux.Unlock()
+
+	// Add the offsets to the range object and set the file size (it's guaranteed it's set, or we wouldn't have a range request)
+	rng.HeaderOffset = int64(headerLength)
+	rng.MetadataOffset = int64(metadataLength)
+	rng.SetFileSize(metadata.Size)
+
+	// Send the metadata to the callback
+	metadataCb(metadata, metadataLength)
+
+	// Move the file pointer to the beginning of the range
+	_, err = file.Seek(rng.StartBytes(), 0)
+	if err != nil {
+		return
+	}
+
+	// Create a pipe so we can stop reading after we read a certain amount of data
+	pr, pw := io.Pipe()
+	go func() {
+		// Read only the required packages
+		_, err := io.CopyN(pw, file, rng.LengthBytes())
+		if err != nil && err != io.EOF {
+			pw.CloseWithError(err)
+		} else {
+			pw.Close()
+		}
+	}()
+
+	// Decrypt the data
+	err = crypto.DecryptPackages(out, pr, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
+	if err != nil {
+		return
+	}
+
 	return
 }
 
@@ -219,6 +330,7 @@ func (f *Local) SetWithContext(ctx context.Context, name string, in io.Reader, t
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	// Encrypt the data and write it to file
 	err = crypto.EncryptFile(file, utils.ReaderFuncWithContext(ctx, in), f.masterKey, metadata)
