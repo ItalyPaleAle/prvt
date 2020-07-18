@@ -67,10 +67,8 @@ func (c *RequestRange) SetFileSize(size int64) {
 	if c.Start > c.FileSize {
 		c.Start = c.FileSize
 		c.Length = 0
-	} else if c.Length < c.Start || (c.Start+c.Length) > c.FileSize {
-		if c.Length > (c.FileSize - c.Start) {
-			c.Length = c.FileSize - c.Start
-		}
+	} else if c.Length == 0 || c.Length > (c.FileSize-c.Start) {
+		c.Length = c.FileSize - c.Start
 	}
 }
 
