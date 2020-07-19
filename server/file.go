@@ -58,7 +58,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 	// Check if we have a range
 	rngHeader, err := utils.ParseRange(c.GetHeader("Range"))
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithError(http.StatusRequestedRangeNotSatisfiable, err)
 		return
 	}
 	var rng *fs.RequestRange
@@ -91,11 +91,15 @@ func (s *Server) FileHandler(c *gin.Context) {
 
 		// Handle range requests
 		if rng != nil {
-			// Spec: https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
-			// Content-Length is the length of the range itself
-			c.Header("Content-Length", strconv.FormatInt(rng.Length, 10))
-			c.Header("Content-Range", rng.ResponseHeaderValue())
-			c.Status(http.StatusPartialContent)
+			if rng.Start >= rng.FileSize {
+				c.Status(http.StatusRequestedRangeNotSatisfiable)
+			} else {
+				// Spec: https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+				// Content-Length is the length of the range itself
+				c.Header("Content-Length", strconv.FormatInt(rng.Length, 10))
+				c.Header("Content-Range", rng.ResponseHeaderValue())
+				c.Status(http.StatusPartialContent)
+			}
 		} else {
 			// Content-Length and Accept-Ranges
 			if metadata.Size > 0 {
