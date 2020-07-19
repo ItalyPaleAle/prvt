@@ -110,7 +110,7 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, metadata *M
 		return err
 	}
 
-	// Copy the buffer
+	// Copy the stream
 	if _, err := io.Copy(enc, reader); err != nil {
 		return err
 	}

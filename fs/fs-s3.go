@@ -27,11 +27,13 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
 
-	"github.com/minio/minio-go"
+	minio "github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // S3 stores files on a S3-compatible service
@@ -39,11 +41,16 @@ import (
 type S3 struct {
 	masterKey  []byte
 	client     *minio.Client
+	core       *minio.Core
 	bucketName string
 	dataPath   string
+	cache      *MetadataCache
+	mux        sync.Mutex
 }
 
-func (f *S3) Init(connection string) error {
+func (f *S3) Init(connection string, cache *MetadataCache) error {
+	f.cache = cache
+
 	// Ensure the connection string is valid and extract the parts
 	// connection mus start with "s3:"
 	// Then it must contain the bucket name
@@ -75,8 +82,18 @@ func (f *S3) Init(connection string) error {
 	}
 
 	// Initialize minio client object for connecting to S3
+	// Client is a higher-level API, that is convenient for things like putting files
+	// Core is a lower-level API, which is easier for us when requesting data
+	opts := &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
+		Secure: tls,
+	}
 	var err error
-	f.client, err = minio.New(endpoint, accessKeyId, secretAccessKey, tls)
+	f.client, err = minio.New(endpoint, opts)
+	if err != nil {
+		return err
+	}
+	f.core, err = minio.NewCore(endpoint, opts)
 	if err != nil {
 		return err
 	}
@@ -94,10 +111,11 @@ func (f *S3) SetMasterKey(key []byte) {
 
 func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Request the file from S3
-	obj, err := f.client.GetObject(f.bucketName, "_info.json", minio.GetObjectOptions{})
+	obj, _, _, err := f.core.GetObject(context.Background(), f.bucketName, "_info.json", minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
+	defer obj.Close()
 
 	// Read the entire file
 	data, err := ioutil.ReadAll(obj)
@@ -133,7 +151,7 @@ func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 	buf := bytes.NewReader(data)
 
 	// Upload the file
-	_, err = f.client.PutObject(f.bucketName, "_info.json", buf, int64(len(data)), minio.PutObjectOptions{
+	_, err = f.client.PutObject(context.Background(), f.bucketName, "_info.json", buf, int64(len(data)), minio.PutObjectOptions{
 		ContentType: "application/json",
 	})
 	if err != nil {
@@ -162,20 +180,126 @@ func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, met
 	found = true
 
 	// Request the file from S3
-	obj, err := f.client.GetObjectWithContext(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
+	obj, stat, _, err := f.core.GetObject(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
 	if err != nil {
 		return
 	}
+	defer obj.Close()
 
 	// Check if the file exists but it's empty
-	stat, err := obj.Stat()
-	if err != nil || stat.Size == 0 {
+	if stat.Size == 0 {
 		found = false
 		return
 	}
 
 	// Decrypt the data
-	err = crypto.DecryptFile(out, obj, f.masterKey, metadataCb)
+	var metadataLength int32
+	var metadata *crypto.Metadata
+	headerLength, wrappedKey, err := crypto.DecryptFile(out, obj, f.masterKey, func(md *crypto.Metadata, sz int32) {
+		metadata = md
+		metadataLength = sz
+		metadataCb(md, sz)
+	})
+	if err != nil {
+		return
+	}
+
+	// Store the metadata in cache
+	// Adding a lock here to prevent the case when adding this key causes the eviction of another one that's in use
+	f.mux.Lock()
+	f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+	f.mux.Unlock()
+
+	return
+}
+
+func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	if name == "" {
+		err = errors.New("name is empty")
+		return
+	}
+
+	// If the file doesn't start with _, it lives in a sub-folder inside the data path
+	folder := ""
+	if name[0] != '_' {
+		folder = f.dataPath + "/"
+	}
+
+	found = true
+	var obj io.ReadCloser
+	var stat minio.ObjectInfo
+	var opts minio.GetObjectOptions
+
+	// Look up the file's metadata in the cache
+	f.mux.Lock()
+	headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
+	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
+		// Need to request the metadata and cache it
+		// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
+		var len int64 = 64*1024 + 32 + 256
+		innerCtx, cancel := context.WithCancel(ctx)
+
+		// Request the file from S3
+		opts = minio.GetObjectOptions{}
+		opts.SetRange(0, len)
+		obj, stat, _, err = f.core.GetObject(innerCtx, f.bucketName, folder+name, opts)
+		if err != nil {
+			f.mux.Unlock()
+			cancel()
+			return
+		}
+		defer obj.Close()
+
+		// Check if the file exists but it's empty
+		if stat.Size == 0 {
+			f.mux.Unlock()
+			cancel()
+			found = false
+			return
+		}
+
+		// Decrypt the data
+		headerLength, wrappedKey, err = crypto.DecryptFile(nil, obj, f.masterKey, func(md *crypto.Metadata, sz int32) {
+			metadata = md
+			metadataLength = sz
+			cancel()
+		})
+		if err != nil && err != crypto.ErrMetadataOnly {
+			f.mux.Unlock()
+			cancel()
+			return
+		}
+
+		// Store the metadata in cache
+		f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+	}
+	f.mux.Unlock()
+
+	// Add the offsets to the range object and set the file size (it's guaranteed it's set, or we wouldn't have a range request)
+	rng.HeaderOffset = int64(headerLength)
+	rng.MetadataOffset = int64(metadataLength)
+	rng.SetFileSize(metadata.Size)
+
+	// Send the metadata to the callback
+	metadataCb(metadata, metadataLength)
+
+	// Request the actual ranges that we need
+	opts = minio.GetObjectOptions{}
+	opts.SetRange(rng.StartBytes(), rng.EndBytes()-1)
+	obj, stat, _, err = f.core.GetObject(ctx, f.bucketName, folder+name, opts)
+	if err != nil {
+		return
+	}
+	defer obj.Close()
+
+	// Check if the file exists but it's empty
+	if stat.Size == 0 {
+		found = false
+		return
+	}
+
+	// Decrypt the data
+	err = crypto.DecryptPackages(out, obj, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
 	if err != nil {
 		return
 	}
@@ -208,7 +332,7 @@ func (f *S3) SetWithContext(ctx context.Context, name string, in io.Reader, tag 
 		}
 		pw.Close()
 	}()
-	_, err = f.client.PutObjectWithContext(ctx, f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
+	_, err = f.client.PutObject(ctx, f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +352,7 @@ func (f *S3) Delete(name string, tag interface{}) (err error) {
 		folder = f.dataPath + "/"
 	}
 
-	err = f.client.RemoveObject(f.bucketName, folder+name)
+	err = f.client.RemoveObject(context.Background(), f.bucketName, folder+name, minio.RemoveObjectOptions{})
 
 	return
 }

@@ -31,6 +31,13 @@ import (
 func Get(connection string) (store Fs, err error) {
 	store = nil
 
+	// Init the cache
+	cache := &MetadataCache{}
+	err = cache.Init()
+	if err != nil {
+		return
+	}
+
 	// Get the name of the store
 	pos := strings.Index(connection, ":")
 	if pos < 1 {
@@ -41,13 +48,13 @@ func Get(connection string) (store Fs, err error) {
 	switch connection[0:pos] {
 	case "file", "local":
 		store = &Local{}
-		err = store.Init(connection)
+		err = store.Init(connection, cache)
 	case "azure", "azureblob":
 		store = &AzureStorage{}
-		err = store.Init(connection)
+		err = store.Init(connection, cache)
 	case "s3", "minio":
 		store = &S3{}
-		err = store.Init(connection)
+		err = store.Init(connection, cache)
 	default:
 		err = fmt.Errorf("invalid connection string")
 	}
@@ -57,8 +64,8 @@ func Get(connection string) (store Fs, err error) {
 
 // Fs is the interface for the filesystem
 type Fs interface {
-	// Init the object, by passing a connection string
-	Init(connection string) error
+	// Init the object, by passing a connection string and the cache object
+	Init(connection string, cache *MetadataCache) error
 
 	// SetDataPath sets the path where the data is stored (read from the info file)
 	SetDataPath(path string)
@@ -78,6 +85,9 @@ type Fs interface {
 
 	// GetWithContext is like Get, but accepts a custom context
 	GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
+
+	// GetWithRange is like GetWithContext, but accepts a custom range
+	GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)

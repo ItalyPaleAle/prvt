@@ -17,15 +17,18 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package crypto
 
+// Header is the file header
 type Header struct {
 	Version uint16 `json:"v"`
 	Key     []byte `json:"k"`
 }
 
+// Metadata is the metadata for the fille
 type Metadata struct {
 	Name        string `json:"n,omitempty"`
 	ContentType string `json:"ct,omitempty"`
 	Size        int64  `json:"sz,omitempty"`
 }
 
-type MetadataCb func(*Metadata)
+// MetadataCb is the callback for the function that receives the metadata object, as well as the length of the encoded metadata (including the size bytes)
+type MetadataCb func(*Metadata, int32)

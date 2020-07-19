@@ -25,6 +25,8 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid"
@@ -53,23 +55,29 @@ func (s *Server) FileHandler(c *gin.Context) {
 		forceDownload = true
 	}
 
-	// Load and decrypt the file, then pipe it to the response writer, but not for HEAD requests
+	// Check if we have a range
+	rngHeader, err := utils.ParseRange(c.GetHeader("Range"))
+	if err != nil {
+		c.AbortWithError(http.StatusRequestedRangeNotSatisfiable, err)
+		return
+	}
+	var rng *fs.RequestRange
+	if rngHeader != nil {
+		rng = fs.NewRequestRange(rngHeader)
+	}
+
+	// Load and decrypt the file, then pipe it to the response writer (but not for HEAD requests)
 	var out io.Writer
 	if c.Request.Method != "HEAD" {
 		out = c.Writer
 	}
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
-	found, _, err := s.Store.GetWithContext(ctx, fileId, out, func(metadata *crypto.Metadata) {
+	metadataCb := func(metadata *crypto.Metadata, metadataSize int32) {
 		// Send headers before the data is sent
+		// Start with Content-Type and Content-Disposition
 		if metadata.ContentType != "" {
 			c.Header("Content-Type", metadata.ContentType)
 		} else {
 			c.Header("Content-Type", "application/octet-stream")
-		}
-		if metadata.Size > 0 {
-			c.Header("Content-Length", strconv.FormatInt(metadata.Size, 10))
-			// If the file is more than 128KB, allow
 		}
 		contentDisposition := "inline"
 		if forceDownload {
@@ -81,14 +89,40 @@ func (s *Server) FileHandler(c *gin.Context) {
 		}
 		c.Header("Content-Disposition", contentDisposition)
 
-		// If this is a HEAD request, stop requesting the body
-		if c.Request.Method == "HEAD" {
-			cancel()
+		// Handle range requests
+		if rng != nil {
+			if rng.Start >= rng.FileSize {
+				c.Status(http.StatusRequestedRangeNotSatisfiable)
+			} else {
+				// Spec: https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+				// Content-Length is the length of the range itself
+				c.Header("Content-Length", strconv.FormatInt(rng.Length, 10))
+				c.Header("Content-Range", rng.ResponseHeaderValue())
+				c.Status(http.StatusPartialContent)
+			}
+		} else {
+			// Content-Length and Accept-Ranges
+			if metadata.Size > 0 {
+				c.Header("Content-Length", strconv.FormatInt(metadata.Size, 10))
+				c.Header("Accept-Ranges", "bytes")
+			}
 		}
-	})
+	}
+	var found bool
+	if rng != nil {
+		found, _, err = s.Store.GetWithRange(c.Request.Context(), fileId, out, rng, metadataCb)
+	} else {
+		found, _, err = s.Store.GetWithContext(c.Request.Context(), fileId, out, metadataCb)
+	}
 	if err != nil {
+		// Ignore errors ErrMetadataOnly if we're making a head request
 		if c.Request.Method == "HEAD" && err == crypto.ErrMetadataOnly {
 			c.AbortWithStatus(200)
+			return
+		}
+		// Ignore canceled contexts, e.g. if the browser canceled the request
+		if err == context.Canceled {
+			c.Abort()
 			return
 		}
 		c.AbortWithError(http.StatusInternalServerError, err)
