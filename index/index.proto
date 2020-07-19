@@ -15,8 +15,20 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-// IMPORTANT: Run this command after making changes to the proto file:
-// protoc index.proto --go_out=.
+/*
+//Build with:
+
+```sh
+protoc \
+  index.proto \
+  --go_out=plugins=grpc:. \
+  --go_opt=paths=source_relative
+```
+
+Requires:
+
+- github.com/golang/protobuf/protoc-gen-go
+*/
 
 syntax = "proto3";
 package prvt_index;
@@ -24,7 +36,7 @@ package prvt_index;
 import "google/protobuf/timestamp.proto";
 
 // Go package name
-option go_package = "index";
+option go_package = ".;index";
 
 // IndexElement message
 message IndexElement {
