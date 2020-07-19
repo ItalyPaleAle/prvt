@@ -114,7 +114,7 @@ func (c *RequestRange) SkipBeginning() int {
 
 // RequestHeaderValue returns the value for the Range HTTP request reader, in bytes
 func (c *RequestRange) RequestHeaderValue() string {
-	return fmt.Sprintf("bytes=%d-%d", c.StartBytes(), c.EndBytes())
+	return fmt.Sprintf("bytes=%d-%d", c.StartBytes(), c.EndBytes()-1)
 }
 
 // ResponseHeaderValue returns the value for the Content-Range HTTP response reader, in bytes

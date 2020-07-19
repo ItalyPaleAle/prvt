@@ -41,6 +41,7 @@ import (
 type S3 struct {
 	masterKey  []byte
 	client     *minio.Client
+	core       *minio.Core
 	bucketName string
 	dataPath   string
 	cache      *MetadataCache
@@ -81,11 +82,18 @@ func (f *S3) Init(connection string, cache *MetadataCache) error {
 	}
 
 	// Initialize minio client object for connecting to S3
-	var err error
-	f.client, err = minio.New(endpoint, &minio.Options{
+	// Client is a higher-level API, that is convenient for things like putting files
+	// Core is a lower-level API, which is easier for us when requesting data
+	opts := &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
 		Secure: tls,
-	})
+	}
+	var err error
+	f.client, err = minio.New(endpoint, opts)
+	if err != nil {
+		return err
+	}
+	f.core, err = minio.NewCore(endpoint, opts)
 	if err != nil {
 		return err
 	}
@@ -103,7 +111,7 @@ func (f *S3) SetMasterKey(key []byte) {
 
 func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Request the file from S3
-	obj, err := f.client.GetObject(context.Background(), f.bucketName, "_info.json", minio.GetObjectOptions{})
+	obj, _, _, err := f.core.GetObject(context.Background(), f.bucketName, "_info.json", minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -172,15 +180,14 @@ func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, met
 	found = true
 
 	// Request the file from S3
-	obj, err := f.client.GetObject(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
+	obj, stat, _, err := f.core.GetObject(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
 	if err != nil {
 		return
 	}
 	defer obj.Close()
 
 	// Check if the file exists but it's empty
-	stat, err := obj.Stat()
-	if err != nil || stat.Size == 0 {
+	if stat.Size == 0 {
 		found = false
 		return
 	}
@@ -219,7 +226,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	}
 
 	found = true
-	var obj *minio.Object
+	var obj io.ReadCloser
 	var stat minio.ObjectInfo
 	var opts minio.GetObjectOptions
 
@@ -235,7 +242,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 		// Request the file from S3
 		opts = minio.GetObjectOptions{}
 		opts.SetRange(0, len)
-		obj, err = f.client.GetObject(innerCtx, f.bucketName, folder+name, opts)
+		obj, stat, _, err = f.core.GetObject(innerCtx, f.bucketName, folder+name, opts)
 		if err != nil {
 			f.mux.Unlock()
 			cancel()
@@ -244,8 +251,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 		defer obj.Close()
 
 		// Check if the file exists but it's empty
-		stat, err = obj.Stat()
-		if err != nil || stat.Size == 0 {
+		if stat.Size == 0 {
 			f.mux.Unlock()
 			cancel()
 			found = false
@@ -279,16 +285,15 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 
 	// Request the actual ranges that we need
 	opts = minio.GetObjectOptions{}
-	opts.SetRange(rng.StartBytes(), rng.EndBytes())
-	obj, err = f.client.GetObject(ctx, f.bucketName, folder+name, opts)
+	opts.SetRange(rng.StartBytes(), rng.EndBytes()-1)
+	obj, stat, _, err = f.core.GetObject(ctx, f.bucketName, folder+name, opts)
 	if err != nil {
 		return
 	}
 	defer obj.Close()
 
 	// Check if the file exists but it's empty
-	stat, err = obj.Stat()
-	if err != nil || stat.Size == 0 {
+	if stat.Size == 0 {
 		found = false
 		return
 	}
