@@ -21,7 +21,7 @@ import (
 	"crypto/rand"
 	"errors"
 
-	"github.com/google/tink/go/subtle/kwp"
+	"github.com/google/tink/go/kwp/subtle"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -71,7 +71,7 @@ func WrapKey(wrappingKey []byte, key []byte) ([]byte, error) {
 	}
 
 	// Get the key wrapper
-	wrapper, err := kwp.NewKWP(wrappingKey)
+	wrapper, err := subtle.NewKWP(wrappingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func UnwrapKey(wrappingKey []byte, wrappedKey []byte) ([]byte, error) {
 	}
 
 	// Get the key wrapper
-	wrapper, err := kwp.NewKWP(wrappingKey)
+	wrapper, err := subtle.NewKWP(wrappingKey)
 	if err != nil {
 		return nil, err
 	}
