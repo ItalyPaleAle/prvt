@@ -53,8 +53,8 @@ func Get(connection string) (store Fs, err error) {
 		store = &AzureStorage{}
 		err = store.Init(connection, cache)
 	case "s3", "minio":
-		//store = &S3{}
-		//err = store.Init(connection, cache)
+		store = &S3{}
+		err = store.Init(connection, cache)
 	default:
 		err = fmt.Errorf("invalid connection string")
 	}

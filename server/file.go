@@ -19,7 +19,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -97,7 +96,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 			// Spec: https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
 			// Content-Length is the length of the range itself
 			c.Header("Content-Length", strconv.FormatInt(rng.Length, 10))
-			c.Header("Content-Range", fmt.Sprintf("bytes %d-%d/%d", rng.Start, rng.Start+rng.Length-1, rng.FileSize))
+			c.Header("Content-Range", rng.ResponseHeaderValue())
 			c.Status(http.StatusPartialContent)
 		} else {
 			// Content-Length and Accept-Ranges

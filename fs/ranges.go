@@ -112,7 +112,12 @@ func (c *RequestRange) SkipBeginning() int {
 	return int((c.Start + c.MetadataOffset) % (64 * 1024))
 }
 
-// HeaderValue returns the value for the Range HTTP reader, in bytes
-func (c *RequestRange) HeaderValue() string {
+// RequestHeaderValue returns the value for the Range HTTP request reader, in bytes
+func (c *RequestRange) RequestHeaderValue() string {
 	return fmt.Sprintf("bytes=%d-%d", c.StartBytes(), c.EndBytes())
+}
+
+// ResponseHeaderValue returns the value for the Content-Range HTTP response reader, in bytes
+func (c *RequestRange) ResponseHeaderValue() string {
+	return fmt.Sprintf("bytes %d-%d/%d", c.Start, c.Start+c.Length-1, c.FileSize)
 }
