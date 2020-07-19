@@ -71,8 +71,6 @@ func (s *Server) FileHandler(c *gin.Context) {
 	if c.Request.Method != "HEAD" {
 		out = c.Writer
 	}
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
 	metadataCb := func(metadata *crypto.Metadata, metadataSize int32) {
 		// Send headers before the data is sent
 		// Start with Content-Type and Content-Disposition
@@ -105,21 +103,22 @@ func (s *Server) FileHandler(c *gin.Context) {
 				c.Header("Accept-Ranges", "bytes")
 			}
 		}
-
-		// If this is a HEAD request, stop requesting the body
-		if c.Request.Method == "HEAD" {
-			cancel()
-		}
 	}
 	var found bool
 	if rng != nil {
-		found, _, err = s.Store.GetWithRange(ctx, fileId, out, rng, metadataCb)
+		found, _, err = s.Store.GetWithRange(c.Request.Context(), fileId, out, rng, metadataCb)
 	} else {
-		found, _, err = s.Store.GetWithContext(ctx, fileId, out, metadataCb)
+		found, _, err = s.Store.GetWithContext(c.Request.Context(), fileId, out, metadataCb)
 	}
 	if err != nil {
+		// Ignore errors ErrMetadataOnly if we're making a head request
 		if c.Request.Method == "HEAD" && err == crypto.ErrMetadataOnly {
 			c.AbortWithStatus(200)
+			return
+		}
+		// Ignore canceled contexts, e.g. if the browser canceled the request
+		if err == context.Canceled {
+			c.Abort()
 			return
 		}
 		c.AbortWithError(http.StatusInternalServerError, err)
