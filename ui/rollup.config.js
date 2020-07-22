@@ -16,7 +16,7 @@ export default {
         sourcemap: true,
         format: 'iife',
         name: 'ui',
-        file: 'dist/js/bundle.js'
+        file: 'dist/bundle.js'
     },
     plugins: [
         // Replace
@@ -41,7 +41,7 @@ export default {
         // PostCSS
         postcss({
             minimize: production,
-            extract: 'dist/css/bundle.css'
+            extract: 'css/bundle.css'
         }),
 
         // Copy static files
