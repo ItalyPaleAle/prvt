@@ -152,48 +152,63 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 // AddKey adds a key to an info file
 // If the GPG Key is empty, will prompt for a passphrase
 func AddKey(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMessage string, err error) {
+	if gpgKey == "" {
+		return addKeyPassphrase(info, masterKey)
+	} else {
+		return addKeyGPG(info, masterKey, gpgKey)
+	}
+}
+
+// Used by AddKey to add a new passphrase
+func addKeyPassphrase(info *infofile.InfoFile, masterKey []byte) (errMessage string, err error) {
 	var salt, confirmationHash, wrappedKey []byte
 
 	// No GPG key specified, so we need to prompt for a passphrase first
-	if gpgKey == "" {
-		// Get the passphrase and derive the wrapping key, after generating a new salt
-		passphrase, err := PromptPassphrase()
-		if err != nil {
-			return "Error getting passphrase", err
-		}
-		salt, err = crypto.NewSalt()
-		if err != nil {
-			return "Error generating a new salt", err
-		}
-		var wrappingKey []byte
-		wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, salt)
-		if err != nil {
-			return "Error deriving the wrapping key", err
-		}
+	passphrase, err := PromptPassphrase()
+	if err != nil {
+		return "Error getting passphrase", err
+	}
 
-		// Wrap the key
-		wrappedKey, err = crypto.WrapKey(wrappingKey, masterKey)
-		if err != nil {
-			return "Error wrapping the master key", err
-		}
+	// Derive the wrapping key, after generating a new salt
+	salt, err = crypto.NewSalt()
+	if err != nil {
+		return "Error generating a new salt", err
+	}
+	var wrappingKey []byte
+	wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, salt)
+	if err != nil {
+		return "Error deriving the wrapping key", err
+	}
 
-		// Add the key
-		err = info.AddPassphrase(salt, confirmationHash, wrappedKey)
-		if err != nil {
-			return "Error adding the key", err
-		}
-	} else {
-		// Use GPG to wrap the master key
-		wrappedKey, err = utils.GPGEncrypt(masterKey, gpgKey)
-		if err != nil {
-			return "Error encrypting the master key with GPG", err
-		}
+	// Wrap the key
+	wrappedKey, err = crypto.WrapKey(wrappingKey, masterKey)
+	if err != nil {
+		return "Error wrapping the master key", err
+	}
 
-		// Add the key
-		err = info.AddGPGWrappedKey(gpgKey, wrappedKey)
-		if err != nil {
-			return "Error adding the key", err
-		}
+	// Add the key
+	err = info.AddPassphrase(salt, confirmationHash, wrappedKey)
+	if err != nil {
+		return "Error adding the key", err
+	}
+
+	return "", nil
+}
+
+// Used by AddKey to add a new GPG key
+func addKeyGPG(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMessage string, err error) {
+	var wrappedKey []byte
+
+	// Use GPG to wrap the master key
+	wrappedKey, err = utils.GPGEncrypt(masterKey, gpgKey)
+	if err != nil {
+		return "Error encrypting the master key with GPG", err
+	}
+
+	// Add the key
+	err = info.AddGPGWrappedKey(gpgKey, wrappedKey)
+	if err != nil {
+		return "Error adding the key", err
 	}
 
 	return "", nil
