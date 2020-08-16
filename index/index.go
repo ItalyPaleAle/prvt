@@ -377,6 +377,43 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	return result, nil
 }
 
+// GetFileById returns the list item object for a file, searching by its id
+func (i *Index) GetFileById(fileId string) (*FolderList, error) {
+	// Convert the file ID to bytes
+	fileIdObj, err := uuid.FromString(fileId)
+	if err != nil {
+		return nil, err
+	}
+	fileIdBytes := fileIdObj.Bytes()
+
+	// Refresh the index if needed
+	if err := i.Refresh(false); err != nil {
+		return nil, err
+	}
+
+	// Iterate through the list
+	for _, el := range i.cache.Elements {
+		if el.FileId != nil && bytes.Compare(el.FileId, fileIdBytes) == 0 {
+			// Date
+			var date *time.Time
+			if el.Date != nil && el.Date.Seconds > 0 {
+				o := time.Unix(el.Date.Seconds, 0).UTC()
+				date = &o
+			}
+
+			return &FolderList{
+				Path:      el.Path,
+				Directory: false,
+				FileId:    fileId,
+				Date:      date,
+				MimeType:  el.MimeType,
+			}, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // Check if a path is already contained in a []FolderList sllice
 func folderListContains(list []FolderList, path string) bool {
 	for _, el := range list {

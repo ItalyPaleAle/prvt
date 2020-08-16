@@ -115,7 +115,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 		found, _, err = s.Store.GetWithContext(c.Request.Context(), fileId, out, metadataCb)
 	}
 	if err != nil {
-		// Ignore errors ErrMetadataOnly if we're making a head request
+		// Ignore error ErrMetadataOnly if we're making a head request
 		if c.Request.Method == "HEAD" && err == crypto.ErrMetadataOnly {
 			c.AbortWithStatus(200)
 			return

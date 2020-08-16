@@ -64,6 +64,7 @@ func (s *Server) Start(address, port string) error {
 		apis.GET("/tree/*path", s.GetTreeHandler)
 		apis.POST("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.PostTreeHandler)
 		apis.DELETE("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.DeleteTreeHandler)
+		apis.GET("/metadata/:fileId", s.GetMetadataHandler)
 	}
 
 	// UI

@@ -17,8 +17,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package server
 
+import "time"
+
 type treeOperationReponse struct {
 	Path   string `json:"path"`
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
+}
+
+type metadataResponse struct {
+	FileId   string     `json:"fileId"`
+	Path     string     `json:"path"`
+	Name     string     `json:"name"`
+	Date     *time.Time `json:"date,omitempty"`
+	MimeType string     `json:"mimeType,omitempty"`
+	Size     int64      `json:"size,omitempty"`
 }
