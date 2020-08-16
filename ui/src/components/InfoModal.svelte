@@ -1,24 +1,26 @@
 <div class="p-4">
   {#if metadata}
-    <div class="text-2xl truncate mb-4">
-      <i class="fa {fileTypeIcon(metadata.mimeType)} fa-fw" aria-hidden="true"></i>
-      <span class="ml-1" title="{metadata.name}" aria-label="{metadata.name}">{metadata.name}</span>
-    </div>
-    {#if metadata.folder}
-      <div class="truncate mb-2 ml-4">
-        <i class="fa fa-folder-open-o fa-fw" aria-hidden="true"></i>
-        <span class="ml-1" title="{metadata.folder}" aria-label="{metadata.folder}">{metadata.folder}</span>
+    <div class="flex flex-col justify-between">
+      <div class="text-2xl truncate mb-4 text-accent-300">
+        <i class="fa {fileTypeIcon(metadata.mimeType)} fa-fw" aria-hidden="true"></i>
+        <span class="ml-1" title="{metadata.name}" aria-label="{metadata.name}">{metadata.name}</span>
       </div>
-    {/if}
-    {#if metadata.size}
+      {#if metadata.folder}
+        <div class="truncate mb-2 ml-4">
+          <i class="fa fa-folder-open-o fa-fw" aria-hidden="true"></i>
+          <span class="ml-1" title="{metadata.folder}" aria-label="{metadata.folder}">{metadata.folder}</span>
+        </div>
+      {/if}
+      {#if metadata.size}
+        <div class="truncate mb-2 ml-4">
+          <i class="fa fa-database fa-fw" aria-hidden="true"></i>
+          <span class="ml-1" title="{metadata.size} bytes" aria-label="{size}">{size}</span>
+        </div>
+      {/if}
       <div class="truncate mb-2 ml-4">
-        <i class="fa fa-database fa-fw" aria-hidden="true"></i>
-        <span class="ml-1" title="{metadata.size} bytes" aria-label="{size}">{size}</span>
+        <i class="fa fa-clock-o fa-fw" aria-hidden="true"></i>
+        <span class="ml-1">{format(date, 'PPpp')}</span>
       </div>
-    {/if}
-    <div class="truncate mb-2 ml-4">
-      <i class="fa fa-clock-o fa-fw" aria-hidden="true"></i>
-      <span class="ml-1">{format(date, 'PPpp')}</span>
     </div>
   {:else}
     No file selected
