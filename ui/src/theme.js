@@ -14,7 +14,7 @@ export const themes = [
 
 // Return the current theme
 export function getTheme() {
-    let theme = localStorage.getItem('theme')
+    const theme = localStorage.getItem('theme')
     if (!theme || themes.indexOf(theme) == -1) {
         return defaultTheme
     }
@@ -27,7 +27,7 @@ export function setTheme(theme) {
 }
 
 // Object that implements the svelte/store contract
-let subscriptions = []
+const subscriptions = []
 export default {
     subscribe: (sub) => {
         subscriptions.push(sub)

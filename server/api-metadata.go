@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/index"
@@ -57,9 +58,10 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 
 	// Request the metadata
 	found, _, err := s.Store.GetWithContext(c.Request.Context(), fileId, nil, func(metadata *crypto.Metadata, metadataSize int32) {
+		pos := strings.LastIndex(el.Path, "/") + 1
 		response := metadataResponse{
 			FileId:   fileId,
-			Path:     el.Path,
+			Folder:   el.Path[0:pos],
 			Name:     metadata.Name,
 			Date:     el.Date,
 			MimeType: metadata.ContentType,

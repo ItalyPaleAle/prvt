@@ -27,7 +27,7 @@ type treeOperationReponse struct {
 
 type metadataResponse struct {
 	FileId   string     `json:"fileId"`
-	Path     string     `json:"path"`
+	Folder   string     `json:"folder"`
 	Name     string     `json:"name"`
 	Date     *time.Time `json:"date,omitempty"`
 	MimeType string     `json:"mimeType,omitempty"`

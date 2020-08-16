@@ -19,7 +19,7 @@
         <span class="flex-grow-0 p-3 cursor-pointer bg-shade-100 {expandActions ? 'text-accent-200' : 'text-text-100'}" on:click={actionsMenuClick}>
             <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
             {#if expandActions}
-                <div class="absolute text-sm">
+                <div class="absolute text-sm" style="margin-left: -11rem;">
                     <ul class="py-1 my-2 mx-2 w-48 bg-shade-neutral rounded shadow">
                         {#each actions as action}
                             <li class="block px-4 py-2 text-text-base hover:bg-shade-200" on:click={() => dispatch(action.event)}>

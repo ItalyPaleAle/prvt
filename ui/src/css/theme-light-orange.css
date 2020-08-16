@@ -22,6 +22,8 @@
     --color-success-200: #48bb78;
     --color-success-300: #2f855a;
 
+    --color-overlay: rgba(160, 174, 192, 0.75);
+
     --picker-gradient-right: linear-gradient(360deg, #dd6b20 100%, lightgrey 100%);
     --picker-gradient-left: linear-gradient(360deg, #f7fafc 100%, lightgrey 100%);
 }

@@ -35,6 +35,7 @@
                     date={el.date ? new Date(el.date) : null}
                     actions={actionsFile}
                     on:delete={() => deleteTree(el.path)}
+                    on:info={() => showInfo(el)}
                     on:download={() => downloadFile(el)}
                 />
             {/if}
@@ -46,15 +47,16 @@
 
 <script>
 // Utils
-import {encodePath, fileTypeIcon} from '../utils'
+import {encodePath, fileTypeIcon, cloneObject} from '../utils'
 
 // Components
 import ErrorBox from './ErrorBox.svelte'
 import OperationResult from './OperationResult.svelte'
 import ListItem from './ListItem.svelte'
+import InfoModal from './InfoModal.svelte'
 
 // Stores
-import {operationResult} from '../stores'
+import {operationResult, dropdown, modal} from '../stores'
 
 // Props for the view
 // Path is the path to list
@@ -69,6 +71,7 @@ const actionsFolder = [
 ]
 const actionsFile = [
     {label: 'Download', event: 'download', icon: 'fa-download'},
+    {label: 'Info', event: 'info', icon: 'fa-info-circle'},
     {label: 'Delete file', event: 'delete', icon: 'fa-trash'}
 ]
 
@@ -124,6 +127,19 @@ function requestTree(reqPath) {
 
 function downloadFile(element) {
     location.href = '/file/' + element.fileId + '?dl=1'
+}
+
+function showInfo(element) {
+    $dropdown = null
+    const el = cloneObject(element)
+    el.name = el.path
+    delete el.path
+    $modal = {
+        component: InfoModal,
+        props: {
+            element: el
+        }
+    }
 }
 
 function deleteTree(element, isDir) {
