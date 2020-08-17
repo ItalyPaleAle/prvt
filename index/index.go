@@ -48,6 +48,8 @@ type FolderList struct {
 // Index manages the index for all files and folders
 type Index struct {
 	cache      *IndexFile
+	cacheFiles map[string]*IndexElement
+	cacheTree  *IndexTreeNode
 	cacheTime  time.Time
 	cacheTag   interface{}
 	refreshing bool
@@ -141,6 +143,9 @@ func (i *Index) Refresh(force bool) error {
 	i.cacheTime = now
 	i.cacheTag = tag
 
+	// Build the tree
+	i.buildTree()
+
 	return nil
 }
 
@@ -203,7 +208,7 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 		return errors.New("file already exists")
 	}
 
-	// Add the file to the index and return the id
+	// Add the file to the index
 	fileEl := &IndexElement{
 		Path:   path,
 		FileId: fileId,
@@ -213,6 +218,8 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 		MimeType: mimeType,
 	}
 	elements := append(i.cache.Elements, fileEl)
+
+	// Save the updated index
 	updated := &IndexFile{
 		Version:  2,
 		Elements: elements,
@@ -221,14 +228,25 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 		return err
 	}
 
+	// Add the file to the tree and dictionary too
+	i.addToTree(fileEl)
+
 	return nil
 }
 
 // FileExists returns true if the file exists in the index
 func (i *Index) FileExists(path string) (bool, error) {
+	// Remove the trailing / if present
+	if len(path) > 1 && strings.HasSuffix(path, "/") {
+		path = path[:len(path)-1]
+	}
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
 		return false, errors.New("path must start with /")
+	}
+	// Path / always exists
+	if path == "/" {
+		return true, nil
 	}
 
 	// Refresh the index if needed
@@ -236,12 +254,28 @@ func (i *Index) FileExists(path string) (bool, error) {
 		return false, err
 	}
 
-	// Iterate through the list of elements to check if the file exists
-	for _, el := range i.cache.Elements {
-		// Check if there's an exact match, or if there's a folder starting with the path
-		if el.Path == path || strings.HasPrefix(el.Path, path+"/") {
-			return true, nil
+	// Iterate through the path to find the element in the tree
+	// Skip the first character, which is a /
+	start := 1
+	node := i.cacheTree
+	for y := 1; y < len(path); y++ {
+		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
+		if path[y] == '/' && (y-start) > 1 {
+			part := path[start:y]
+			if found := node.Find(part); found != nil {
+				node = found
+			} else {
+				// Not found
+				return false, nil
+			}
+			start = y + 1
 		}
+	}
+
+	// Last element at the end of the path
+	part := path[start:]
+	if found := node.Find(part); found != nil {
+		return true, nil
 	}
 
 	return false, nil
@@ -300,6 +334,10 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 		return nil, nil, err
 	}
 
+	// Rebuild the tree and dictionary
+	// TODO: Eventually, this should just update the existing tree without having to rebuild it!
+	i.buildTree()
+
 	return objectsRemoved, pathsRemoved, nil
 }
 
@@ -320,58 +358,67 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 		return nil, err
 	}
 
-	// Iterate through the folders looking for the one
-	result := make([]FolderList, 0)
-	for _, el := range i.cache.Elements {
-		if strings.HasPrefix(el.Path, path) {
-			// Prefix matches, so it's in the right path
-			// Return only one level of sub-folders
-			slashPos := strings.Index(el.Path[len(path):], "/")
-			oneLevel := ""
-			if slashPos == -1 {
-				// No more slashes in the path
-				// Means we have a file
-				oneLevel = el.Path[len(path):]
-
-				// File ID
-				fileId, err := uuid.FromBytes(el.FileId)
-				if err != nil {
-					return nil, err
+	// Iterate through the path looking for the node in the tree
+	start := 1
+	node := i.cacheTree
+	if path != "/" {
+		// Skip the first character, which is a /
+		for y := 1; y < len(path); y++ {
+			// Folder delimiter (and ignore double delimiters)
+			if path[y] == '/' && (y-start) > 1 {
+				part := path[start:y]
+				if found := node.Find(part); found != nil {
+					node = found
+				} else {
+					// Not found
+					return nil, nil
 				}
-
-				// Date
-				var date *time.Time
-				if el.Date != nil && el.Date.Seconds > 0 {
-					o := time.Unix(el.Date.Seconds, 0).UTC()
-					date = &o
-				}
-
-				// Since we have a file, we're sure there aren't more with the same path
-				result = append(result, FolderList{
-					Path:      oneLevel,
-					Directory: false,
-					FileId:    fileId.String(),
-					Date:      date,
-					MimeType:  el.MimeType,
-				})
-			} else {
-				// We have a directory
-				// Get only until the slash
-				oneLevel = el.Path[len(path):(len(path) + slashPos)]
-
-				// Check if the path is already in the result
-				if !folderListContains(result, oneLevel) {
-					result = append(result, FolderList{
-						Path:      oneLevel,
-						Directory: true,
-					})
-				}
+				start = y + 1
 			}
 		}
 	}
 
-	if len(result) == 0 {
-		result = nil
+	// Get the result list from the node we found
+	// Note that the last character of the string is a / so we certainly have the right node
+	count := len(node.Children)
+	if count == 0 {
+		// Nothing found
+		return nil, nil
+	}
+	result := make([]FolderList, count)
+	y := 0
+	for _, el := range node.Children {
+		// We have a file
+		if el.File != nil {
+			// File ID
+			fileId, err := uuid.FromBytes(el.File.FileId)
+			if err != nil {
+				return nil, err
+			}
+
+			// Date
+			var date *time.Time
+			if el.File.Date != nil && el.File.Date.Seconds > 0 {
+				o := time.Unix(el.File.Date.Seconds, 0).UTC()
+				date = &o
+			}
+
+			result[y] = FolderList{
+				Path:      el.Name,
+				Directory: false,
+				FileId:    fileId.String(),
+				Date:      date,
+				MimeType:  el.File.MimeType,
+			}
+			y++
+		} else {
+			// Folder
+			result[y] = FolderList{
+				Path:      el.Name,
+				Directory: true,
+			}
+			y++
+		}
 	}
 
 	return result, nil
@@ -379,47 +426,82 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 
 // GetFileById returns the list item object for a file, searching by its id
 func (i *Index) GetFileById(fileId string) (*FolderList, error) {
-	// Convert the file ID to bytes
-	fileIdObj, err := uuid.FromString(fileId)
-	if err != nil {
-		return nil, err
-	}
-	fileIdBytes := fileIdObj.Bytes()
-
 	// Refresh the index if needed
 	if err := i.Refresh(false); err != nil {
 		return nil, err
 	}
 
-	// Iterate through the list
-	for _, el := range i.cache.Elements {
-		if el.FileId != nil && bytes.Compare(el.FileId, fileIdBytes) == 0 {
-			// Date
-			var date *time.Time
-			if el.Date != nil && el.Date.Seconds > 0 {
-				o := time.Unix(el.Date.Seconds, 0).UTC()
-				date = &o
-			}
-
-			return &FolderList{
-				Path:      el.Path,
-				Directory: false,
-				FileId:    fileId,
-				Date:      date,
-				MimeType:  el.MimeType,
-			}, nil
-		}
+	// Do a lookup in the dictionary
+	el, found := i.cacheFiles[fileId]
+	if !found || el == nil {
+		return nil, nil
 	}
 
-	return nil, nil
+	// Date
+	var date *time.Time
+	if el.Date != nil && el.Date.Seconds > 0 {
+		o := time.Unix(el.Date.Seconds, 0).UTC()
+		date = &o
+	}
+
+	return &FolderList{
+		Path:      el.Path,
+		Directory: false,
+		FileId:    fileId,
+		Date:      date,
+		MimeType:  el.MimeType,
+	}, nil
 }
 
-// Check if a path is already contained in a []FolderList sllice
-func folderListContains(list []FolderList, path string) bool {
-	for _, el := range list {
-		if el.Path == path {
-			return true
+// Builds the tree and the dictionary for easier searching
+func (i *Index) buildTree() {
+	// Init the objects
+	i.cacheFiles = make(map[string]*IndexElement, len(i.cache.Elements))
+	i.cacheTree = &IndexTreeNode{
+		Name:     "/",
+		Children: make([]*IndexTreeNode, 0),
+	}
+
+	// Iterate through the elements and build the tree
+	for _, el := range i.cache.Elements {
+		i.addToTree(el)
+	}
+}
+
+func (i *Index) addToTree(el *IndexElement) {
+	// Ensure we have a file ID and that the path begins with /
+	if el.FileId == nil || len(el.Path) < 2 || el.Path[0] != '/' {
+		return
+	}
+
+	// Iterate through the path to get the intermediate folders (skipping the first character which is a / itself)
+	start := 1
+	node := i.cacheTree
+	for y := 1; y < len(el.Path); y++ {
+		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
+		if el.Path[y] == '/' && (y-start) > 1 {
+			part := el.Path[start:y]
+			if found := node.Find(part); found != nil {
+				// Element exists already
+				node = found
+			} else {
+				// Create the intermediate folder
+				node = node.Add(part, nil)
+			}
+			start = y + 1
 		}
 	}
-	return false
+
+	// Whatever is left is the name of the file
+	fileName := el.Path[start:]
+	node.Add(fileName, el)
+
+	// Also add to the file to the dictionary
+	// The key here is the string-representation of the file ID
+	fileIdObj, err := uuid.FromBytes(el.FileId)
+	if err != nil {
+		return
+	}
+	key := fileIdObj.String()
+	i.cacheFiles[key] = el
 }
