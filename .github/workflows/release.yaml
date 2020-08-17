@@ -186,7 +186,7 @@ jobs:
     
     # Publish artifacts
     - name: Publish binaries as artifacts
-      uses: actions/upload-artifact@v2.1.4
+      uses: actions/upload-artifact@v2
       with:
         name: bin
         path: .bin
