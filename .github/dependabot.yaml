@@ -13,6 +13,8 @@ updates:
     directory: "/ui"
     schedule:
       interval: "daily"
+    allow:
+      - dependency-type: "production"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
