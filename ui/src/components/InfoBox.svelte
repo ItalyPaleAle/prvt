@@ -9,7 +9,7 @@
       <span class="ml-1" title="{metadata.folder}" aria-label="{metadata.folder}">{metadata.folder}</span>
     </div>
   {/if}
-  {#if metadata.size}
+  {#if metadata.size !== undefined && metadata.size !== null}
     <div class="truncate mb-2 ml-4">
       <i class="fa fa-database fa-fw" aria-hidden="true"></i>
       <span class="ml-1" title="{metadata.size} bytes" aria-label="{size}">{size}</span>
@@ -17,7 +17,7 @@
   {/if}
   <div class="truncate mb-2 ml-4">
     <i class="fa fa-clock-o fa-fw" aria-hidden="true"></i>
-    <span class="ml-1">{format(date, 'PPpp')}</span>
+    <span class="ml-1">{date}</span>
   </div>
 </div>
 
@@ -35,8 +35,8 @@ let metadata = {}
 $: requestMetadata(element)
 
 // Date and size
-$: size = (metadata && metadata.size) ? formatSize(metadata.size) : null
-$: date = (metadata && metadata.date) ? new Date(metadata.date) : null
+$: size = (metadata && metadata.size) ? formatSize(metadata.size) : '0 bytes'
+$: date = (metadata && metadata.date) ? format(new Date(metadata.date), 'PPpp') : ''
 
 // Request the full metadata
 function requestMetadata(el) {
@@ -50,6 +50,9 @@ function requestMetadata(el) {
             return resp.json()
         })
         .then((obj) => {
+            if (obj.size === undefined || obj.size === null) {
+                obj.size = 0
+            }
             metadata = obj
         })
 }
