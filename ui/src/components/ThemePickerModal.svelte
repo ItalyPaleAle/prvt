@@ -1,6 +1,6 @@
 <ul class="p-4">
   {#each themes as t}
-    <li class="cursor-pointer flex px-4 py-2 text-text-base hover:bg-shade-200" on:click={() => $theme = t}>
+    <li class="cursor-pointer flex px-4 py-2 text-text-base hover:bg-shade-200" on:click={() => setTheme(t)}>
       <span class="color-circle theme-{t}" title="Theme: {t}" aria-hidden="true"></span>
       <span class="ml-2">Theme: {t}</span>
     </li>
@@ -29,6 +29,17 @@
 </style>
 
 <script>
+// Theme data
 import {themes} from '../theme'
 import theme from '../theme'
+
+// Stores
+import {modal} from '../stores'
+
+// Set the theme
+function setTheme(t) {
+  $theme = t
+  // Hide the modal
+  $modal = null
+}
 </script>
