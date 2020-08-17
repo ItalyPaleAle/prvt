@@ -1,7 +1,9 @@
 # Compiled files
 bin
 .bin
-pkged.go
+.packr
+packrd/
+*-packr.go
 
 # Development
 old/

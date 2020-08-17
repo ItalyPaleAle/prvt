@@ -31,7 +31,7 @@ import (
 	"github.com/ItalyPaleAle/prvt/repository"
 
 	"github.com/gin-gonic/gin"
-	"github.com/markbates/pkger"
+	"github.com/gobuffalo/packr/v2"
 )
 
 type Server struct {
@@ -67,10 +67,7 @@ func (s *Server) Start(address, port string) error {
 	}
 
 	// UI
-	uiBox, err := pkger.Open("/ui/dist")
-	if err != nil {
-		panic(err)
-	}
+	uiBox := packr.New("ui", "../ui/dist")
 	router.GET("/ui/*page", gin.WrapH(http.StripPrefix("/ui/", http.FileServer(uiBox))))
 
 	// Redirect from / to the UI
