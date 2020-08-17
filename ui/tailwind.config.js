@@ -21,6 +21,7 @@ module.exports = {
                 'success-200': 'var(--color-success-200)',
                 'success-300': 'var(--color-success-300)',
                 overlay: 'var(--color-overlay)',
+                alert: 'var(--color-alert)',
             }
         },
         container: {

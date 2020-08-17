@@ -15,21 +15,9 @@
             {/if}
         </span>
     </a>
-    {#if actions && actions.length}
-        <span class="flex-grow-0 p-3 cursor-pointer bg-shade-100 {expandActions ? 'text-accent-200' : 'text-text-100'}" on:click={actionsMenuClick}>
+    {#if actions}
+        <span class="flex-grow-0 p-3 cursor-pointer bg-shade-100" on:click={() => dispatch('actions')}>
             <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
-            {#if expandActions}
-                <div class="absolute text-sm" style="margin-left: -11rem;">
-                    <ul class="py-1 my-2 mx-2 w-48 bg-shade-neutral rounded shadow">
-                        {#each actions as action}
-                            <li class="block px-4 py-2 text-text-base hover:bg-shade-200" on:click={() => dispatch(action.event)}>
-                                <i class="fa {action.icon || ''} fa-fw" aria-hidden="true"></i>
-                                {action.label}
-                            </li>
-                        {/each}
-                    </ul>
-                </div>
-            {/if}
         </span>
     {:else}
         <span class="flex-grow-0 p-3 bg-shade-100 text-text-200">
@@ -48,24 +36,6 @@ export let icon = ''
 export let link = ''
 export let date = null
 export let actions = null
-
-// Stores
-import {dropdown} from '../stores'
-
-// State
-let expandActions = false
-
-// There can only be one actions menu open in the entire application, so we use the $dropdown store as semaphore
-$: expandActions = $dropdown === link
-
-function actionsMenuClick() {
-    if (expandActions) {
-        $dropdown = null
-    }
-    else {
-        $dropdown = link
-    }
-}
 
 // Event dispatcher
 import {createEventDispatcher} from 'svelte'

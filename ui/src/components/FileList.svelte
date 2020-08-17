@@ -24,8 +24,8 @@
                     label={el.path}
                     icon="fa-folder"
                     link="#/tree/{path ? path + '/' : ''}{el.path}"
-                    actions={actionsFolder}
-                    on:delete={() => deleteTree(el.path, true)}
+                    actions={true}
+                    on:actions={() => showActions(el)}
                 />
             {:else if el.fileId}
                 <ListItem
@@ -33,10 +33,8 @@
                     icon="{fileTypeIcon(el.mimeType)}"
                     link="/file/{el.fileId}"
                     date={el.date ? new Date(el.date) : null}
-                    actions={actionsFile}
-                    on:delete={() => deleteTree(el.path)}
-                    on:info={() => showInfo(el)}
-                    on:download={() => downloadFile(el)}
+                    actions={true}
+                    on:actions={() => showActions(el)}
                 />
             {/if}
         {/each}
@@ -53,10 +51,10 @@ import {encodePath, fileTypeIcon, cloneObject} from '../utils'
 import ErrorBox from './ErrorBox.svelte'
 import OperationResult from './OperationResult.svelte'
 import ListItem from './ListItem.svelte'
-import InfoModal from './InfoModal.svelte'
+import ActionsModal from './ActionsModal.svelte'
 
 // Stores
-import {operationResult, dropdown, modal} from '../stores'
+import {operationResult, modal} from '../stores'
 
 // Props for the view
 // Path is the path to list
@@ -67,12 +65,11 @@ let levelUp = null
 
 // Actions presets
 const actionsFolder = [
-    {label: 'Delete folder', event: 'delete', icon: 'fa-trash'}
+    {label: 'Delete folder', icon: 'fa-trash', action: deleteFolder, isAlert: true}
 ]
 const actionsFile = [
-    {label: 'Download', event: 'download', icon: 'fa-download'},
-    {label: 'Info', event: 'info', icon: 'fa-info-circle'},
-    {label: 'Delete file', event: 'delete', icon: 'fa-trash'}
+    {label: 'Download', icon: 'fa-download', action: downloadFile},
+    {label: 'Delete file', icon: 'fa-trash', action: deleteFile, isAlert: true}
 ]
 
 // Promise requesting the list of files
@@ -125,31 +122,50 @@ function requestTree(reqPath) {
         })
 }
 
-function downloadFile(element) {
-    location.href = '/file/' + element.fileId + '?dl=1'
-}
-
-function showInfo(element) {
-    $dropdown = null
+// Displays the actions modal
+function showActions(element) {
+    // The ActionsModal expects "name" to be be the set
     const el = cloneObject(element)
     el.name = el.path
-    delete el.path
+
+    // Display the modal
     $modal = {
-        component: InfoModal,
+        component: ActionsModal,
         props: {
-            element: el
+            element: el,
+            actions: el.isDir ? actionsFolder : actionsFile
         }
     }
 }
 
+// The next functions are used in the actions presets
+function downloadFile(element) {
+    // Close the modal
+    $modal = null
+
+    // Trigger a file download
+    location.href = '/file/' + element.fileId + '?dl=1'
+}
+
+function deleteFile(element) {
+    return deleteTree(element)
+}
+
+function deleteFolder(element) {
+    return deleteTree(element, true)
+}
+
 function deleteTree(element, isDir) {
-    const reqPath = (path ? path + '/' : '') + element
+    const reqPath = (path ? path + '/' : '') + element.path
 
     // First, ask for confirmation
     const confirmMessage = isDir ? 'Are you sure you want to delete the folder "/' + reqPath + '" and ALL of its content? This is irreversible' : 'Are you sure you want to delete the file "/' + reqPath + '"? This is irreversible.'
     if (!confirm(confirmMessage)) {
         return
     }
+
+    // Close the modal
+    $modal = null
 
     // Sets "requesting" to a promise that does a sequence of operations
     requesting = Promise.resolve()

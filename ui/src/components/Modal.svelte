@@ -2,7 +2,7 @@
   <div class="fixed inset-0 transition-opacity">
     <div class="absolute inset-0 bg-overlay" on:click={close}></div>
   </div>
-  <div class="bg-shade-base rounded-lg overflow-hidden shadow-xl transform transition-all h-full w-full sm:w-2/3 md:w-1/2 lg:w-2/5" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
+  <div class="bg-shade-base rounded-lg overflow-x-hidden overflow-y-scroll shadow-xl transform transition-all h-full w-full sm:w-2/3 md:w-1/2 lg:w-2/5 flex flex-col justify-start" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
     <div class="w-full p-2 flex items-end justify-end border-b border-shade-200">
       <span class="mx-2 text-xl cursor-pointer"
         aria-label="Close dialog" title="Close dialog"

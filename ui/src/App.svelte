@@ -24,20 +24,18 @@ import Navbar from './components/Navbar.svelte'
 import Footer from './components/Footer.svelte'
 
 // Stores
-import {dropdown, modal} from './stores'
+import {modal} from './stores'
 
-// Clicking on the background anywhere will hide any dropdown menu or modal currently open
+// Clicking on the background anywhere will hide any modal currently open
 function bodyClick(event) {
     // Only capture clicks on the body, and not child elements
     if (event && event.target == document.body && !event.defaultPrevented) {
-        $dropdown = null
         $modal = null
     }
 }
 
-// When a route is changed, hide all dropdowns or modals
+// When the page is changed, hide the modal
 function routeLoaded(event) {
-    $dropdown = null
     $modal = null
 }
 </script>
