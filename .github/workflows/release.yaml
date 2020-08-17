@@ -9,13 +9,13 @@ on:
 env:
   GO_BUILDER_IMAGE: 'golang:1.14-alpine'
   NODE_BUILDER_IMAGE: 'node:12-alpine'
-  PACKR_VERSION: 2.7.1
+  PKGER_VERSION: 0.17.0
   
 jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
 
     - name: Check out code
@@ -76,13 +76,13 @@ jobs:
               echo -e "###\nInstall the zip utility\n"
               apk add zip
 
-              echo -e "\n###\nFetching packr2\n"
-              mkdir -p .packr
-              wget -O - https://github.com/gobuffalo/packr/releases/download/v${{env.PACKR_VERSION}}/packr_${{env.PACKR_VERSION}}_linux_amd64.tar.gz | tar xvz -C .packr
-              chmod +x .packr/packr2
+              echo -e "\n###\nFetching pkger\n"
+              mkdir -p .pkger
+              wget -O - https://github.com/markbates/pkger/releases/download/v${{env.PKGER_VERSION}}/pkger_${{env.PKGER_VERSION}}_Linux_x86_64.tar.gz | tar xvz -C .pkger
+              chmod +x .pkger/pkger
 
-              echo -e "\n###\nRunning packr2\n"
-              .packr/packr2
+              echo -e "\n###\nRunning pkger\n"
+              .pkger/pkger
 
               echo -e "\n###\nFetching modules\n"
               GO111MODULE=on \
