@@ -1,6 +1,5 @@
 {#await requesting}
-    <i class="fa fa-spinner fa-spin fa-fw" aria-hidden="true"></i>
-    Loading…
+    <Spinner />
 {:then list}
     {#if $operationResult}
         <OperationResult
@@ -46,12 +45,14 @@
 <script>
 // Utils
 import {encodePath, fileTypeIcon, cloneObject} from '../utils'
+import {Request} from '../request'
 
 // Components
 import ErrorBox from './ErrorBox.svelte'
 import OperationResult from './OperationResult.svelte'
 import ListItem from './ListItem.svelte'
 import ActionsModal from './ActionsModal.svelte'
+import Spinner from '../components/Spinner.svelte'
 
 // Stores
 import {operationResult, modal} from '../stores'
@@ -97,11 +98,7 @@ $: {
 
 function requestTree(reqPath) {
     // Request the tree
-    return fetch('/api/tree/' + encodePath(reqPath))
-        // Get response as JSON
-        .then((resp) => {
-            return resp.json()
-        })
+    return Request('/api/tree/' + encodePath(reqPath))
         .then((list) => {
             // Check if we have an error message
             if (list && list.error) {
@@ -170,26 +167,9 @@ function deleteTree(element, isDir) {
     // Sets "requesting" to a promise that does a sequence of operations
     requesting = Promise.resolve()
         // Submit the request
-        .then(() => fetch('/api/tree/' + encodePath(reqPath + (isDir ? '/*' : '')), {
+        .then(() => Request('/api/tree/' + encodePath(reqPath + (isDir ? '/*' : '')), {
             method: 'DELETE'
         }))
-        // Check the response
-        .then((resp) => {
-            if (resp.status != 200) {
-                return resp.json()
-                    .catch(() => {
-                        throw Error('Invalid response status code')
-                    })
-                    .then((body) => {
-                        if (body && body.error) {
-                            throw Error(body.error)
-                        }
-                        throw Error('Invalid response status code')
-                    })
-            }
-
-            return resp.json()
-        })
         .then((list) => {
             if (!list || !Array.isArray(list) || !list.length) {
                 throw Error('Invalid response')

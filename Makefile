@@ -3,7 +3,9 @@ APP_VERSION ?= canary
 all: build
 
 clean:
-	rm -fv ui/dist/*
+	rm -rfv ui/dist/*
+	rm -rfv .bin bin
+	packr2 clean
 
 build: build-ui
 	packr2

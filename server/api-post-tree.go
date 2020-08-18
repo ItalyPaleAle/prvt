@@ -54,12 +54,17 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 		defer close(res)
 
 		// Check if we have a path from the local filesystem or a file uploaded
-		localPaths := c.PostFormArray("localpath")
-		uploadFile, _ := c.FormFile("file")
-		if len(localPaths) > 0 && uploadFile == nil {
+		mpf, err := c.MultipartForm()
+		if err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		uploadFiles := mpf.File["file"]
+		localPaths := mpf.Value["localpath"]
+		if localPaths != nil && len(localPaths) > 0 && (uploadFiles == nil || len(uploadFiles) == 0) {
 			s.addLocalPath(ctx, localPaths, path, res)
-		} else if len(localPaths) == 0 && uploadFile != nil {
-			s.addUploadedFile(ctx, uploadFile, path, res)
+		} else if uploadFiles != nil && len(uploadFiles) > 0 && (localPaths == nil || len(localPaths) == 0) {
+			s.addUploadedFiles(ctx, uploadFiles, path, res)
 		} else {
 			c.AbortWithError(http.StatusBadRequest, errors.New("need to specify one and only one of 'file' or 'localpath' form fields"))
 			return
@@ -112,6 +117,13 @@ func (s *Server) addLocalPath(ctx context.Context, paths []string, destination s
 		target := filepath.Base(expanded)
 
 		s.Repo.AddPath(ctx, folder, target, destination, res)
+	}
+}
+
+// Add multiple files by streams
+func (s *Server) addUploadedFiles(ctx context.Context, uploadFiles []*multipart.FileHeader, destination string, res chan<- repository.PathResultMessage) {
+	for _, f := range uploadFiles {
+		s.addUploadedFile(ctx, f, destination, res)
 	}
 }
 

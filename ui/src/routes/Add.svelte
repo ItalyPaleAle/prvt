@@ -6,81 +6,93 @@
   </div>
 {/if}
 
-<div class="w-full max-w-md bg-shade-neutral shadow p-4 ml-2 mb-6">
-  <div class="sm:flex sm:items-center">
-    <div class="sm:w-1/3">
-      <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="destination">
-        Destination folder
-      </label>
+{#if running}
+  <Spinner title="Uploading" />
+{:else}
+  <div class="w-full max-w-md bg-shade-neutral shadow p-4 ml-2 mb-6">
+    <div class="sm:flex sm:items-center">
+      <div class="sm:w-1/3">
+        <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="destination">
+          Destination folder
+        </label>
+      </div>
+      <div class="sm:w-2/3">
+        <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="destination" type="text" bind:value={destination} />
+      </div>
     </div>
-    <div class="sm:w-2/3">
-      <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="destination" type="text" bind:value={destination} />
-    </div>
+    <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto">Type the folder where the file should be uploaded. If it doesn't exist, it will be created.</p>
   </div>
-  <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto">Type the folder where the file should be uploaded. If it doesn't exist, it will be created.</p>
-</div>
 
-<div class="w-full max-w-md bg-shade-neutral shadow p-4 ml-2 mb-6">
-  <ul class="flex border-b border-shade-300 mb-4">
-    <li class="mr-3 cursor-pointer">
-      <span class={addType == 'upload' ? activeTabStyle : idleTabStyle} on:click={() => addType = 'upload'}>Upload file</span>
-    </li>
-    <li class="mr-3 cursor-pointer">
-      <span class={addType == 'local' ? activeTabStyle : idleTabStyle} on:click={() => addType = 'local'}>Add from the local disk</span>
-    </li>
-  </ul>
-  {#if addType == 'upload'}
-    <div class="sm:flex sm:items-center mb-6">
-      <div class="sm:w-1/3">
-        <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="uploadfile">
-          File
-        </label>
+  <div class="w-full max-w-md bg-shade-neutral shadow p-4 ml-2 mb-6">
+    <ul class="flex border-b border-shade-300 mb-4">
+      <li class="mr-3 cursor-pointer">
+        <span class={addType == 'upload' ? activeTabStyle : idleTabStyle} on:click={() => addType = 'upload'}>Upload file</span>
+      </li>
+      <li class="mr-3 cursor-pointer">
+        <span class={addType == 'local' ? activeTabStyle : idleTabStyle} on:click={() => addType = 'local'}>Add from the local disk</span>
+      </li>
+    </ul>
+    {#if addType == 'upload'}
+      <div class="sm:flex sm:items-center mb-6">
+        <div class="sm:w-1/3">
+          <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="uploadfile">
+            File
+          </label>
+        </div>
+        <div class="sm:w-2/3">
+          <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" multiple id="uploadfile" type="file" />
+        </div>
       </div>
-      <div class="sm:w-2/3">
-        <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="uploadfile" type="file" />
+      <div class="sm:flex sm:items-center">
+        <div class="sm:w-1/3"></div>
+        <div class="sm:w-2/3">
+          <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            disabled={running}
+            on:click={uploadHandler}>
+            Upload
+          </button>
+        </div>
       </div>
-    </div>
-    <div class="sm:flex sm:items-center">
-      <div class="sm:w-1/3"></div>
-      <div class="sm:w-2/3">
-        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled={running} on:click={uploadHandler}>
-          Upload
-        </button>
+    {:else if addType == 'local'}
+      <div class="sm:flex sm:items-center">
+        <div class="sm:w-1/3">
+          <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="localpath">
+            Path
+          </label>
+        </div>
+        <div class="sm:w-2/3">
+          <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="localpath" type="text" />
+        </div>
       </div>
-    </div>
-  {:else if addType == 'local'}
-    <div class="sm:flex sm:items-center">
-      <div class="sm:w-1/3">
-        <label class="block text-text-300 sm:text-right mb-1 sm:mb-0 pr-4" for="localpath">
-          Path
-        </label>
+      <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto  mb-6">Type the path to the file or folder in your local disk.</p>
+      <div class="sm:flex sm:items-center">
+        <div class="sm:w-1/3"></div>
+        <div class="sm:w-2/3">
+          <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            disabled={running}
+            on:click={addLocalHandler}>
+            Add
+          </button>
+        </div>
       </div>
-      <div class="sm:w-2/3">
-        <input class="bg-shade-200 appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" id="localpath" type="text" />
-      </div>
-    </div>
-    <p class="text-xs sm:w-2/3 sm:mr-0 sm:ml-auto  mb-6">Type the path to the file or folder in your local disk.</p>
-    <div class="sm:flex sm:items-center">
-      <div class="sm:w-1/3"></div>
-      <div class="sm:w-2/3">
-        <button class="shadow bg-accent-200 hover:bg-accent-100 focus:shadow-outline focus:outline-none text-shade-neutral font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled={running} on:click={addLocalHandler}>
-          Add
-        </button>
-      </div>
-    </div>
-  {/if}
-</div>
+    {/if}
+  </div>
+{/if}
 
 <script>
+// Utils
+import {encodePath, cleanPath} from '../utils'
+import {Request} from '../request'
+
 // Components
 import PageTitle from '../components/PageTitle.svelte'
 import ErrorBox from '../components/ErrorBox.svelte'
+import Spinner from '../components/Spinner.svelte'
 
 // Libraries
 import {push} from 'svelte-spa-router'
-
-// Utils
-import {encodePath, cleanPath} from '../utils'
 
 // Stores
 import {operationResult} from '../stores'
@@ -120,13 +132,11 @@ function requestHandler(body) {
     running = true
 
     // Upload the file
-    return fetch('/api/tree' + encodePath(dest), {
+    // This request has no timeout, because we might be uploading a large file
+    return Request('/api/tree' + encodePath(dest), {
             method: 'POST',
-            body
-        })
-        // Get response as JSON
-        .then((resp) => {
-            return resp.json()
+            body,
+            timeout: 0
         })
         .then((list) => {
             if (!list || !Array.isArray(list) || !list.length) {
@@ -160,7 +170,9 @@ function uploadHandler() {
         return
     }
     const body = new FormData()
-    body.set('file', file.files[0])
+    for (let i = 0; i < file.files.length; i++) {
+        body.append('file', file.files[i])  
+    }
 
     // Send the request
     return requestHandler(body)
