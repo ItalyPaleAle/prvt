@@ -53,18 +53,16 @@ export function formatSize(sz) {
     return result
 }
 
-// Returns the icon for the given file mime type
-export function fileTypeIcon(mimeType) {
-    // Default is file-o
+// Returns the type for a given file mime type
+export function fileType(mimeType) {
     if (!mimeType) {
-        return 'fa-file-o'
+        return ''
     }
 
-    // Specific types
     switch (mimeType) {
         case 'application/pdf':
         case 'application/x-pdf':
-            return 'fa-file-pdf-o'
+            return 'pdf'
 
         case 'application/zip':
         case 'application/x-bzip':
@@ -73,19 +71,20 @@ export function fileTypeIcon(mimeType) {
         case 'application/x-tar':
         case 'application/x-7z-compressed':
         case 'application/vnd.rar':
-            return 'fa-file-archive-o'
+            return 'archive'
 
         case 'text/plain':
-        case 'application/rtf':
-            return 'fa-file-text-o'
+            return 'text'
 
         case 'application/epub+zip':
-            return 'fa-file-epub-o'
+            return 'book'
 
         case 'text/html':
         case 'text/javascript':
         case 'text/css':
+        case 'text/json':
         case 'text/xml':
+        case 'text/yaml':
         case 'application/json':
         case 'application/php':
         case 'application/x-sh':
@@ -93,37 +92,68 @@ export function fileTypeIcon(mimeType) {
         case 'application/xhtml+xml':
         case 'application/xml':
         case 'application/x-freearc':
-            return 'fa-file-code-o'
+            return 'code'
 
         case 'application/vnd.ms-powerpoint':
         case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
         case 'application/vnd.oasis.opendocument.presentation':
-            return 'fa-file-powerpoint-o'
+            return 'presentation'
 
         case 'text/csv':
         case 'application/vnd.ms-excel':
         case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
         case 'application/vnd.oasis.opendocument.spreadsheet':
-            return 'fa-file-excel-o'
+            return 'spreadsheet'
 
         case 'application/msword':
         case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         case 'application/vnd.oasis.opendocument.text':
-            return 'fa-file-word-o'
+        case 'application/rtf':
+            return 'richtext'
 
         default:
             if (mimeType.startsWith('image/')) {
                 // All image types
-                return 'fa-file-image-o'
+                return 'image'
             }
             else if (mimeType.startsWith('audio/')) {
                 // All audio types
-                return 'fa-file-audio-o'
+                return 'audio'
             }
             else if (mimeType.startsWith('video/')) {
                 // All video types
-                return 'fa-file-video-o'
+                return 'video'
             }
+            return ''
+    }
+}
+
+// Returns the icon for the given file mime type
+export function fileTypeIcon(mimeType) {
+    switch (fileType(mimeType)) {
+        case 'pdf':
+            return 'fa-file-pdf-o'
+        case 'archive':
+            return 'fa-file-archive-o'
+        case 'text':
+            return 'fa-file-text-o'
+        case 'book':
+            return 'fa-file-epub-o'
+        case 'code':
+            return 'fa-file-code-o'
+        case 'presentation':
+            return 'fa-file-powerpoint-o'
+        case 'spreadsheet':
+            return 'fa-file-excel-o'
+        case 'richtext':
+            return 'fa-file-word-o'
+        case 'image':
+            return 'fa-file-image-o'
+        case 'audio':
+            return 'fa-file-audio-o'
+        case 'video':
+            return 'fa-file-video-o'
+        default:
             return 'fa-file-o'
     }
 }

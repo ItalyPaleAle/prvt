@@ -30,7 +30,7 @@
                 <ListItem
                     label={el.path}
                     icon="{fileTypeIcon(el.mimeType)}"
-                    link="/file/{el.fileId}"
+                    link="#/view/{el.fileId}"
                     date={el.date ? new Date(el.date) : null}
                     actions={true}
                     on:actions={() => showActions(el)}

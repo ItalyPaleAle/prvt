@@ -1,6 +1,7 @@
 // Components
 import Tree from './routes/Tree.svelte'
 import Add from './routes/Add.svelte'
+import View from './routes/View.svelte'
 import NotFound from './routes/NotFound.svelte'
 
 const routes = {
@@ -11,6 +12,9 @@ const routes = {
 
     // Add
     '/add/*': Add,
+
+    // View
+    '/view/:fileId': View,
         
     // Catch-all, must be last
     '*': NotFound,
