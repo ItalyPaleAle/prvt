@@ -1,7 +1,6 @@
 name: "Code scanning - CodeQL"
 
 on:
-  push:
   schedule:
     - cron: '0 15 * * 4'
 
