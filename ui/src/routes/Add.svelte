@@ -95,7 +95,7 @@ import Spinner from '../components/Spinner.svelte'
 import {push} from 'svelte-spa-router'
 
 // Stores
-import {operationResult} from '../stores'
+import {operationResult, fileList} from '../stores'
 
 // Props for this view
 export let params = {}
@@ -148,6 +148,7 @@ function requestHandler(body) {
 
             running = false
 
+            $fileList = null
             $operationResult = {
                 title: 'Added',
                 message: 'File(s) have been added',

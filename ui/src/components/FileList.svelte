@@ -55,7 +55,7 @@ import ActionsModal from './ActionsModal.svelte'
 import Spinner from '../components/Spinner.svelte'
 
 // Stores
-import {operationResult, modal} from '../stores'
+import {operationResult, fileList, modal} from '../stores'
 
 // Props for the view
 // Path is the path to list
@@ -97,25 +97,43 @@ $: {
 }
 
 function requestTree(reqPath) {
+    const url = '/api/tree/' + encodePath(reqPath)
+
+    // Check if we have the list in cache
+    const cache = $fileList
+    if (cache && cache.list && cache.url == url) {
+        return cache.list
+    }
+
     // Request the tree
-    return Request('/api/tree/' + encodePath(reqPath))
+    return Request(url)
         .then((list) => {
             // Check if we have an error message
             if (list && list.error) {
                 return Promise.reject(list.error)
             }
+
             // Ensure the list is valid
             if (!Array.isArray(list)) {
                 return Promise.reject('Invalid response: not an array')
             }
+
             // Sort the list
-            return list.sort((a, b) => {
+            const sorted = list.sort((a, b) => {
                 // Directories go first no matter what
                 if (a.isDir != b.isDir) {
                     return a.isDir ? -1 : 1
                 }
                 return (a.path || '').localeCompare(b.path || '')
             })
+
+            // Store in cache
+            $fileList = {
+                url,
+                list: sorted
+            }
+
+            return sorted
         })
 }
 
@@ -175,6 +193,7 @@ function deleteTree(element, isDir) {
                 throw Error('Invalid response')
             }
 
+            $fileList = null
             $operationResult = {
                 title: 'Deleted',
                 message: isDir ? 'The folder "/' + reqPath + '" has been deleted.' : 'The file "/' + reqPath + '" has been deleted.',
