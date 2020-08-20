@@ -1,15 +1,15 @@
 {#if path}
   <PageTitle>
-    <span slot="side">
-      <TitleBarButton name="Download" icon="fa-download" href={url + '?dl=1'} />
-    </span>
-    <span slot="title">
+    <span class="flex-initial" style="min-width: 0" slot="title">
       <Path {path} />
+    </span>
+    <span class="flex-none" slot="side">
+      <TitleBarButton name="Download" icon="fa-download" href={url + '?dl=1'} />
     </span>
   </PageTitle>
 {:else}
   <PageTitle {title}>
-    <span slot="side">
+    <span class="flex-none" slot="side">
       <TitleBarButton name="Download" icon="fa-download" href={url + '?dl=1'} />
     </span>
   </PageTitle>

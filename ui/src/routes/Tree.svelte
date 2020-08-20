@@ -1,8 +1,9 @@
 <PageTitle>
-  <span slot="title">
+  <!-- See: https://css-tricks.com/flexbox-truncated-text/ -->
+  <span class="flex-initial" style="min-width: 0" slot="title">
     <Path {path} />
   </span>
-  <span slot="side">
+  <span class="flex-none" slot="side">
     <TitleBarButton name="Add files" icon="fa-cloud-upload" href={'#/add/' + path} />
   </span>
 </PageTitle>
