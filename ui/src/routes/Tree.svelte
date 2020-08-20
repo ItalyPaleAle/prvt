@@ -1,10 +1,9 @@
-<PageTitle title="{'/' + path}">
+<PageTitle>
+  <span slot="title">
+    <Path {path} />
+  </span>
   <span slot="side">
-    <a  href="{'#/add/' + path}"
-      class="py-2 px-4 bg-shade-neutral shadow text-accent-200 hover:bg-shade-100">
-      <i class="fa fa-cloud-upload" aria-hidden="true" title="Add files"></i>
-      <span class="sr-only">Add files</span>
-    </a>
+    <TitleBarButton name="Add files" icon="fa-cloud-upload" href={'#/add/' + path} />
   </span>
 </PageTitle>
 <FileList path={path} />
@@ -12,6 +11,8 @@
 <script>
 import PageTitle from '../components/PageTitle.svelte'
 import FileList from '../components/FileList.svelte'
+import TitleBarButton from '../components/TitleBarButton.svelte'
+import Path from '../components/Path.svelte'
 
 import {cleanPath} from '../utils'
 

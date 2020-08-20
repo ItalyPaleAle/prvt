@@ -1,12 +1,15 @@
 // Cleans the path from the URL
 export function cleanPath(path) {
     path = path || ''
+    // Ensure the path starts with a /
     if (path.charAt(0) == '/') {
         path = path.slice(1)
     }
+    // Ensure the path does not end with a /
     if (path.charAt(path.length - 1) == '/') {
         path = path.slice(0, -1)
     }
+    // Decode URI-encoded characters
     return decodeURIComponent(path)
 }
 

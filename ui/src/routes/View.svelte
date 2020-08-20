@@ -1,11 +1,19 @@
-<PageTitle {title}>
-  <span slot="side">
-    <a class="py-2 px-4 bg-shade-neutral shadow text-accent-200 hover:bg-shade-100" href="{url + '?dl=1'}">
-      <i class="fa fa-download" aria-hidden="true" title="Download"></i>
-      <span class="sr-only">Download</span>
-    </a>
-  </span>
-</PageTitle>
+{#if path}
+  <PageTitle>
+    <span slot="side">
+      <TitleBarButton name="Download" icon="fa-download" href={url + '?dl=1'} />
+    </span>
+    <span slot="title">
+      <Path {path} />
+    </span>
+  </PageTitle>
+{:else}
+  <PageTitle {title}>
+    <span slot="side">
+      <TitleBarButton name="Download" icon="fa-download" href={url + '?dl=1'} />
+    </span>
+  </PageTitle>
+{/if}
 
 {#if type !== null}
   <div class="py-1 px-3">
@@ -61,12 +69,15 @@ import {fileList} from '../stores'
 import PageTitle from '../components/PageTitle.svelte'
 import DownloadBox from '../components/DownloadBox.svelte'
 import ErrorBox from '../components/ErrorBox.svelte'
+import TitleBarButton from '../components/TitleBarButton.svelte'
+import Path from '../components/Path.svelte'
 
 // Props
 export let params = {}
 
 // State
 let title
+let path
 let mimeType
 let type
 let url
@@ -86,6 +97,7 @@ $: {
 // Reset state
 function reset() {
     title = 'View'
+    path = null
     mimeType = {}
     type = null
     url = null
@@ -100,11 +112,17 @@ function requestMetadata(fileId) {
         for (let i = 0; i < cache.list.length; i++) {
             const el = cache.list[i]
             if (el && el.fileId == fileId) {
-                console.log(el)
                 title = el.path
+                path = cache.folder + '/' + el.path
                 mimeType = el.mimeType
                 type = fileType(mimeType)
-                return Promise.resolve()
+                if (path.charAt(0) == '/') {
+                    // Remove the / from the beginning of the path, if present
+                    path = path.slice(1)
+                }
+                // Set requesting to a Promise that is immediately resolved, then stop the function
+                requesting = Promise.resolve()
+                return
             }
         }
     }
@@ -113,8 +131,13 @@ function requestMetadata(fileId) {
     requesting = Request('/api/metadata/' + fileId)
         .then((obj) => {
             title = obj.name
+            path = obj.folder + obj.name
             mimeType = obj.mimeType
             type = fileType(mimeType)
+            if (path.charAt(0) == '/') {
+                // Remove the / from the beginning of the path, if present
+                path = path.slice(1)
+            }
         })
 }
 </script>

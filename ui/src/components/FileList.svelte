@@ -101,7 +101,7 @@ function requestTree(reqPath) {
 
     // Check if we have the list in cache
     const cache = $fileList
-    if (cache && cache.list && cache.url == url) {
+    if (cache && cache.list && cache.folder == reqPath) {
         return cache.list
     }
 
@@ -129,7 +129,7 @@ function requestTree(reqPath) {
 
             // Store in cache
             $fileList = {
-                url,
+                folder: reqPath,
                 list: sorted
             }
 
