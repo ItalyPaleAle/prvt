@@ -1,8 +1,10 @@
 <PageTitle {title}>
-  <a class="py-2 px-4 bg-shade-neutral shadow text-accent-200 hover:bg-shade-100" href="{url + '?dl=1'}">
-    <i class="fa fa-cloud-download" aria-hidden="true" title="Download"></i>
-    <span class="sr-only">Download</span>
-  </a>
+  <span slot="side">
+    <a class="py-2 px-4 bg-shade-neutral shadow text-accent-200 hover:bg-shade-100" href="{url + '?dl=1'}">
+      <i class="fa fa-download" aria-hidden="true" title="Download"></i>
+      <span class="sr-only">Download</span>
+    </a>
+  </span>
 </PageTitle>
 
 {#if type !== null}
