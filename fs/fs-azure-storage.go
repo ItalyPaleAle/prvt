@@ -53,7 +53,7 @@ func (f *AzureStorage) Init(connection string, cache *MetadataCache) error {
 	f.cache = cache
 
 	// Ensure the connection string is valid and extract the parts
-	// connection mus start with "azureblob:" or "azure:"
+	// connection must start with "azureblob:" or "azure:"
 	// Then it must contain the storage account container
 	r := regexp.MustCompile("^(azureblob|azure):([a-z0-9][a-z0-9-]{2,62})$")
 	match := r.FindStringSubmatch(connection)

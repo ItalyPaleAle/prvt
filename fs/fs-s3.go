@@ -52,7 +52,7 @@ func (f *S3) Init(connection string, cache *MetadataCache) error {
 	f.cache = cache
 
 	// Ensure the connection string is valid and extract the parts
-	// connection mus start with "s3:"
+	// connection must start with "s3:"
 	// Then it must contain the bucket name
 	if !strings.HasPrefix(connection, "s3:") || len(connection) < 4 {
 		return fmt.Errorf("invalid scheme")
