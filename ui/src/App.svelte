@@ -1,9 +1,8 @@
 {#if $modal}
     <Modal />
 {/if}
-<Navbar />
 
-<div class="container w-full lg:w-3/5 px-2 pt-4 lg:pt-12 mt-10">
+<div class="container w-full lg:w-3/5 px-2 pt-6 lg:pt-10">
     <Router {routes} on:routeLoaded={routeLoaded} />
 
     <Footer />
@@ -20,7 +19,6 @@ import routes from './routes'
 
 // Components
 import Modal from './components/Modal.svelte'
-import Navbar from './components/Navbar.svelte'
 import Footer from './components/Footer.svelte'
 
 // Stores

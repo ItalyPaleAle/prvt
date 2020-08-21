@@ -1,15 +1,23 @@
-<div class="flex justify-between content-center mt-8 lg:mt-0 w-full">
-  <!-- See: https://github.com/sveltejs/svelte/issues/4546 -->
+<div class="flex {justify} items-center w-full mb-10 lg:mb-12">
+  <!-- See https://github.com/sveltejs/svelte/issues/4546 for warning at runtime when in development mode -->
+  {#if backButton}
+    <TitleBarButton name="Back" icon="fa-chevron-left" href={backButton} />
+  {/if}
   <slot name="title">
     <h1 title={title} aria-label={title}
-      class="font-bold break-normal text-text-300 px-2 text-xl md:text-2xl truncate">
+      class="font-bold break-normal text-text-300 px-2 text-2xl md:text-3xl truncate">
       {title}
     </h1>
   </slot>
-  <slot name="side"></slot>
+  <slot name="right"></slot>
 </div>
-<hr class="bg-shade-300 my-5">
 
 <script>
+// Components
+import TitleBarButton from '../components/TitleBarButton.svelte'
+
 export let title = ''
+export let backButton = false
+
+$: justify = backButton ? 'justify-start' : 'justify-between'
 </script>

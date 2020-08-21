@@ -3,7 +3,7 @@
   <span class="flex-initial" style="min-width: 0" slot="title">
     <Path {path} />
   </span>
-  <span class="flex-none" slot="side">
+  <span class="flex-none" slot="right">
     <TitleBarButton name="Add files" icon="fa-cloud-upload" href={'#/add/' + path} />
   </span>
 </PageTitle>

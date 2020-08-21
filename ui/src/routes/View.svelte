@@ -1,25 +1,20 @@
 {#if path}
-  <PageTitle>
+  <PageTitle backButton={'#/tree/' + path.slice(0, Math.max(path.lastIndexOf('/'), 0))}>
     <span class="flex-initial" style="min-width: 0" slot="title">
       <Path {path} />
     </span>
-    <span class="flex-none" slot="side">
-      <TitleBarButton name="Download" icon="fa-download" href={url + '?dl=1'} />
-    </span>
   </PageTitle>
 {:else}
-  <PageTitle {title}>
-    <span class="flex-none" slot="side">
-      <TitleBarButton name="Download" icon="fa-download" href={url + '?dl=1'} />
-    </span>
-  </PageTitle>
+  <PageTitle {title} backButton="#/tree/" />
 {/if}
 
 {#if type !== null}
   <div class="py-1 px-3">
     {#if type == 'text' || type == 'code'}
-      {#await fetch(url).then((result) => result.text()) then text}
-        <pre class="w-full text-sm whitespace-pre-wrap">{text}</pre>
+      {#await fetch(url).then((result) => result.text())}
+        <Spinner />
+      {:then text}
+        <pre class="w-full px-4 text-sm whitespace-pre-wrap">{text}</pre>
       {:catch err}
         <ErrorBox title="Error requesting file" message={err || 'Unknwon error'} />
         <DownloadBox {url}/>
@@ -27,7 +22,9 @@
     {:else if type == 'image'}
       <img src={url} alt={title} class="w-full h-auto" />
     {:else if type == 'video'}
-      {#await requesting then _}
+      {#await requesting}
+        <Spinner />
+      {:then}
         <!-- svelte-ignore a11y-media-has-caption -->
         <video autoplay controls class="w-full h-auto">
           <source src={url} type={mimeType} />
@@ -37,7 +34,9 @@
         <DownloadBox {url}/>
       {/await}
     {:else if type == 'audio'}
-      {#await requesting then _}
+      {#await requesting}
+        <Spinner />
+      {:then}
         <!-- svelte-ignore a11y-media-has-caption -->
         <audio autoplay controls class="w-full">
           <source src={url} type={mimeType} />
@@ -52,8 +51,11 @@
         class="w-full max-h-screen" style="height: 36rem;"
         title={title} />
     {:else}
-      <DownloadBox {url}/>
+      <p>This file is in a format we can't preview</p>
     {/if}
+  </div>
+  <div class="my-10 pl-6">
+    <DownloadBox {url}/>
   </div>
 {/if}
 
@@ -71,6 +73,7 @@ import DownloadBox from '../components/DownloadBox.svelte'
 import ErrorBox from '../components/ErrorBox.svelte'
 import TitleBarButton from '../components/TitleBarButton.svelte'
 import Path from '../components/Path.svelte'
+import Spinner from '../components/Spinner.svelte'
 
 // Props
 export let params = {}

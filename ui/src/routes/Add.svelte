@@ -1,4 +1,4 @@
-<PageTitle title="Add" />
+<PageTitle title="Add" backButton={destination ? '#/tree' + destination : '#/tree/'} />
 
 {#if error}
   <div class="ml-2 w-full max-w-md">
