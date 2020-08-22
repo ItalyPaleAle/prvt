@@ -112,6 +112,8 @@ func (i *Index) Refresh(force bool) error {
 			Elements: make([]*IndexElement, 0),
 		}
 		i.cacheTime = now
+		// Build the tree
+		i.buildTree()
 		return nil
 	}
 	i.cache = &IndexFile{}
@@ -380,12 +382,11 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 
 	// Get the result list from the node we found
 	// Note that the last character of the string is a / so we certainly have the right node
-	count := len(node.Children)
-	if count == 0 {
+	if node == nil || node.Children == nil || len(node.Children) < 1 {
 		// Nothing found
 		return nil, nil
 	}
-	result := make([]FolderList, count)
+	result := make([]FolderList, len(node.Children))
 	y := 0
 	for _, el := range node.Children {
 		// We have a file

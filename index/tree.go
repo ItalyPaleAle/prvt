@@ -26,7 +26,7 @@ type IndexTreeNode struct {
 
 // Find returns the child node with the given name
 func (n *IndexTreeNode) Find(name string) *IndexTreeNode {
-	if name == "" || len(n.Children) < 1 {
+	if name == "" || n == nil || n.Children == nil || len(n.Children) < 1 {
 		return nil
 	}
 
@@ -47,6 +47,10 @@ func (n *IndexTreeNode) Add(name string, file *IndexElement) *IndexTreeNode {
 		Name:     name,
 		File:     file,
 	}
-	n.Children = append(n.Children, add)
+	if n.Children == nil {
+		n.Children = []*IndexTreeNode{add}
+	} else {
+		n.Children = append(n.Children, add)
+	}
 	return add
 }
