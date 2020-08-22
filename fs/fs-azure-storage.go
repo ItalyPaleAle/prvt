@@ -280,9 +280,9 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
 		// Need to request the metadata and cache it
 		// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
-		var len int64 = 64*1024 + 32 + 256
+		var length int64 = 64*1024 + 32 + 256
 		innerCtx, cancel := context.WithCancel(ctx)
-		resp, err = blockBlobURL.Download(innerCtx, 0, len, azblob.BlobAccessConditions{}, false)
+		resp, err = blockBlobURL.Download(innerCtx, 0, length, azblob.BlobAccessConditions{}, false)
 		if err != nil {
 			f.mux.Unlock()
 			cancel()

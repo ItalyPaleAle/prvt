@@ -236,12 +236,12 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
 		// Need to request the metadata and cache it
 		// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
-		var len int64 = 64*1024 + 32 + 256
+		var length int64 = 64*1024 + 32 + 256
 		innerCtx, cancel := context.WithCancel(ctx)
 
 		// Request the file from S3
 		opts = minio.GetObjectOptions{}
-		opts.SetRange(0, len)
+		opts.SetRange(0, length)
 		obj, stat, _, err = f.core.GetObject(innerCtx, f.bucketName, folder+name, opts)
 		if err != nil {
 			f.mux.Unlock()
