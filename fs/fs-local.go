@@ -186,7 +186,7 @@ func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, 
 	// Decrypt the data
 	var metadataLength int32
 	var metadata *crypto.Metadata
-	headerLength, wrappedKey, err := crypto.DecryptFile(out, file, f.masterKey, func(md *crypto.Metadata, sz int32) {
+	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, file, f.masterKey, func(md *crypto.Metadata, sz int32) {
 		metadata = md
 		metadataLength = sz
 		metadataCb(md, sz)
@@ -198,7 +198,7 @@ func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, 
 	// Store the metadata in cache
 	// Adding a lock here to prevent the case when adding this key causes the eviction of another one that's in use
 	f.mux.Lock()
-	f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+	f.cache.Add(name, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
 	f.mux.Unlock()
 
 	return
@@ -241,7 +241,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 
 	// Look up the file's metadata in the cache
 	f.mux.Lock()
-	headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
+	headerVersion, headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
 	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
 		// Need to read the metadata and cache it
 		// For that, we need to read the header and the first package, which are at most 64kb + (32+256) bytes
@@ -254,7 +254,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 
 		// Decrypt the data
 		buf := bytes.NewBuffer(read)
-		headerLength, wrappedKey, err = crypto.DecryptFile(nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) {
 			metadata = md
 			metadataLength = sz
 		})
@@ -264,7 +264,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 		}
 
 		// Store the metadata in cache
-		f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+		f.cache.Add(name, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
 	}
 	f.mux.Unlock()
 
@@ -295,7 +295,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 	}()
 
 	// Decrypt the data
-	err = crypto.DecryptPackages(out, pr, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
+	err = crypto.DecryptPackages(out, pr, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
 	if err != nil {
 		return
 	}

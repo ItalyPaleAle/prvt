@@ -38,7 +38,7 @@ func (c *MetadataCache) Init() (err error) {
 }
 
 // Get returns an element from the cache
-func (c *MetadataCache) Get(name string) (headerLength int32, wrappedKey []byte, metadataLength int32, metadata *crypto.Metadata) {
+func (c *MetadataCache) Get(name string) (headerVersion uint16, headerLength int32, wrappedKey []byte, metadataLength int32, metadata *crypto.Metadata) {
 	el, ok := c.cache.Get(name)
 	if !ok {
 		return
@@ -49,6 +49,7 @@ func (c *MetadataCache) Get(name string) (headerLength int32, wrappedKey []byte,
 		return
 	}
 
+	headerVersion = entry.headerVersion
 	headerLength = entry.headerLength
 	wrappedKey = entry.wrappedKey
 	metadataLength = entry.metadataLength
@@ -58,8 +59,9 @@ func (c *MetadataCache) Get(name string) (headerLength int32, wrappedKey []byte,
 }
 
 // Add an item to the cache
-func (c *MetadataCache) Add(name string, headerLength int32, wrappedKey []byte, metadataLength int32, metadata *crypto.Metadata) {
+func (c *MetadataCache) Add(name string, headerVersion uint16, headerLength int32, wrappedKey []byte, metadataLength int32, metadata *crypto.Metadata) {
 	entry := &metadataCacheEntry{
+		headerVersion:  headerVersion,
 		headerLength:   headerLength,
 		metadataLength: metadataLength,
 		wrappedKey:     wrappedKey,
@@ -79,6 +81,7 @@ func (c *MetadataCache) Remove(name string) {
 }
 
 type metadataCacheEntry struct {
+	headerVersion                uint16
 	headerLength, metadataLength int32
 	wrappedKey                   []byte
 	metadata                     *crypto.Metadata

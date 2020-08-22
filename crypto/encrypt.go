@@ -25,6 +25,7 @@ import (
 	"io"
 
 	"github.com/minio/sio"
+	"google.golang.org/protobuf/proto"
 )
 
 // EncryptFile encrypts a stream (in), streaming the result to out
@@ -46,7 +47,7 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, metadata *M
 	// First, build the header
 	// This contains the wrapped key too
 	head := Header{
-		Version: 0x01,
+		Version: 0x02,
 		Key:     wrappedKey,
 	}
 	headJSON, err := json.Marshal(head)
@@ -75,17 +76,17 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, metadata *M
 	if metadata == nil {
 		metadata = &Metadata{}
 	}
-	metadataJSON, err := json.Marshal(metadata)
+	metadataEnc, err := proto.Marshal(metadata)
 	if err != nil {
 		return err
 	}
 
-	// Metadata must be at most (1024-2) bytes (first 2 bytes are the length)
-	if len(metadataJSON) > 1022 {
+	// Metadata must be at most MaxMetadataLength bytes
+	if len(metadataEnc) > MaxMetadataLength {
 		return errors.New("metadata object is too big")
 	}
 	metadataLen := make([]byte, 2)
-	binary.LittleEndian.PutUint16(metadataLen, uint16(len(metadataJSON)))
+	binary.LittleEndian.PutUint16(metadataLen, uint16(len(metadataEnc)))
 
 	// Write the metadata to a buffer
 	metadataBuf := &bytes.Buffer{}
@@ -93,7 +94,7 @@ func EncryptFile(out io.WriteCloser, in io.Reader, masterKey []byte, metadata *M
 	if err != nil {
 		return err
 	}
-	_, err = metadataBuf.Write(metadataJSON)
+	_, err = metadataBuf.Write(metadataEnc)
 	if err != nil {
 		return err
 	}

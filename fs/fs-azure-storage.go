@@ -230,7 +230,7 @@ func (f *AzureStorage) GetWithContext(ctx context.Context, name string, out io.W
 	// Decrypt the data
 	var metadataLength int32
 	var metadata *crypto.Metadata
-	headerLength, wrappedKey, err := crypto.DecryptFile(out, body, f.masterKey, func(md *crypto.Metadata, sz int32) {
+	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, body, f.masterKey, func(md *crypto.Metadata, sz int32) {
 		metadata = md
 		metadataLength = sz
 		metadataCb(md, sz)
@@ -242,7 +242,7 @@ func (f *AzureStorage) GetWithContext(ctx context.Context, name string, out io.W
 	// Store the metadata in cache
 	// Adding a lock here to prevent the case when adding this key causes the eviction of another one that's in use
 	f.mux.Lock()
-	f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+	f.cache.Add(name, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
 	f.mux.Unlock()
 
 	// Get the ETag
@@ -276,8 +276,8 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 
 	// Look up the file's metadata in the cache
 	f.mux.Lock()
-	headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
-	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
+	headerVersion, headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
+	if headerVersion == 0 || headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
 		// Need to request the metadata and cache it
 		// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
 		var length int64 = 64*1024 + 32 + 256
@@ -313,7 +313,7 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 		}
 
 		// Decrypt the data
-		headerLength, wrappedKey, err = crypto.DecryptFile(nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) {
 			metadata = md
 			metadataLength = sz
 			cancel()
@@ -325,7 +325,7 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 		}
 
 		// Store the metadata in cache
-		f.cache.Add(name, headerLength, wrappedKey, metadataLength, metadata)
+		f.cache.Add(name, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
 	}
 	f.mux.Unlock()
 
@@ -365,7 +365,7 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	}
 
 	// Decrypt the data
-	err = crypto.DecryptPackages(out, body, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
+	err = crypto.DecryptPackages(out, body, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
 	if err != nil {
 		return
 	}
