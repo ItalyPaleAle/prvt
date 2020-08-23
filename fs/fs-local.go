@@ -186,10 +186,11 @@ func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, 
 	// Decrypt the data
 	var metadataLength int32
 	var metadata *crypto.Metadata
-	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, file, f.masterKey, func(md *crypto.Metadata, sz int32) {
+	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, file, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
 		metadataCb(md, sz)
+		return true
 	})
 	if err != nil {
 		return
@@ -254,9 +255,10 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 
 		// Decrypt the data
 		buf := bytes.NewBuffer(read)
-		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
+			return false
 		})
 		if err != nil && err != crypto.ErrMetadataOnly {
 			f.mux.Unlock()

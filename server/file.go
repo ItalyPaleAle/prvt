@@ -71,7 +71,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 	if c.Request.Method != "HEAD" {
 		out = c.Writer
 	}
-	metadataCb := func(metadata *crypto.Metadata, metadataSize int32) {
+	metadataCb := func(metadata *crypto.Metadata, metadataSize int32) bool {
 		// Send headers before the data is sent
 		// Start with Content-Type and Content-Disposition
 		if metadata.ContentType != "" {
@@ -107,6 +107,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 				c.Header("Accept-Ranges", "bytes")
 			}
 		}
+		return true
 	}
 	var found bool
 	if rng != nil {

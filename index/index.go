@@ -84,11 +84,12 @@ func (i *Index) Refresh(force bool) error {
 	var data []byte
 	buf := &bytes.Buffer{}
 	isJSON := false
-	found, tag, err := i.store.Get("_index", buf, func(metadata *crypto.Metadata, metadataSize int32) {
+	found, tag, err := i.store.Get("_index", buf, func(metadata *crypto.Metadata, metadataSize int32) bool {
 		// Check if we're decoding a legacy JSON file
 		if metadata.ContentType == "application/json" {
 			isJSON = true
 		}
+		return true
 	})
 	if found {
 		// Check error here because otherwise we might have an error also if the index wasn't found

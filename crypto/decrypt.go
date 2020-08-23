@@ -184,7 +184,11 @@ func (w *decryptWriter) Write(p []byte) (n int, err error) {
 
 		// Metadata is ready, so invoke the callback
 		if w.Cb != nil {
-			w.Cb(&metadata, int32(metadataLen+2))
+			ok := w.Cb(&metadata, int32(metadataLen+2))
+			if !ok {
+				// If the callback returns false, abort here
+				return 0, ErrMetadataOnly
+			}
 		}
 		w.ReadMetadata = false
 	}

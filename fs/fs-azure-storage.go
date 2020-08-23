@@ -230,10 +230,11 @@ func (f *AzureStorage) GetWithContext(ctx context.Context, name string, out io.W
 	// Decrypt the data
 	var metadataLength int32
 	var metadata *crypto.Metadata
-	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, body, f.masterKey, func(md *crypto.Metadata, sz int32) {
+	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
 		metadataCb(md, sz)
+		return true
 	})
 	if err != nil {
 		return
@@ -313,10 +314,11 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 		}
 
 		// Decrypt the data
-		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
 			cancel()
+			return false
 		})
 		if err != nil && err != crypto.ErrMetadataOnly {
 			f.mux.Unlock()
