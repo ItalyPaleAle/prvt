@@ -182,6 +182,11 @@ func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, met
 	// Request the file from S3
 	obj, stat, _, err := f.core.GetObject(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
 	if err != nil {
+		// Check if it's a minio error and it's a not found one
+		e, ok := err.(minio.ErrorResponse)
+		if ok && e.Code == "NoSuchKey" {
+			found = false
+		}
 		return
 	}
 	defer obj.Close()
@@ -245,6 +250,11 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 		opts.SetRange(0, length)
 		obj, stat, _, err = f.core.GetObject(innerCtx, f.bucketName, folder+name, opts)
 		if err != nil {
+			// Check if it's a minio error and it's a not found one
+			e, ok := err.(minio.ErrorResponse)
+			if ok && e.Code == "NoSuchKey" {
+				found = false
+			}
 			f.mux.Unlock()
 			cancel()
 			return
