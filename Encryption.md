@@ -26,42 +26,42 @@ The structure of each file is:
 - The file header follows (maximum 254 bytes)
 - The rest of the file is encrypted with the DARE format. When decrypted, it contains:
     - The first 2 bytes of the encrypted data are the size of the metadata header (encoded as little-endian)
-    - The metadata header follows (maximum 1,022 bytes)
+    - The metadata header follows (maximum 32,766 bytes)
     - The rest of the data is the original file
 
 Visually:
 
 ```text
-+------------------------------------------------+
-|                                                |
-| 2 bytes: size of the file header               |
-| n bytes: file header (max 254 bytes)           |
-|                                                |
-|                                                |
-| ENCRYPTED CONTENT WITH DARE                    |
-| +--------------------------------------------+ |
-| |                                            | |
-| | 2 bytes: size of the metadata header       | |
-| | n bytes: metadata header (max 1,022 bytes) | |
-| |                                            | |
-| | Original file follows                      | |
-| |                                            | |
-| +--------------------------------------------+ |
-|                                                |
-+------------------------------------------------+
++-------------------------------------------------+
+|                                                 |
+| 2 bytes: size of the file header                |
+| n bytes: file header (max 254 bytes)            |
+|                                                 |
+|                                                 |
+| ENCRYPTED CONTENT WITH DARE                     |
+| +---------------------------------------------+ |
+| |                                             | |
+| | 2 bytes: size of the metadata header        | |
+| | n bytes: metadata header (max 32,766 bytes) | |
+| |                                             | |
+| | Original file follows                       | |
+| |                                             | |
+| +---------------------------------------------+ |
+|                                                 |
++-------------------------------------------------+
 ```
 
 ### File header
 
 The file header is a JSON fragment that contains 2 keys:
 
-- The version (`v`) of the algorithm used to encrypt the file. Currently, this is always `1`.
+- The version (`v`) of the algorithm used to encrypt the file. Currently, this is always `2`.
 - The wrapped encryption key (`k`) used to encrypt the file. Read more below on how the key is wrapped. In the JSON fragment, the key is base64-encoded.
 
 For example:
 
 ```json
-{"v":1,"k":"xfwZyE+zPscRlJU/BMsqkSjJwjW4S+qR5UD3Ss40X/KTr63548dzAQ=="}
+{"v":2,"k":"xfwZyE+zPscRlJU/BMsqkSjJwjW4S+qR5UD3Ss40X/KTr63548dzAQ=="}
 ```
 
 Because this header tells prvt how to decrypt the file, and it contains the (wrapped) key used to encrypt it, it is stored in plain-text. The key is wrapped (i.e. encrypted), however, so having this file alone won't let anyone else decrypt the data.
@@ -70,23 +70,17 @@ The file header is at most 254 bytes in length.
 
 ### Metadata header
 
-The metadata header is another JSON fragment, but this is stored encrypted, part of the ciphertext. It contains up to 3 keys (all optional):
+The metadata header is another dictionary, but this is stored encrypted, part of the ciphertext. It contains up to 3 keys (all optional):
 
-- The name (`n`) of the file, as stored.
-- The content type (`ct`) of the file, which is its MIME type.
-- The size (`sz`) of the file in bytes.
+- The name of the file, as stored.
+- The content type) of the file, which is its MIME type.
+- The size of the file in bytes.
 
-For example:
+The metadata header is at most 32,766 bytes in length, and it uses Protocol Buffers for encoding. The proto file defining the data structure is saved at [`crypto/metadata.proto`](/crypto/metadata.proto).
 
-```json
-{"n":"IMG0342.jpeg","ct":"image/jpeg","sz":3432845}
-```
-
-Because the content of the metadata header can be sensitive, it's stored encrypted to protect your privacy.
+Because the content of the metadata header can be sensitive (such as the nname lof the file and its type), it's stored encrypted to protect your privacy.
 
 While the metadata header is always present, it might not contain all (or any) keys, and prvt is still be able to decrypt the file.
-
-The metadata header is at most 1,022 bytes in length.
 
 ## Master key
 
@@ -129,7 +123,7 @@ This is done to protect your privacy, by hiding the original name of the file an
 
 To map files back to the original paths, prvt uses an encrypted index file. This is the `_index` file in the repository, and it's encrypted using the same pipeline as the data files, and as such it contains the same headers too.
 
-Decrypted, the `_index` file is a structured document encoded with Protocol Buffer that contains a dictionary with two main keys:
+Decrypted, the `_index` file is a structured document encoded with Protocol Buffers that contains a dictionary with two main keys:
 
 - The version of the index file. The latest version, used from prvt version 0.4, is `2`.
 - A list of elements present in the repository. This is an array of objects, each containing up to four keys:
