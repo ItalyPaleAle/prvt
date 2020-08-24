@@ -200,7 +200,7 @@ func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, met
 	// Decrypt the data
 	var metadataLength int32
 	var metadata *crypto.Metadata
-	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, obj, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(ctx, out, obj, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
 		metadataCb(md, sz)
@@ -270,7 +270,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 		}
 
 		// Decrypt the data
-		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, obj, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, obj, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
 			cancel()
@@ -311,7 +311,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	}
 
 	// Decrypt the data
-	err = crypto.DecryptPackages(out, obj, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
+	err = crypto.DecryptPackages(ctx, out, obj, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
 	if err != nil {
 		return
 	}

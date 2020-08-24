@@ -230,7 +230,7 @@ func (f *AzureStorage) GetWithContext(ctx context.Context, name string, out io.W
 	// Decrypt the data
 	var metadataLength int32
 	var metadata *crypto.Metadata
-	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(ctx, out, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
 		metadataCb(md, sz)
@@ -314,7 +314,7 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 		}
 
 		// Decrypt the data
-		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
 			cancel()
@@ -367,7 +367,7 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	}
 
 	// Decrypt the data
-	err = crypto.DecryptPackages(out, body, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
+	err = crypto.DecryptPackages(ctx, out, body, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
 	if err != nil {
 		return
 	}

@@ -20,11 +20,14 @@ package crypto
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/minio/sio"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -39,7 +42,7 @@ var ErrMetadataOnly = errors.New("output stream is nil, only metadata was return
 // The function requires a masterKey, a 32-byte key for AES-256, which is used to un-wrap the unique key for the file
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file, the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
 // The function returns the version and length of the header, the wrapped key, and an error if any
-func DecryptFile(out io.Writer, in io.Reader, masterKey []byte, metadataCb MetadataCb) (uint16, int32, []byte, error) {
+func DecryptFile(ctx context.Context, out io.Writer, in io.Reader, masterKey []byte, metadataCb MetadataCb) (uint16, int32, []byte, error) {
 	// Get the file header which contains the wrapped key
 	headerVersion, headerLen, wrappedKey, in, err := GetFileHeader(in)
 	if err != nil {
@@ -47,7 +50,7 @@ func DecryptFile(out io.Writer, in io.Reader, masterKey []byte, metadataCb Metad
 	}
 
 	// Decrypt the file starting from package #0
-	err = DecryptPackages(out, in, headerVersion, wrappedKey, masterKey, 0, 0, -1, metadataCb)
+	err = DecryptPackages(ctx, out, in, headerVersion, wrappedKey, masterKey, 0, 0, -1, metadataCb)
 
 	return headerVersion, headerLen, wrappedKey, err
 }
@@ -94,7 +97,7 @@ func GetFileHeader(in io.Reader) (uint16, int32, []byte, io.Reader, error) {
 // The function requires a wrapped key and the master key
 // It also requires a sequence number, that is the number of the first package/chunk we expect to decrypt
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file (only from package #0), the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
-func DecryptPackages(out io.Writer, in io.Reader, headerVersion uint16, wrappedKey []byte, masterKey []byte, seqNum, offset uint32, length int64, metadataCb MetadataCb) error {
+func DecryptPackages(ctx context.Context, out io.Writer, in io.Reader, headerVersion uint16, wrappedKey []byte, masterKey []byte, seqNum, offset uint32, length int64, metadataCb MetadataCb) error {
 	// Unwrap the key for the file, using the master key
 	key, err := UnwrapKey(masterKey, wrappedKey)
 	if err != nil {
@@ -105,6 +108,7 @@ func DecryptPackages(out io.Writer, in io.Reader, headerVersion uint16, wrappedK
 	readMetadata := (seqNum == 0 && metadataCb != nil)
 	// Create a writer that has a buffer of MaxMetadataLength+2 bytes, the maximum size of the metadata object (encoded as protobuf or JSON)
 	w := &decryptWriter{
+		Ctx:           ctx,
 		OutStream:     out,
 		Cb:            metadataCb,
 		HeaderVersion: headerVersion,
@@ -124,7 +128,7 @@ func DecryptPackages(out io.Writer, in io.Reader, headerVersion uint16, wrappedK
 	}
 
 	// Copy the buffer
-	if _, err := io.Copy(dec, in); err != nil {
+	if _, err := utils.CtxCopy(ctx, dec, in); err != nil {
 		return err
 	}
 	if err := dec.Close(); err != nil {
@@ -143,6 +147,7 @@ func DecryptPackages(out io.Writer, in io.Reader, headerVersion uint16, wrappedK
 // If there's a length greater than -1, it only returns as many bytes from the decrypted streams
 // Likewise, an offset greater than 0 makes it skip the first N bytes from the beginning of the stream (if there's an offset, there's no metadata parsing happening)
 type decryptWriter struct {
+	Ctx           context.Context
 	OutStream     io.Writer
 	Cb            MetadataCb
 	HeaderVersion uint16
@@ -153,6 +158,12 @@ type decryptWriter struct {
 
 func (w *decryptWriter) Write(p []byte) (n int, err error) {
 	var start uint32 = 0
+
+	// Check if the context is done
+	if err := w.Ctx.Err(); err != nil {
+		return 0, err
+	}
+
 	// If we have an offset, we don't read metadata
 	if w.Offset > 0 {
 		w.ReadMetadata = false

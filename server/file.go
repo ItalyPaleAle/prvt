@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
@@ -66,10 +67,51 @@ func (s *Server) FileHandler(c *gin.Context) {
 		rng = fs.NewRequestRange(rngHeader)
 	}
 
+	// Context
+	ctx := c.Request.Context()
+
 	// Load and decrypt the file, then pipe it to the response writer (but not for HEAD requests)
 	var out io.Writer
 	if c.Request.Method != "HEAD" {
-		out = c.Writer
+		// Context with a cancel function
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
+		defer cancel()
+
+		// Detect closed connections (this should be redundant, but still)
+		notifier := c.Writer.CloseNotify()
+
+		// Add a timeout to detect idle connections (which are not closed but are hanging)
+		timeout := 20 * time.Second
+		t := time.NewTimer(timeout)
+		read := make(chan int)
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-notifier:
+					cancel()
+				case <-t.C:
+					cancel()
+				case <-read:
+					if !t.Stop() {
+						<-t.C
+					}
+					t.Reset(timeout)
+				}
+			}
+		}()
+
+		out = utils.CtxWriter(func(p []byte) (int, error) {
+			select {
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			default:
+				read <- 1
+				return c.Writer.Write(p)
+			}
+		})
 	}
 	metadataCb := func(metadata *crypto.Metadata, metadataSize int32) bool {
 		// Send headers before the data is sent
@@ -111,9 +153,9 @@ func (s *Server) FileHandler(c *gin.Context) {
 	}
 	var found bool
 	if rng != nil {
-		found, _, err = s.Store.GetWithRange(c.Request.Context(), fileId, out, rng, metadataCb)
+		found, _, err = s.Store.GetWithRange(ctx, fileId, out, rng, metadataCb)
 	} else {
-		found, _, err = s.Store.GetWithContext(c.Request.Context(), fileId, out, metadataCb)
+		found, _, err = s.Store.GetWithContext(ctx, fileId, out, metadataCb)
 	}
 	if err != nil {
 		// Ignore error ErrMetadataOnly if we're making a head request

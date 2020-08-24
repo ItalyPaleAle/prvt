@@ -186,7 +186,7 @@ func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, 
 	// Decrypt the data
 	var metadataLength int32
 	var metadata *crypto.Metadata
-	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(out, file, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(ctx, out, file, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
 		metadataCb(md, sz)
@@ -255,7 +255,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 
 		// Decrypt the data
 		buf := bytes.NewBuffer(read)
-		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
 			return false
@@ -288,7 +288,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 	pr, pw := io.Pipe()
 	go func() {
 		// Read only the required packages
-		_, err := io.CopyN(pw, file, rng.LengthBytes())
+		_, err := utils.CtxCopyN(ctx, pw, file, rng.LengthBytes())
 		if err != nil && err != io.EOF {
 			pw.CloseWithError(err)
 		} else {
@@ -297,7 +297,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 	}()
 
 	// Decrypt the data
-	err = crypto.DecryptPackages(out, pr, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
+	err = crypto.DecryptPackages(ctx, out, pr, headerVersion, wrappedKey, f.masterKey, rng.StartPackage(), uint32(rng.SkipBeginning()), rng.Length, nil)
 	if err != nil {
 		return
 	}
