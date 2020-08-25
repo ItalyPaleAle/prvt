@@ -288,12 +288,18 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 	pr, pw := io.Pipe()
 	go func() {
 		// Read only the required packages
-		_, err := utils.CtxCopyN(ctx, pw, file, rng.LengthBytes())
+		_, err := io.CopyN(pw, file, rng.LengthBytes())
 		if err != nil && err != io.EOF {
 			pw.CloseWithError(err)
 		} else {
 			pw.Close()
 		}
+	}()
+
+	// Close the pipe if the context is canceled
+	go func() {
+		<-ctx.Done()
+		pw.Close()
 	}()
 
 	// Decrypt the data
