@@ -48,11 +48,12 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	mimeType = utils.SanitizeMimeType(mimeType)
 
 	// Check if the file exists in the index already
-	exists, err := index.Instance.FileExists(sanitizedPath)
+	exists, err := index.Instance.GetFileByPath(sanitizedPath)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}
-	if exists {
+	// Path "/" always exists
+	if exists != nil || sanitizedPath == "/" {
 		return RepositoryStatusExisting, nil
 	}
 

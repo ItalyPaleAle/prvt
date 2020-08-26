@@ -29,24 +29,28 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// GetMetadataHandler is the handler for GET /api/metadata/:fileId, which returns the metadata for a file
+// GetMetadataHandler is the handler for GET /api/metadata/:file, which returns the metadata for a file
 func (s *Server) GetMetadataHandler(c *gin.Context) {
-	// Get the fileId
-	fileId := c.Param("fileId")
-	if fileId == "" {
-		c.AbortWithError(http.StatusBadRequest, errors.New("empty fileId"))
+	// Get the file parameter and remove the leading /
+	file := c.Param("file")
+	if file == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("empty file"))
 		return
 	}
-
-	// Ensure fileId is a UUID
-	fileIdUUID, err := uuid.FromString(fileId)
-	if err != nil || fileIdUUID.Version() != 4 {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
+	if strings.HasPrefix(file, "/") {
+		file = file[1:]
 	}
 
 	// Get the element from the index
-	el, err := index.Instance.GetFileById(fileId)
+	var el *index.FolderList
+	fileIdUUID, err := uuid.FromString(file)
+	// Check if we have a file ID
+	if err == nil && fileIdUUID.Version() == 4 {
+		el, err = index.Instance.GetFileById(file)
+	} else {
+		// Re-add the leading /
+		el, err = index.Instance.GetFileByPath("/" + file)
+	}
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
@@ -57,10 +61,10 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 	}
 
 	// Request the metadata
-	found, _, err := s.Store.GetWithContext(c.Request.Context(), fileId, nil, func(metadata *crypto.Metadata, metadataSize int32) bool {
+	found, _, err := s.Store.GetWithContext(c.Request.Context(), el.FileId, nil, func(metadata *crypto.Metadata, metadataSize int32) bool {
 		pos := strings.LastIndex(el.Path, "/") + 1
 		response := metadataResponse{
-			FileId:   fileId,
+			FileId:   el.FileId,
 			Folder:   el.Path[0:pos],
 			Name:     metadata.Name,
 			Date:     el.Date,

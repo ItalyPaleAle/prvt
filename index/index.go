@@ -203,11 +203,12 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	}
 
 	// Check if the file already exists
-	exists, err := i.FileExists(path)
+	exists, err := i.GetFileByPath(path)
 	if err != nil {
 		return err
 	}
-	if exists {
+	// Path "/" always exists
+	if exists != nil || path == "/" {
 		return errors.New("file already exists")
 	}
 
@@ -237,24 +238,20 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	return nil
 }
 
-// FileExists returns true if the file exists in the index
-func (i *Index) FileExists(path string) (bool, error) {
+// GetFileByPath returns the list item object for a file, searching by its path
+func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 	// Remove the trailing / if present
 	if len(path) > 1 && strings.HasSuffix(path, "/") {
 		path = path[:len(path)-1]
 	}
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
-		return false, errors.New("path must start with /")
-	}
-	// Path / always exists
-	if path == "/" {
-		return true, nil
+		return nil, errors.New("path must start with /")
 	}
 
 	// Refresh the index if needed
 	if err := i.Refresh(false); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	// Iterate through the path to find the element in the tree
@@ -269,7 +266,7 @@ func (i *Index) FileExists(path string) (bool, error) {
 				node = found
 			} else {
 				// Not found
-				return false, nil
+				return nil, nil
 			}
 			start = y + 1
 		}
@@ -277,11 +274,45 @@ func (i *Index) FileExists(path string) (bool, error) {
 
 	// Last element at the end of the path
 	part := path[start:]
-	if found := node.Find(part); found != nil {
-		return true, nil
+	if found := node.Find(part); found != nil && found.File != nil && found.File.FileId != nil {
+		// Get the file by its ID
+		fileId, err := uuid.FromBytes(found.File.FileId)
+		if err != nil {
+			return nil, err
+		}
+		return i.GetFileById(fileId.String())
 	}
 
-	return false, nil
+	return nil, nil
+}
+
+// GetFileById returns the list item object for a file, searching by its id
+func (i *Index) GetFileById(fileId string) (*FolderList, error) {
+	// Refresh the index if needed
+	if err := i.Refresh(false); err != nil {
+		return nil, err
+	}
+
+	// Do a lookup in the dictionary
+	el, found := i.cacheFiles[fileId]
+	if !found || el == nil {
+		return nil, nil
+	}
+
+	// Date
+	var date *time.Time
+	if el.Date != nil && el.Date.Seconds > 0 {
+		o := time.Unix(el.Date.Seconds, 0).UTC()
+		date = &o
+	}
+
+	return &FolderList{
+		Path:      el.Path,
+		Directory: false,
+		FileId:    fileId,
+		Date:      date,
+		MimeType:  el.MimeType,
+	}, nil
 }
 
 // DeleteFile removes a file or folder from the index
@@ -424,35 +455,6 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	}
 
 	return result, nil
-}
-
-// GetFileById returns the list item object for a file, searching by its id
-func (i *Index) GetFileById(fileId string) (*FolderList, error) {
-	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
-		return nil, err
-	}
-
-	// Do a lookup in the dictionary
-	el, found := i.cacheFiles[fileId]
-	if !found || el == nil {
-		return nil, nil
-	}
-
-	// Date
-	var date *time.Time
-	if el.Date != nil && el.Date.Seconds > 0 {
-		o := time.Unix(el.Date.Seconds, 0).UTC()
-		date = &o
-	}
-
-	return &FolderList{
-		Path:      el.Path,
-		Directory: false,
-		FileId:    fileId,
-		Date:      date,
-		MimeType:  el.MimeType,
-	}, nil
 }
 
 // Builds the tree and the dictionary for easier searching
