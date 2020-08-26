@@ -21,6 +21,8 @@ import (
 	"path"
 	"regexp"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 var sanitizePathRegexp *regexp.Regexp
@@ -31,6 +33,9 @@ func SanitizePath(path string) string {
 	if sanitizePathRegexp == nil {
 		sanitizePathRegexp = regexp.MustCompile("[#%&{}<>*\\$:!'\"+@\x60|=]")
 	}
+
+	// Unicode normalization
+	path = norm.NFKC.String(path)
 
 	// Replace all back slashes with a forward slash
 	path = strings.ReplaceAll(path, "\\", "/")

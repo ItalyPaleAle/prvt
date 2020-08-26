@@ -60,6 +60,7 @@ func (s *Server) Start(address, port string) error {
 	{
 		// APIs
 		apis := router.Group("/api")
+		apis.GET("/tree", s.GetTreeHandler)
 		apis.GET("/tree/*path", s.GetTreeHandler)
 		apis.POST("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.PostTreeHandler)
 		apis.DELETE("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.DeleteTreeHandler)
