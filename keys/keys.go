@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package keys
 
 import (
-	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -77,8 +76,7 @@ func GetMasterKeyWithPassphrase(info *infofile.InfoFile, passphrase string) (mas
 			if err != nil {
 				return nil, "", "Error while unwrapping the master key", err
 			}
-			hash := sha256.Sum256(k.MasterKey)
-			return masterKey, fmt.Sprintf("p:%X", hash[0:8]), "", nil
+			return masterKey, fmt.Sprintf("p:%X", k.MasterKey[0:8]), "", nil
 		}
 	}
 

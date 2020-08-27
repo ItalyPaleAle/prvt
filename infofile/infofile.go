@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package infofile
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -114,9 +113,8 @@ func (info *InfoFile) RemoveKey(keyId string) error {
 				continue
 			}
 
-			// Calculate the hash of the key
-			hash := sha256.Sum256(k.MasterKey)
-			match := hex.EncodeToString(hash[0:8])
+			// Encode the first 8 bytes in hex
+			match := hex.EncodeToString(k.MasterKey[0:8])
 
 			if match == remove {
 				found = true

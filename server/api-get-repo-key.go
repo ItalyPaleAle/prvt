@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package server
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net/http"
 
@@ -40,8 +39,7 @@ func (s *Server) GetRepoKeysHandler(c *gin.Context) {
 				item.KeyId = k.GPGKey
 				item.Type = "gpg"
 			} else {
-				hash := sha256.Sum256(k.MasterKey)
-				item.KeyId = fmt.Sprintf("p:%X", hash[0:8])
+				item.KeyId = fmt.Sprintf("p:%X", k.MasterKey[0:8])
 				item.Type = "passphrase"
 			}
 

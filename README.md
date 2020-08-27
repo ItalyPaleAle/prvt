@@ -183,7 +183,7 @@ To list all passphrases and keys authorized to unlock your repository use:
 prvt repo key ls --store <string>
 ```
 
-Passphrases are identified by a hash that starts with `p:`, for example: `p:59BDDDA8E94EE79F`, `p:E5467DC4647A7253`, etc. GPG keys are identified by their address.
+Passphrases are identified by their ID and starting with `p:`, for example: `p:59BDDDA8E94EE79F`, `p:E5467DC4647A7253`, etc (these are actually the first 8 bytes of the wrapped/encrypted key). GPG keys are identified by their address.
 
 ### Testing and identifying a passphrase or key
 
