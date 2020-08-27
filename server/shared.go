@@ -39,10 +39,15 @@ type repoKeyListResponse struct {
 }
 
 type repoKeyListItem struct {
-	KeyID string `json:"keyId"`
+	KeyId string `json:"keyId"`
 	Type  string `json:"type"`
 }
 
 type errorResponse struct {
 	Error string `json:"error"`
+}
+
+type unlockKeyRequest struct {
+	Type       string `json:"type" form:"type"`
+	Passphrase string `json:"passphrase" form:"passphrase"`
 }

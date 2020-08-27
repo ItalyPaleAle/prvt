@@ -75,12 +75,11 @@ func (s *Server) Start(address, port string) error {
 		// Other APIs that don't require the repository to be unlocked
 		apis := router.Group("/api")
 		apis.GET("/info", s.GetInfoHandler)
+		apis.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeysHandler)
 
-		{
-			// APIs for managing the keys require version 2 of the info fie
-			keysAPIs := apis.Group("/repo/key", s.MiddlewareRequireInfoFileVersion(2))
-			keysAPIs.GET("", s.GetRepoKeysHandler)
-		}
+		// These APIs accept requests to unlock the repo
+		apis.POST("/repo/unlock", s.MiddlewareRequireInfoFileVersion(2), s.MiddlewareUnlockRepo(false), s.PostRepoUnlockHandler)
+		apis.POST("/repo/keytest", s.MiddlewareRequireInfoFileVersion(2), s.MiddlewareUnlockRepo(true), s.PostRepoUnlockHandler)
 	}
 
 	// UI

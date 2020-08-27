@@ -37,11 +37,11 @@ func (s *Server) GetRepoKeysHandler(c *gin.Context) {
 			// Get the key id and type
 			item := repoKeyListItem{}
 			if k.GPGKey != "" {
-				item.KeyID = k.GPGKey
+				item.KeyId = k.GPGKey
 				item.Type = "gpg"
 			} else {
 				hash := sha256.Sum256(k.MasterKey)
-				item.KeyID = fmt.Sprintf("p:%X", hash[0:8])
+				item.KeyId = fmt.Sprintf("p:%X", hash[0:8])
 				item.Type = "passphrase"
 			}
 

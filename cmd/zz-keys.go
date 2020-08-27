@@ -18,14 +18,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
-	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
-	"github.com/ItalyPaleAle/prvt/utils"
+	"github.com/ItalyPaleAle/prvt/keys"
 
 	"github.com/manifoldco/promptui"
 )
@@ -201,7 +199,7 @@ func addKeyGPG(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMes
 	var wrappedKey []byte
 
 	// Use GPG to wrap the master key
-	wrappedKey, err = utils.GPGEncrypt(masterKey, gpgKey)
+	wrappedKey, err = keys.GPGEncrypt(masterKey, gpgKey)
 	if err != nil {
 		return "Error encrypting the master key with GPG", err
 	}
@@ -215,19 +213,12 @@ func addKeyGPG(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMes
 	return "", nil
 }
 
-// GetMasterKey gets the master key, either deriving it from a passphrase, or from GPG
+// GetMasterKey gets the master key, either unwrapping it with a passphrase or with GPG
 func GetMasterKey(info *infofile.InfoFile) (masterKey []byte, keyId string, errMessage string, err error) {
-	// Iterate through all the keys
-	// First, try all keys that are wrapped with GPG
-	for _, k := range info.Keys {
-		if k.GPGKey == "" || len(k.MasterKey) == 0 {
-			continue
-		}
-		// Try decrypting with GPG
-		masterKey, err = utils.GPGDecrypt(k.MasterKey)
-		if err == nil {
-			return masterKey, k.GPGKey, "", nil
-		}
+	// First, try unwrapping the key using GPG
+	masterKey, keyId, errMessage, err = keys.GetMasterKeyWithGPG(info)
+	if err == nil {
+		return
 	}
 
 	// No GPG key specified or unlocking with a GPG key was not successful
@@ -237,39 +228,6 @@ func GetMasterKey(info *infofile.InfoFile) (masterKey []byte, keyId string, errM
 		return nil, "", "Error getting passphrase", err
 	}
 
-	// Check if we have a version 1 key, where the master key is directly derived from the passphrase
-	if len(info.Salt) != 0 && len(info.ConfirmationHash) != 0 {
-		var confirmationHash []byte
-		masterKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, info.Salt)
-		if err == nil && subtle.ConstantTimeCompare(info.ConfirmationHash, confirmationHash) == 1 {
-			return masterKey, "LegacyKey", "", nil
-		}
-	}
-
-	// Try all version 2 keys that are wrapped with a key derived from the passphrase
-	for _, k := range info.Keys {
-		if k.GPGKey != "" || len(k.MasterKey) == 0 {
-			continue
-		}
-
-		// Ensure we have the salt and confirmation hash
-		if len(k.Salt) == 0 || len(k.ConfirmationHash) == 0 {
-			continue
-		}
-
-		// Try this key
-		var wrappingKey, confirmationHash []byte
-		wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, k.Salt)
-		if err == nil && subtle.ConstantTimeCompare(k.ConfirmationHash, confirmationHash) == 1 {
-			masterKey, err = crypto.UnwrapKey(wrappingKey, k.MasterKey)
-			if err != nil {
-				return nil, "", "Error while unwrapping the master key", err
-			}
-			hash := sha256.Sum256(k.MasterKey)
-			return masterKey, fmt.Sprintf("p:%X", hash[0:8]), "", nil
-		}
-	}
-
-	// Tried all keys and nothing worked
-	return nil, "", "Cannot unlock the repository", errors.New("Invalid passphrase")
+	// Try unwrapping using the passphrase
+	return keys.GetMasterKeyWithPassphrase(info, passphrase)
 }
