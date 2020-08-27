@@ -63,6 +63,11 @@ func (i *Index) SetStore(store fs.Fs) {
 
 // Refresh an index if necessary
 func (i *Index) Refresh(force bool) error {
+	// Abort if no store
+	if i.store == nil {
+		return errors.New("store is not initialized")
+	}
+
 	// If we're already refreshing the cache, wait
 	for i.refreshing {
 		time.Sleep(100 * time.Millisecond)

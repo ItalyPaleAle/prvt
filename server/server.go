@@ -37,7 +37,7 @@ import (
 type Server struct {
 	Store    fs.Fs
 	Verbose  bool
-	Repo     repository.Repository
+	Repo     *repository.Repository
 	Infofile *infofile.InfoFile
 }
 
@@ -55,16 +55,32 @@ func (s *Server) Start(address, port string) error {
 	router.Use(gin.Recovery())
 
 	// Add routes
-	router.GET("/file/:fileId", s.FileHandler)
-	router.HEAD("/file/:fileId", s.FileHandler)
 	{
+		// Routes that require the repository to be unlocked
+		requireUnlock := router.Group("", s.MiddlewareRequireUnlock)
+
+		// Request a file
+		requireUnlock.GET("/file/:fileId", s.FileHandler)
+		requireUnlock.HEAD("/file/:fileId", s.FileHandler)
+
 		// APIs
-		apis := router.Group("/api")
+		apis := requireUnlock.Group("/api")
 		apis.GET("/tree", s.GetTreeHandler)
 		apis.GET("/tree/*path", s.GetTreeHandler)
 		apis.POST("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.PostTreeHandler)
 		apis.DELETE("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.DeleteTreeHandler)
 		apis.GET("/metadata/*file", s.GetMetadataHandler)
+	}
+	{
+		// Other APIs that don't require the repository to be unlocked
+		apis := router.Group("/api")
+		apis.GET("/info", s.GetInfoHandler)
+
+		{
+			// APIs for managing the keys require version 2 of the info fie
+			keysAPIs := apis.Group("/repo/key", s.MiddlewareRequireInfoFileVersion(2))
+			keysAPIs.GET("", s.GetRepoKeysHandler)
+		}
 	}
 
 	// UI

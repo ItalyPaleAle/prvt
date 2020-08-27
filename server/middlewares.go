@@ -23,11 +23,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Requires a minimum version of the info file to continue
+// MiddlewareRequireUnlock requires the repository to be unlocked before processing
+func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
+	if s.Repo == nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{`The repository has not been unlocked`})
+	}
+}
+
+// MiddlewareRequireInfoFileVersion requires a minimum version of the info file to continue
 func (s *Server) MiddlewareRequireInfoFileVersion(version uint16) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		if s.Infofile.Version < version {
-			c.AbortWithStatusJSON(http.StatusMethodNotAllowed, map[string]string{"error": `This repository needs to be upgraded. Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`})
+			c.AbortWithStatusJSON(http.StatusMethodNotAllowed, errorResponse{`This repository needs to be upgraded. Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`})
 		}
 	}
 }

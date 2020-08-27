@@ -33,6 +33,7 @@ func init() {
 		flagBindPort              string
 		flagBindAddress           string
 		flagVerbose               bool
+		flagNoUnlock              bool
 	)
 
 	c := &cobra.Command{
@@ -64,20 +65,24 @@ You can use the optional "--address" and "--port" flags to control what address 
 				return
 			}
 
-			// Derive the master key
-			masterKey, _, errMessage, err := GetMasterKey(info)
-			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
-				return
-			}
-			store.SetMasterKey(masterKey)
+			// Unlock the repo if needed
+			var repo *repository.Repository
+			if !flagNoUnlock {
+				// Derive the master key
+				masterKey, _, errMessage, err := GetMasterKey(info)
+				if err != nil {
+					utils.ExitWithError(utils.ErrorUser, errMessage, err)
+					return
+				}
+				store.SetMasterKey(masterKey)
 
-			// Set up the index
-			index.Instance.SetStore(store)
+				// Set up the index
+				index.Instance.SetStore(store)
 
-			// Set up the repository
-			repo := repository.Repository{
-				Store: store,
+				// Set up the repository
+				repo = &repository.Repository{
+					Store: store,
+				}
 			}
 
 			// Start the server
@@ -100,6 +105,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
 	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
 	c.Flags().BoolVarP(&flagVerbose, "verbose", "v", false, "show request log")
+	c.Flags().BoolVar(&flagNoUnlock, "no-unlock", false, "do not unlock the repo")
 
 	// Add the command
 	rootCmd.AddCommand(c)

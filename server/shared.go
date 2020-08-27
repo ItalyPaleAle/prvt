@@ -33,3 +33,12 @@ type metadataResponse struct {
 	MimeType string     `json:"mimeType,omitempty"`
 	Size     int64      `json:"size,omitempty"`
 }
+
+type repoKeyListResponse struct {
+	PassphrasesCount int      `json:"passphrasesCount"`
+	GPGKeys          []string `json:"gpgKeys,omitempty"`
+}
+
+type errorResponse struct {
+	Error string `json:"error"`
+}
