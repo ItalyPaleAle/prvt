@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ItalyPaleAle/prvt/keys"
 	"github.com/gin-gonic/gin"
 )
 
@@ -38,6 +39,11 @@ func (s *Server) GetRepoKeysHandler(c *gin.Context) {
 			if k.GPGKey != "" {
 				item.KeyId = k.GPGKey
 				item.Type = "gpg"
+
+				// Get the UID, if any
+				if uid := keys.GPGUID(item.KeyId); uid != "" {
+					item.UID = uid
+				}
 			} else {
 				item.KeyId = fmt.Sprintf("p:%X", k.MasterKey[0:8])
 				item.Type = "passphrase"

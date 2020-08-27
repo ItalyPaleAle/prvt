@@ -41,6 +41,7 @@ type repoKeyListResponse struct {
 type repoKeyListItem struct {
 	KeyId string `json:"keyId"`
 	Type  string `json:"type"`
+	UID   string `json:"uid,omitempty"`
 }
 
 type errorResponse struct {

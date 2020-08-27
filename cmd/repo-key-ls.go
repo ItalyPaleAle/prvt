@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/keys"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
@@ -66,7 +67,7 @@ Usage: "prvt repo key ls --store <string>"
 
 			// Table headers
 			fmt.Println("KEY TYPE    | KEY ID")
-			fmt.Println("------------|------------------------")
+			fmt.Println("------------|--------------------")
 
 			// Show all keys in a table
 			// First, show all passphrases
@@ -78,7 +79,13 @@ Usage: "prvt repo key ls --store <string>"
 			// Now, show all GPG keys
 			for _, k := range info.Keys {
 				if k.GPGKey != "" {
-					fmt.Println("GPG Key     | " + k.GPGKey)
+					// Get the owner of the GPG key
+					uid := keys.GPGUID(k.GPGKey)
+					if uid != "" {
+						uid = "  (" + uid + ")"
+					}
+
+					fmt.Println("GPG Key     | " + k.GPGKey + uid)
 				}
 			}
 		},
