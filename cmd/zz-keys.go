@@ -20,6 +20,7 @@ package cmd
 import (
 	"crypto/subtle"
 	"errors"
+	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
@@ -152,8 +153,19 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 // If the GPG Key is empty, will prompt for a passphrase
 func AddKey(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMessage string, err error) {
 	if gpgKey == "" {
+		// Add the passphrase
 		return addKeyPassphrase(info, masterKey)
 	} else {
+		// Before adding the key, check if it's already there
+		// Lowercase the key ID for normalization
+		keyId := strings.ToLower(gpgKey)
+		for _, k := range info.Keys {
+			if strings.ToLower(k.GPGKey) == keyId {
+				return "Key already added", errors.New("This GPG key has already been added to the repository")
+			}
+		}
+
+		// Add the GPG key
 		return addKeyGPG(info, masterKey, gpgKey)
 	}
 }
@@ -166,6 +178,12 @@ func addKeyPassphrase(info *infofile.InfoFile, masterKey []byte) (errMessage str
 	passphrase, err := PromptPassphrase()
 	if err != nil {
 		return "Error getting passphrase", err
+	}
+
+	// Before adding the key, check if it's already there
+	_, _, _, testErr := keys.GetMasterKeyWithPassphrase(info, passphrase)
+	if testErr == nil {
+		return "Key already added", errors.New("This passphrase has already been added to the repository")
 	}
 
 	// Derive the wrapping key, after generating a new salt
