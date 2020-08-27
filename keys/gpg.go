@@ -76,6 +76,25 @@ func GPGUID(key string) string {
 	return ""
 }
 
+// NormalizeGPGKeyId normalizes a GPG key: ensures it's all uppercase, starts with 0x, and it only uses the last 64 bits
+func NormalizeGPGKeyId(key string) string {
+	// Strip 0x from the beginning if present
+	if len(key) > 2 && (strings.HasPrefix(key, "0x") || strings.HasPrefix(key, "0X")) {
+		key = key[2:]
+	}
+
+	// Must be either 16 characters (last 64 bits) or 40 (full-key), hex-encoded
+	if len(key) == 40 {
+		// Grab the last 16 characters only
+		key = key[24:]
+	} else if len(key) != 16 {
+		return ""
+	}
+
+	key = "0x" + strings.ToUpper(key)
+	return key
+}
+
 // runGPG runs the GPG command with the given flags
 func runGPG(in []byte, flags ...string) (out []byte, err error) {
 	// Get the GPG command

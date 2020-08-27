@@ -20,7 +20,6 @@ package cmd
 import (
 	"crypto/subtle"
 	"errors"
-	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
@@ -156,11 +155,14 @@ func AddKey(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMessag
 		// Add the passphrase
 		return addKeyPassphrase(info, masterKey)
 	} else {
+		// Normalize the key ID
+		gpgKey = keys.NormalizeGPGKeyId(gpgKey)
+		if gpgKey == "" {
+			return "Invalid GPG key", errors.New("GPG key ID is not in the correct format")
+		}
 		// Before adding the key, check if it's already there
-		// Lowercase the key ID for normalization
-		keyId := strings.ToLower(gpgKey)
 		for _, k := range info.Keys {
-			if strings.ToLower(k.GPGKey) == keyId {
+			if k.GPGKey == gpgKey {
 				return "Key already added", errors.New("This GPG key has already been added to the repository")
 			}
 		}
