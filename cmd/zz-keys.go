@@ -18,9 +18,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
-	"strconv"
+	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
@@ -246,7 +247,6 @@ func GetMasterKey(info *infofile.InfoFile) (masterKey []byte, keyId string, errM
 	}
 
 	// Try all version 2 keys that are wrapped with a key derived from the passphrase
-	i := 0
 	for _, k := range info.Keys {
 		if k.GPGKey != "" || len(k.MasterKey) == 0 {
 			continue
@@ -265,10 +265,9 @@ func GetMasterKey(info *infofile.InfoFile) (masterKey []byte, keyId string, errM
 			if err != nil {
 				return nil, "", "Error while unwrapping the master key", err
 			}
-			return masterKey, "p:" + strconv.Itoa(i), "", nil
+			hash := sha256.Sum256(k.MasterKey)
+			return masterKey, fmt.Sprintf("p:%X", hash[0:8]), "", nil
 		}
-
-		i++
 	}
 
 	// Tried all keys and nothing worked

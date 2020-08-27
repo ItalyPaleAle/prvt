@@ -18,8 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package infofile
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 const UnknownGPGKey = "UnknownGPGKey"
@@ -98,10 +101,10 @@ func (info *InfoFile) RemoveKey(keyId string) error {
 	found := false
 
 	// Check if we're removing a passphrase
-	passphraseId := isKeyIdPassphrase(keyId)
-	if passphraseId >= 0 {
+	if strings.HasPrefix(keyId, "p:") && len(keyId) == 18 {
+		// Get the key ID and lowercase it to normalize it
+		remove := strings.ToLower(keyId[2:])
 		// Iterate through the keys looking for the right one
-		i := 0
 		n := 0
 		for _, k := range info.Keys {
 			// Add all GPG keys
@@ -111,13 +114,16 @@ func (info *InfoFile) RemoveKey(keyId string) error {
 				continue
 			}
 
-			if i == passphraseId {
+			// Calculate the hash of the key
+			hash := sha256.Sum256(k.MasterKey)
+			match := hex.EncodeToString(hash[0:8])
+
+			if match == remove {
 				found = true
 			} else {
 				info.Keys[n] = k
 				n++
 			}
-			i++
 		}
 
 		// Truncate the slice

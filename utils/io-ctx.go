@@ -31,6 +31,7 @@ func (f ioctx) Read(p []byte) (n int, err error) {
 	return f(p)
 }
 
+// WriterFuncWithContext returns a stream writer that supports a context
 func WriterFuncWithContext(ctx context.Context, in io.Writer) ioctx {
 	return func(p []byte) (int, error) {
 		select {
@@ -42,6 +43,7 @@ func WriterFuncWithContext(ctx context.Context, in io.Writer) ioctx {
 	}
 }
 
+// ReaderFuncWithContext returns a stream reader that supports a context
 func ReaderFuncWithContext(ctx context.Context, in io.Reader) ioctx {
 	return func(p []byte) (int, error) {
 		select {

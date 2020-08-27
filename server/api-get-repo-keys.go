@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package server
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,17 +27,26 @@ import (
 
 // GetRepoKeysHandler is the handler for GET /api/repo/key, which returns the list of keys allowed to unlock this repository
 func (s *Server) GetRepoKeysHandler(c *gin.Context) {
-	result := repoKeyListResponse{
-		PassphrasesCount: 0,
-		GPGKeys:          make([]string, 0),
-	}
+	result := repoKeyListResponse{}
 
-	// Iterate through the keys
-	for _, k := range s.Infofile.Keys {
-		if k.GPGKey == "" {
-			result.PassphrasesCount++
-		} else {
-			result.GPGKeys = append(result.GPGKeys, k.GPGKey)
+	if s.Infofile != nil && s.Infofile.Keys != nil && len(s.Infofile.Keys) > 0 {
+		result.Keys = make([]repoKeyListItem, len(s.Infofile.Keys))
+
+		// Iterate through the keys
+		for i, k := range s.Infofile.Keys {
+			// Get the key id and type
+			item := repoKeyListItem{}
+			if k.GPGKey != "" {
+				item.KeyID = k.GPGKey
+				item.Type = "gpg"
+			} else {
+				hash := sha256.Sum256(k.MasterKey)
+				item.KeyID = fmt.Sprintf("p:%X", hash[0:8])
+				item.Type = "passphrase"
+			}
+
+			// Add the key
+			result.Keys[i] = item
 		}
 	}
 	c.JSON(http.StatusOK, result)

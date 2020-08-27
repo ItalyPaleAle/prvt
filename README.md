@@ -183,7 +183,7 @@ To list all passphrases and keys authorized to unlock your repository use:
 prvt repo key ls --store <string>
 ```
 
-Passphrases are identified by a numeric sequence that starts with `p:`, for example: `p:0`, `p:1`, etc. GPG keys are identified by their address.
+Passphrases are identified by a hash that starts with `p:`, for example: `p:59BDDDA8E94EE79F`, `p:E5467DC4647A7253`, etc. GPG keys are identified by their address.
 
 ### Testing and identifying a passphrase or key
 
@@ -202,8 +202,6 @@ To remove a passphrase or key, run the following command with the identifier of 
 ```sh
 prvt repo key ls --store <string> --key <string>
 ```
-
-Note: after running this command, the identifier of the passphrases in the repository might change, since they're always in a sequence.
 
 ## Using environmental variables
 

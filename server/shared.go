@@ -35,8 +35,12 @@ type metadataResponse struct {
 }
 
 type repoKeyListResponse struct {
-	PassphrasesCount int      `json:"passphrasesCount"`
-	GPGKeys          []string `json:"gpgKeys,omitempty"`
+	Keys []repoKeyListItem `json:"keys"`
+}
+
+type repoKeyListItem struct {
+	KeyID string `json:"keyId"`
+	Type  string `json:"type"`
 }
 
 type errorResponse struct {

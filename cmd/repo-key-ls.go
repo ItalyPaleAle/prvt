@@ -18,8 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"crypto/sha256"
 	"fmt"
-	"strconv"
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/utils"
@@ -71,11 +71,10 @@ Usage: "prvt repo key ls --store <string>"
 
 			// Show all keys in a table
 			// First, show all passphrases
-			i := 0
 			for _, k := range info.Keys {
 				if k.GPGKey == "" {
-					fmt.Println("Passphrase  | p:" + strconv.Itoa(i))
-					i++
+					hash := sha256.Sum256(k.MasterKey)
+					fmt.Printf("Passphrase  | p:%X\n", hash[0:8])
 				}
 			}
 			// Now, show all GPG keys
