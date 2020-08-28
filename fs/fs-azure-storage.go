@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"sync"
 
@@ -36,6 +37,13 @@ import (
 	"github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
+
+// Register the fs
+func init() {
+	t := reflect.TypeOf((*AzureStorage)(nil)).Elem()
+	fsTypes["azure"] = t
+	fsTypes["azureblob"] = t
+}
 
 // AzureStorage stores files on Azure Blob Storage
 type AzureStorage struct {

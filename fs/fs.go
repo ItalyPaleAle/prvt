@@ -21,16 +21,17 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
 )
 
+var fsTypes = map[string]reflect.Type{}
+
 // Get returns a store for the given connection string
 func Get(connection string) (store Fs, err error) {
-	store = nil
-
 	// Init the cache
 	cache := &MetadataCache{}
 	err = cache.Init()
@@ -45,19 +46,14 @@ func Get(connection string) (store Fs, err error) {
 		return
 	}
 
-	switch connection[0:pos] {
-	case "file", "local":
-		store = &Local{}
-		err = store.Init(connection, cache)
-	case "azure", "azureblob":
-		store = &AzureStorage{}
-		err = store.Init(connection, cache)
-	case "s3", "minio":
-		store = &S3{}
-		err = store.Init(connection, cache)
-	default:
+	// Get the store object using some reflection magic
+	fsTyp, ok := fsTypes[connection[0:pos]]
+	if !ok || fsTyp == nil {
 		err = fmt.Errorf("invalid connection string")
+		return
 	}
+	store = reflect.New(fsTyp).Interface().(Fs)
+	err = store.Init(connection, cache)
 
 	return
 }
@@ -108,6 +104,14 @@ type Fs interface {
 	// Delete a file from the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
 	Delete(name string, tag interface{}) (err error)
+}
+
+// FsOptions is the interface for the options for the filesystem
+type FsOptions interface {
+	// SetOptions the options and validate them
+	SetOptions(options map[string]string) (err error)
+	// Get returns the value for an option, or the empty string if not set
+	Get(key string) (value string)
 }
 
 // Base class for filesystems, which contains the key and data path

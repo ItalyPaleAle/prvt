@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -36,6 +37,13 @@ import (
 
 	homedir "github.com/mitchellh/go-homedir"
 )
+
+// Register the fs
+func init() {
+	t := reflect.TypeOf((*Local)(nil)).Elem()
+	fsTypes["file"] = t
+	fsTypes["local"] = t
+}
 
 // Local is the local file system
 // This implementation does not rely on tags, as it's assumed that concurrency isn't an issue on a single machine

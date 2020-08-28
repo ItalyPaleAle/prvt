@@ -26,6 +26,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -35,6 +36,13 @@ import (
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+// Register the fs
+func init() {
+	t := reflect.TypeOf((*S3)(nil)).Elem()
+	fsTypes["s3"] = t
+	fsTypes["minio"] = t
+}
 
 // S3 stores files on a S3-compatible service
 // This implementation does not rely on tags because S3 does not support conditional put requests
