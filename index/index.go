@@ -22,6 +22,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
@@ -52,13 +53,25 @@ type Index struct {
 	cacheTree  *IndexTreeNode
 	cacheTime  time.Time
 	cacheTag   interface{}
-	refreshing bool
 	store      fs.Fs
+	semaphore  sync.Mutex
 }
 
 // SetStore sets the store (filesystem) object to use
 func (i *Index) SetStore(store fs.Fs) {
+	// Do not alter this if there's a refresh running
+	i.semaphore.Lock()
+
+	// Set the new store object
 	i.store = store
+
+	// Reset the cache
+	i.cache = nil
+	i.cacheFiles = nil
+	i.cacheTree = nil
+	i.cacheTag = nil
+
+	i.semaphore.Unlock()
 }
 
 // Refresh an index if necessary
@@ -68,14 +81,10 @@ func (i *Index) Refresh(force bool) error {
 		return errors.New("store is not initialized")
 	}
 
-	// If we're already refreshing the cache, wait
-	for i.refreshing {
-		time.Sleep(100 * time.Millisecond)
-	}
 	// Semaphore
-	i.refreshing = true
+	i.semaphore.Lock()
 	defer func() {
-		i.refreshing = false
+		i.semaphore.Unlock()
 	}()
 
 	// Check if we already have the index in cache and its age (unless we're forcing a refresh)

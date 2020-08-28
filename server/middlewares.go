@@ -31,11 +31,6 @@ import (
 // MiddlewareUnlockRepo tries to unlock the repository
 func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		// If this repository is already unlocked and we're not doing a dry-run, abort
-		if !dryRun && s.Repo != nil {
-			c.AbortWithStatusJSON(http.StatusConflict, errorResponse{"This repository has already been unlocked"})
-		}
-
 		// Get the information to unlock the repository from the body
 		args := &unlockKeyRequest{}
 		if ok := args.FromBody(c); !ok {
