@@ -40,6 +40,7 @@ import (
 // AzureStorage stores files on Azure Blob Storage
 type AzureStorage struct {
 	fsBase
+
 	storageAccountName string
 	storageContainer   string
 	storagePipeline    pipeline.Pipeline

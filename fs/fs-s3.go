@@ -40,6 +40,7 @@ import (
 // This implementation does not rely on tags because S3 does not support conditional put requests
 type S3 struct {
 	fsBase
+
 	client     *minio.Client
 	core       *minio.Core
 	bucketName string
@@ -230,7 +231,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	// Look up the file's metadata in the cache
 	f.mux.Lock()
 	headerVersion, headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
-	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
+	if headerVersion == 0 || headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
 		// Need to request the metadata and cache it
 		// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
 		var length int64 = 64*1024 + 32 + 256

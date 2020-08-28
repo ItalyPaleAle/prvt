@@ -41,6 +41,7 @@ import (
 // This implementation does not rely on tags, as it's assumed that concurrency isn't an issue on a single machine
 type Local struct {
 	fsBase
+
 	basePath string
 	cache    *MetadataCache
 	mux      sync.Mutex
@@ -234,7 +235,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 	// Look up the file's metadata in the cache
 	f.mux.Lock()
 	headerVersion, headerLength, wrappedKey, metadataLength, metadata := f.cache.Get(name)
-	if headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
+	if headerVersion == 0 || headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
 		// Need to read the metadata and cache it
 		// For that, we need to read the header and the first package, which are at most 64kb + (32+256) bytes
 		read := make([]byte, 64*1024+32+256)
