@@ -25,8 +25,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetRepoKeysHandler is the handler for GET /api/repo/key, which returns the list of keys allowed to unlock this repository
-func (s *Server) GetRepoKeysHandler(c *gin.Context) {
+// GetRepoKeyHandler is the handler for GET /api/repo/key, which returns the list of keys allowed to unlock this repository
+func (s *Server) GetRepoKeyHandler(c *gin.Context) {
 	result := repoKeyListResponse{}
 
 	if s.Infofile != nil && s.Infofile.Keys != nil && len(s.Infofile.Keys) > 0 {

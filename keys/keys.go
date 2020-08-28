@@ -83,3 +83,72 @@ func GetMasterKeyWithPassphrase(info *infofile.InfoFile, passphrase string) (mas
 	// Tried all keys and nothing worked
 	return nil, "", "Cannot unlock the repository", errors.New("Invalid passphrase")
 }
+
+// AddKeyPassphrase adds a new wrapping with a passphrase
+func AddKeyPassphrase(info *infofile.InfoFile, masterKey []byte, passphrase string) (keyId string, errMessage string, err error) {
+	var salt, confirmationHash, wrappedKey []byte
+
+	// Before adding the key, check if it's already there
+	_, _, _, testErr := GetMasterKeyWithPassphrase(info, passphrase)
+	if testErr == nil {
+		return "", "Key already added", errors.New("This passphrase has already been added to the repository")
+	}
+
+	// Derive the wrapping key, after generating a new salt
+	salt, err = crypto.NewSalt()
+	if err != nil {
+		return "", "Error generating a new salt", err
+	}
+	var wrappingKey []byte
+	wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, salt)
+	if err != nil {
+		return "", "Error deriving the wrapping key", err
+	}
+
+	// Wrap the key
+	wrappedKey, err = crypto.WrapKey(wrappingKey, masterKey)
+	if err != nil {
+		return "", "Error wrapping the master key", err
+	}
+
+	// Add the key
+	err = info.AddPassphrase(salt, confirmationHash, wrappedKey)
+	if err != nil {
+		return "", "Error adding the key", err
+	}
+
+	// Return the key ID
+	return fmt.Sprintf("p:%X", wrappedKey[0:8]), "", nil
+}
+
+// AddKeyGPG adds a new wrapping with GPG
+func AddKeyGPG(info *infofile.InfoFile, masterKey []byte, gpgKey string) (keyId string, errMessage string, err error) {
+	var wrappedKey []byte
+
+	// Normalize the key ID
+	gpgKey = NormalizeGPGKeyId(gpgKey)
+	if gpgKey == "" {
+		return "", "Invalid GPG key", errors.New("GPG key ID is not in the correct format")
+	}
+	// Before adding the key, check if it's already there
+	for _, k := range info.Keys {
+		if k.GPGKey == gpgKey {
+			return "", "Key already added", errors.New("This GPG key has already been added to the repository")
+		}
+	}
+
+	// Use GPG to wrap the master key
+	wrappedKey, err = GPGEncrypt(masterKey, gpgKey)
+	if err != nil {
+		return "", "Error encrypting the master key with GPG", err
+	}
+
+	// Add the key
+	err = info.AddGPGWrappedKey(gpgKey, wrappedKey)
+	if err != nil {
+		return "", "Error adding the key", err
+	}
+
+	// Return the key ID
+	return gpgKey, "", nil
+}

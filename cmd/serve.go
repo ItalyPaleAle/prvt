@@ -18,8 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"errors"
+
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
+	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/repository"
 	"github.com/ItalyPaleAle/prvt/server"
 	"github.com/ItalyPaleAle/prvt/utils"
@@ -34,6 +37,7 @@ func init() {
 		flagBindAddress           string
 		flagVerbose               bool
 		flagNoUnlock              bool
+		flagNoRepo                bool
 	)
 
 	c := &cobra.Command{
@@ -47,41 +51,56 @@ You can use the optional "--address" and "--port" flags to control what address 
 `,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			// Create the store object
-			store, err := fs.Get(flagStoreConnectionString)
-			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
-				return
-			}
+			var (
+				repo  *repository.Repository
+				store fs.Fs
+				info  *infofile.InfoFile
+				err   error
+			)
 
-			// Request the info file
-			info, err := store.GetInfoFile()
-			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
-				return
-			}
-			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
-				return
-			}
-
-			// Unlock the repo if needed
-			var repo *repository.Repository
-			if !flagNoUnlock {
-				// Derive the master key
-				masterKey, _, errMessage, err := GetMasterKey(info)
-				if err != nil {
-					utils.ExitWithError(utils.ErrorUser, errMessage, err)
+			// Check if we have a store flag
+			if !flagNoRepo {
+				// Ensure the connection string is set
+				if flagStoreConnectionString == "" {
+					utils.ExitWithError(utils.ErrorUser, "Missing store connection string", errors.New("Use the '--store' flag to pass a store when '--no-repo' is not set."))
 					return
 				}
-				store.SetMasterKey(masterKey)
 
-				// Set up the index
-				index.Instance.SetStore(store)
+				// Create the store object
+				store, err = fs.Get(flagStoreConnectionString)
+				if err != nil || store == nil {
+					utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+					return
+				}
 
-				// Set up the repository
-				repo = &repository.Repository{
-					Store: store,
+				// Request the info file
+				info, err = store.GetInfoFile()
+				if err != nil {
+					utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+					return
+				}
+				if info == nil {
+					utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+					return
+				}
+
+				// Unlock the repo if needed
+				if !flagNoUnlock {
+					// Derive the master key
+					masterKey, keyId, errMessage, err := GetMasterKey(info)
+					if err != nil {
+						utils.ExitWithError(utils.ErrorUser, errMessage, err)
+						return
+					}
+					store.SetMasterKey(keyId, masterKey)
+
+					// Set up the index
+					index.Instance.SetStore(store)
+
+					// Set up the repository
+					repo = &repository.Repository{
+						Store: store,
+					}
 				}
 			}
 
@@ -101,11 +120,12 @@ You can use the optional "--address" and "--port" flags to control what address 
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, false)
 	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
 	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
 	c.Flags().BoolVarP(&flagVerbose, "verbose", "v", false, "show request log")
 	c.Flags().BoolVar(&flagNoUnlock, "no-unlock", false, "do not unlock the repo")
+	c.Flags().BoolVar(&flagNoRepo, "no-repo", false, "do not connect to a repository")
 
 	// Add the command
 	rootCmd.AddCommand(c)

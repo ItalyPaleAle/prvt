@@ -17,7 +17,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package server
 
-import "time"
+import (
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
 
 type treeOperationReponse struct {
 	Path   string `json:"path"`
@@ -51,4 +56,48 @@ type errorResponse struct {
 type unlockKeyRequest struct {
 	Type       string `json:"type" form:"type"`
 	Passphrase string `json:"passphrase" form:"passphrase"`
+}
+
+// FromBody adds data to the object from a request
+func (p *unlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
+	// Get the information to unlock the repository from the body
+	if err := c.Bind(p); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not parse response body"})
+		return false
+	}
+
+	// Validate the body
+	if p.Type != "passphrase" && p.Type != "gpg" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Parameter 'type' must be either 'passphrase' or 'gpg'"})
+		return false
+	}
+	if p.Type == "passphrase" && len(p.Passphrase) < 1 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Parameter 'passphrase' must be set when 'type' is 'passphrase'"})
+		return false
+	}
+
+	return true
+}
+
+type addKeyRequest struct {
+	Passphrase string `json:"passphrase" form:"passphrase"`
+	GPGKeyId   string `json:"gpg" form:"gpg"`
+}
+
+// FromBody adds data to the object from a request
+func (p *addKeyRequest) FromBody(c *gin.Context) (ok bool) {
+	// Get the content from the body
+	if err := c.Bind(p); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not parse response body"})
+		return false
+	}
+
+	if (p.Passphrase == "" && p.GPGKeyId == "") || (p.Passphrase != "" && p.GPGKeyId != "") {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"One and only one of `passphrase` and `gpg` must be set"})
+		return false
+	}
+
+	return true
 }

@@ -64,7 +64,7 @@ func NewInfoFile(gpgKey string) (info *infofile.InfoFile, errMessage string, err
 	}
 
 	// Add the key
-	errMessage, err = AddKey(info, masterKey, gpgKey)
+	_, errMessage, err = AddKey(info, masterKey, gpgKey)
 	if err != nil {
 		info = nil
 	}
@@ -150,87 +150,20 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 
 // AddKey adds a key to an info file
 // If the GPG Key is empty, will prompt for a passphrase
-func AddKey(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMessage string, err error) {
+func AddKey(info *infofile.InfoFile, masterKey []byte, gpgKey string) (keyId string, errMessage string, err error) {
 	if gpgKey == "" {
+		// Prompt for a passphrase first
+		passphrase, err := PromptPassphrase()
+		if err != nil {
+			return "", "Error getting passphrase", err
+		}
+
 		// Add the passphrase
-		return addKeyPassphrase(info, masterKey)
+		return keys.AddKeyPassphrase(info, masterKey, passphrase)
 	} else {
-		// Normalize the key ID
-		gpgKey = keys.NormalizeGPGKeyId(gpgKey)
-		if gpgKey == "" {
-			return "Invalid GPG key", errors.New("GPG key ID is not in the correct format")
-		}
-		// Before adding the key, check if it's already there
-		for _, k := range info.Keys {
-			if k.GPGKey == gpgKey {
-				return "Key already added", errors.New("This GPG key has already been added to the repository")
-			}
-		}
-
 		// Add the GPG key
-		return addKeyGPG(info, masterKey, gpgKey)
+		return keys.AddKeyGPG(info, masterKey, gpgKey)
 	}
-}
-
-// Used by AddKey to add a new passphrase
-func addKeyPassphrase(info *infofile.InfoFile, masterKey []byte) (errMessage string, err error) {
-	var salt, confirmationHash, wrappedKey []byte
-
-	// No GPG key specified, so we need to prompt for a passphrase first
-	passphrase, err := PromptPassphrase()
-	if err != nil {
-		return "Error getting passphrase", err
-	}
-
-	// Before adding the key, check if it's already there
-	_, _, _, testErr := keys.GetMasterKeyWithPassphrase(info, passphrase)
-	if testErr == nil {
-		return "Key already added", errors.New("This passphrase has already been added to the repository")
-	}
-
-	// Derive the wrapping key, after generating a new salt
-	salt, err = crypto.NewSalt()
-	if err != nil {
-		return "Error generating a new salt", err
-	}
-	var wrappingKey []byte
-	wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, salt)
-	if err != nil {
-		return "Error deriving the wrapping key", err
-	}
-
-	// Wrap the key
-	wrappedKey, err = crypto.WrapKey(wrappingKey, masterKey)
-	if err != nil {
-		return "Error wrapping the master key", err
-	}
-
-	// Add the key
-	err = info.AddPassphrase(salt, confirmationHash, wrappedKey)
-	if err != nil {
-		return "Error adding the key", err
-	}
-
-	return "", nil
-}
-
-// Used by AddKey to add a new GPG key
-func addKeyGPG(info *infofile.InfoFile, masterKey []byte, gpgKey string) (errMessage string, err error) {
-	var wrappedKey []byte
-
-	// Use GPG to wrap the master key
-	wrappedKey, err = keys.GPGEncrypt(masterKey, gpgKey)
-	if err != nil {
-		return "Error encrypting the master key with GPG", err
-	}
-
-	// Add the key
-	err = info.AddGPGWrappedKey(gpgKey, wrappedKey)
-	if err != nil {
-		return "Error adding the key", err
-	}
-
-	return "", nil
 }
 
 // GetMasterKey gets the master key, either unwrapping it with a passphrase or with GPG

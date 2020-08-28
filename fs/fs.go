@@ -70,8 +70,17 @@ type Fs interface {
 	// SetDataPath sets the path where the data is stored (read from the info file)
 	SetDataPath(path string)
 
-	// SetMasterKey sets the master passphrase (used to encrypt/decrypt files) in the object
-	SetMasterKey(key []byte)
+	// GetDataPath returns the path where the data is stored
+	GetDataPath() string
+
+	// SetMasterKey sets the master key (used to encrypt/decrypt files) in the object
+	SetMasterKey(keyId string, key []byte)
+
+	// GetMasterKey returns the master key
+	GetMasterKey() []byte
+
+	// GetKeyId returns the ID of the key used
+	GetKeyId() string
 
 	// GetInfoFile returns the contents of the info file
 	GetInfoFile() (info *infofile.InfoFile, err error)
@@ -99,4 +108,37 @@ type Fs interface {
 	// Delete a file from the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
 	Delete(name string, tag interface{}) (err error)
+}
+
+// Base class for filesystems, which contains the key and data path
+type fsBase struct {
+	keyId     string
+	masterKey []byte
+	dataPath  string
+}
+
+// SetDataPath sets the path where the data is stored (read from the info file)
+func (f *fsBase) SetDataPath(path string) {
+	f.dataPath = path
+}
+
+// GetDataPath returns the path where the data is stored
+func (f *fsBase) GetDataPath() string {
+	return f.dataPath
+}
+
+// SetMasterKey sets the master key (used to encrypt/decrypt files) in the object
+func (f *fsBase) SetMasterKey(keyId string, key []byte) {
+	f.keyId = keyId
+	f.masterKey = key
+}
+
+// GetMasterKey returns the master key
+func (f *fsBase) GetMasterKey() []byte {
+	return f.masterKey
+}
+
+// GetKeyId returns the ID of the key used
+func (f *fsBase) GetKeyId() string {
+	return f.keyId
 }

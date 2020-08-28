@@ -110,7 +110,7 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, true)
 	c.Flags().StringVarP(&flagKeyId, "key", "k", "", "ID of the key to remove")
 	c.MarkFlagRequired("key")
 

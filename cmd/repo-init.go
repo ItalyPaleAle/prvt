@@ -85,7 +85,7 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, true)
 	c.Flags().StringVarP(&flagGPGKey, "gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
 
 	// Add the command

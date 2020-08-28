@@ -40,11 +40,10 @@ import (
 // Local is the local file system
 // This implementation does not rely on tags, as it's assumed that concurrency isn't an issue on a single machine
 type Local struct {
-	basePath  string
-	masterKey []byte
-	dataPath  string
-	cache     *MetadataCache
-	mux       sync.Mutex
+	fsBase
+	basePath string
+	cache    *MetadataCache
+	mux      sync.Mutex
 }
 
 func (f *Local) Init(connection string, cache *MetadataCache) error {
@@ -84,14 +83,6 @@ func (f *Local) Init(connection string, cache *MetadataCache) error {
 	f.basePath = path
 
 	return nil
-}
-
-func (f *Local) SetDataPath(path string) {
-	f.dataPath = path
-}
-
-func (f *Local) SetMasterKey(key []byte) {
-	f.masterKey = key
 }
 
 func (f *Local) GetInfoFile() (info *infofile.InfoFile, err error) {

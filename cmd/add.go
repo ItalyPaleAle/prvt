@@ -92,12 +92,12 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 
 			// Derive the master key
-			masterKey, _, errMessage, err := GetMasterKey(info)
+			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
-			store.SetMasterKey(masterKey)
+			store.SetMasterKey(keyId, masterKey)
 
 			// Set up the index
 			index.Instance.SetStore(store)
@@ -152,7 +152,7 @@ You must specify a destination, which is a folder inside the repository where yo
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, true)
 	c.Flags().StringVarP(&flagDestination, "destination", "d", "", "destination folder")
 	c.MarkFlagRequired("destination")
 

@@ -75,12 +75,12 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			}
 
 			// Derive the master key
-			masterKey, _, errMessage, err := GetMasterKey(info)
+			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
-			store.SetMasterKey(masterKey)
+			store.SetMasterKey(keyId, masterKey)
 
 			// Set up the index
 			index.Instance.SetStore(store)
@@ -117,7 +117,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, true)
 
 	// Add the command
 	rootCmd.AddCommand(c)

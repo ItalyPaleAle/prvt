@@ -39,11 +39,10 @@ import (
 // S3 stores files on a S3-compatible service
 // This implementation does not rely on tags because S3 does not support conditional put requests
 type S3 struct {
-	masterKey  []byte
+	fsBase
 	client     *minio.Client
 	core       *minio.Core
 	bucketName string
-	dataPath   string
 	cache      *MetadataCache
 	mux        sync.Mutex
 }
@@ -99,14 +98,6 @@ func (f *S3) Init(connection string, cache *MetadataCache) error {
 	}
 
 	return nil
-}
-
-func (f *S3) SetDataPath(path string) {
-	f.dataPath = path
-}
-
-func (f *S3) SetMasterKey(key []byte) {
-	f.masterKey = key
 }
 
 func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {

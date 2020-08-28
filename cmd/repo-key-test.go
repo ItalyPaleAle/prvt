@@ -79,7 +79,7 @@ This command is particularly useful to determine the ID of a key that you want t
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, true)
 
 	// Add the command
 	repoKeyCmd.AddCommand(c)

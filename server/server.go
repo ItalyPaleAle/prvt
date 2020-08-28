@@ -55,31 +55,40 @@ func (s *Server) Start(address, port string) error {
 	router.Use(gin.Recovery())
 
 	// Add routes
+	router.GET("/api/info", s.GetInfoHandler)
+
+	// Routes that require an open repository
 	{
+		requireRepo := router.Group("", s.MiddlewareRequireRepo)
+
 		// Routes that require the repository to be unlocked
-		requireUnlock := router.Group("", s.MiddlewareRequireUnlock)
+		{
+			requireUnlock := requireRepo.Group("", s.MiddlewareRequireUnlock)
 
-		// Request a file
-		requireUnlock.GET("/file/:fileId", s.FileHandler)
-		requireUnlock.HEAD("/file/:fileId", s.FileHandler)
+			// Request a file
+			requireUnlock.GET("/file/:fileId", s.FileHandler)
+			requireUnlock.HEAD("/file/:fileId", s.FileHandler)
 
-		// APIs
-		apis := requireUnlock.Group("/api")
-		apis.GET("/tree", s.GetTreeHandler)
-		apis.GET("/tree/*path", s.GetTreeHandler)
-		apis.POST("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.PostTreeHandler)
-		apis.DELETE("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.DeleteTreeHandler)
-		apis.GET("/metadata/*file", s.GetMetadataHandler)
-	}
-	{
+			// APIs
+			apis := requireUnlock.Group("/api")
+			apis.GET("/tree", s.GetTreeHandler)
+			apis.GET("/tree/*path", s.GetTreeHandler)
+			apis.POST("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.PostTreeHandler)
+			apis.DELETE("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.DeleteTreeHandler)
+			apis.GET("/metadata/*file", s.GetMetadataHandler)
+			apis.POST("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.PostRepoKeyHandler)
+			apis.DELETE("/repo/key/:keyId", s.MiddlewareRequireInfoFileVersion(2), s.DeleteRepoKeyHandler)
+		}
+
 		// Other APIs that don't require the repository to be unlocked
-		apis := router.Group("/api")
-		apis.GET("/info", s.GetInfoHandler)
-		apis.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeysHandler)
+		{
+			apis := requireRepo.Group("/api")
+			apis.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
 
-		// These APIs accept requests to unlock the repo
-		apis.POST("/repo/unlock", s.MiddlewareRequireInfoFileVersion(2), s.MiddlewareUnlockRepo(false), s.PostRepoUnlockHandler)
-		apis.POST("/repo/keytest", s.MiddlewareRequireInfoFileVersion(2), s.MiddlewareUnlockRepo(true), s.PostRepoUnlockHandler)
+			// These APIs accept requests to unlock the repo
+			apis.POST("/repo/unlock", s.MiddlewareRequireInfoFileVersion(2), s.MiddlewareUnlockRepo(false), s.PostRepoUnlockHandler)
+			apis.POST("/repo/keytest", s.MiddlewareRequireInfoFileVersion(2), s.MiddlewareUnlockRepo(true), s.PostRepoUnlockHandler)
+		}
 	}
 
 	// UI

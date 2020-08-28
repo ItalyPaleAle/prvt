@@ -38,19 +38,7 @@ func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 
 		// Get the information to unlock the repository from the body
 		args := &unlockKeyRequest{}
-		if err := c.Bind(args); err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not parse response body"})
-			return
-		}
-
-		// Validate the body
-		if args.Type != "passphrase" && args.Type != "gpg" {
-			c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Parameter 'type' must be either 'passphrase' or 'gpg'"})
-			return
-		}
-		if args.Type == "passphrase" && len(args.Passphrase) < 1 {
-			c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Parameter 'passphrase' must be set when 'type' is 'passphrase'"})
+		if ok := args.FromBody(c); !ok {
 			return
 		}
 
@@ -75,7 +63,7 @@ func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 		// Skip if doing a dry-run (e.g. while testing a key)
 		if !dryRun {
 			// Set the master key
-			s.Store.SetMasterKey(masterKey)
+			s.Store.SetMasterKey(keyId, masterKey)
 
 			// Set up the index
 			index.Instance.SetStore(s.Store)
@@ -94,10 +82,17 @@ func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 	}
 }
 
+// MiddlewareRequireRepo requires a repository to be selected (even if not unlocked)
+func (s *Server) MiddlewareRequireRepo(c *gin.Context) {
+	if s.Store == nil || s.Infofile == nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{"No repository has been selected yet"})
+	}
+}
+
 // MiddlewareRequireUnlock requires the repository to be unlocked before processing
 func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
 	if s.Repo == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{`The repository has not been unlocked`})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{"The repository has not been unlocked"})
 	}
 }
 

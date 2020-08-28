@@ -77,7 +77,7 @@ Usage: "prvt repo upgrade --store <string>"
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, true)
 
 	// Add the command
 	repoCmd.AddCommand(c)

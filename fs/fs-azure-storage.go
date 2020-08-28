@@ -39,12 +39,11 @@ import (
 
 // AzureStorage stores files on Azure Blob Storage
 type AzureStorage struct {
-	masterKey          []byte
+	fsBase
 	storageAccountName string
 	storageContainer   string
 	storagePipeline    pipeline.Pipeline
 	storageURL         string
-	dataPath           string
 	cache              *MetadataCache
 	mux                sync.Mutex
 }
@@ -85,14 +84,6 @@ func (f *AzureStorage) Init(connection string, cache *MetadataCache) error {
 	})
 
 	return nil
-}
-
-func (f *AzureStorage) SetDataPath(path string) {
-	f.dataPath = path
-}
-
-func (f *AzureStorage) SetMasterKey(key []byte) {
-	f.masterKey = key
 }
 
 func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {

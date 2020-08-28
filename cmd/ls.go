@@ -69,12 +69,12 @@ Shows the list of all files and folders contained in the repository at a given p
 			}
 
 			// Derive the master key
-			masterKey, _, errMessage, err := GetMasterKey(info)
+			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
 				utils.ExitWithError(utils.ErrorUser, errMessage, err)
 				return
 			}
-			store.SetMasterKey(masterKey)
+			store.SetMasterKey(keyId, masterKey)
 
 			// Set up the index
 			index.Instance.SetStore(store)
@@ -116,7 +116,7 @@ Shows the list of all files and folders contained in the repository at a given p
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString)
+	addStoreFlag(c, &flagStoreConnectionString, true)
 
 	// Add the command
 	rootCmd.AddCommand(c)
