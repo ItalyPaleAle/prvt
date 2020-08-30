@@ -51,7 +51,7 @@ Shows the list of all files and folders contained in the repository at a given p
 			}
 
 			// Create the store object
-			store, err := fs.Get(flagStoreConnectionString)
+			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return

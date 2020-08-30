@@ -67,7 +67,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 				}
 
 				// Create the store object
-				store, err = fs.Get(flagStoreConnectionString)
+				store, err = fs.GetWithConnectionString(flagStoreConnectionString)
 				if err != nil || store == nil {
 					utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 					return

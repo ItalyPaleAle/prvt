@@ -52,7 +52,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			}
 
 			// Create the store object
-			store, err := fs.Get(flagStoreConnectionString)
+			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return

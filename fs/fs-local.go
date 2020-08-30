@@ -22,7 +22,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -55,17 +54,25 @@ type Local struct {
 	mux      sync.Mutex
 }
 
-func (f *Local) Init(connection string, cache *MetadataCache) error {
-	f.cache = cache
-
-	// Ensure that connection starts with "local:" or "file:"
-	if !strings.HasPrefix(connection, "local:") && !strings.HasPrefix(connection, "file:") {
-		return fmt.Errorf("invalid scheme")
+func (f *Local) InitWithDictionary(opts map[string]string, cache *MetadataCache) error {
+	// Required keys: "path"
+	path := opts["path"]
+	if path == "" {
+		return errors.New("option 'path' is not defined")
 	}
 
+	return f.init(path, cache)
+}
+
+func (f *Local) InitWithConnectionString(connection string, cache *MetadataCache) error {
+	// Connection string format: "local:<path>" or "file:<path>"
 	// Get the path
 	path := connection[strings.Index(connection, ":")+1:]
 
+	return f.init(path, cache)
+}
+
+func (f *Local) init(path string, cache *MetadataCache) error {
 	// Expand the tilde if needed
 	path, err := homedir.Expand(path)
 	if err != nil {
@@ -89,6 +96,7 @@ func (f *Local) Init(connection string, cache *MetadataCache) error {
 		return err
 	}
 
+	f.cache = cache
 	f.basePath = path
 
 	return nil

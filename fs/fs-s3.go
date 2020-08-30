@@ -22,7 +22,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -56,27 +55,30 @@ type S3 struct {
 	mux        sync.Mutex
 }
 
-func (f *S3) Init(connection string, cache *MetadataCache) error {
+func (f *S3) InitWithDictionary(opts map[string]string, cache *MetadataCache) error {
+	// Required keys: "bucket", "accessKey", "secretKey"
+	// Optional keys: "endpoint", "tls"
+
+	// Load from the environment whatever we can (will be used as fallback
+	f.loadEnvVars(opts)
+
+	// Cache
 	f.cache = cache
 
-	// Ensure the connection string is valid and extract the parts
-	// connection must start with "s3:"
-	// Then it must contain the bucket name
-	if !strings.HasPrefix(connection, "s3:") || len(connection) < 4 {
-		return fmt.Errorf("invalid scheme")
+	// Bucket name
+	if opts["bucket"] == "" {
+		return errors.New("option 'bucket' is not defined")
 	}
-	f.bucketName = connection[3:]
+	f.bucketName = opts["bucket"]
 
-	// Get the access key
-	accessKeyId := os.Getenv("AWS_ACCESS_KEY_ID")
-	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	if accessKeyId == "" || secretAccessKey == "" {
-		return errors.New("environmental variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not defined")
+	// Access key and secret key
+	if opts["accessKey"] == "" || opts["secretKey"] == "" {
+		return errors.New("options 'accessKey' and/or 'secretKey' are not defined")
 	}
 
 	// Endpoint
 	// If not set, defaults to "s3.amazonaws.com"
-	endpoint := os.Getenv("S3_ENDPOINT")
+	endpoint := opts["endpoint"]
 	if endpoint == "" {
 		endpoint = "s3.amazonaws.com"
 	}
@@ -84,7 +86,7 @@ func (f *S3) Init(connection string, cache *MetadataCache) error {
 	// Enable TLS
 	// If not set, defaults to true
 	tls := true
-	tlsStr := strings.ToLower(os.Getenv("S3_TLS"))
+	tlsStr := strings.ToLower(opts["tls"])
 	if tlsStr == "0" || tlsStr == "n" || tlsStr == "no" || tlsStr == "false" {
 		tls = false
 	}
@@ -92,21 +94,72 @@ func (f *S3) Init(connection string, cache *MetadataCache) error {
 	// Initialize minio client object for connecting to S3
 	// Client is a higher-level API, that is convenient for things like putting files
 	// Core is a lower-level API, which is easier for us when requesting data
-	opts := &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
+	minioOpts := &minio.Options{
+		Creds:  credentials.NewStaticV4(opts["accessKey"], opts["secretKey"], ""),
 		Secure: tls,
 	}
 	var err error
-	f.client, err = minio.New(endpoint, opts)
+	f.client, err = minio.New(endpoint, minioOpts)
 	if err != nil {
 		return err
 	}
-	f.core, err = minio.NewCore(endpoint, opts)
+	f.core, err = minio.NewCore(endpoint, minioOpts)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (f *S3) InitWithConnectionString(connection string, cache *MetadataCache) error {
+	opts := make(map[string]string)
+
+	// Ensure the connection string is valid and extract the parts
+	// connection must start with "s3:"
+	// Then it must contain the bucket name, and optionally the access key and secret key (separated by : )
+	// Lastly, might aso have the endpoint and whether to enable TLS
+	parts := strings.Split(connection, ":")
+	if len(parts) < 2 {
+		return errors.New("invalid connection string")
+	}
+	opts["bucket"] = parts[1]
+
+	// Check if we have the access key and secret key
+	if len(parts) >= 4 {
+		opts["accessKey"] = parts[2]
+		opts["secretKey"] = parts[3]
+
+		// Check if we have the endpoint
+		if len(parts) >= 5 {
+			opts["endpoint"] = parts[4]
+
+			// Lastly, check if we have an option for TLS
+			if len(parts) >= 6 {
+				opts["tls"] = parts[5]
+			}
+		}
+	}
+
+	// Init the object from the opts dictionary
+	return f.InitWithDictionary(opts, cache)
+}
+
+func (f *S3) loadEnvVars(opts map[string]string) {
+	if opts["bucket"] == "" {
+		opts["bucket"] = os.Getenv("S3_BUCKET")
+	}
+	if opts["accessKey"] == "" {
+		opts["accessKey"] = os.Getenv("AWS_ACCESS_KEY_ID")
+	}
+	if opts["secretKey"] == "" {
+		opts["secretKey"] = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	}
+	if opts["endpoint"] == "" {
+		opts["endpoint"] = os.Getenv("S3_ENDPOINT")
+	}
+	if opts["tls"] == "" {
+		opts["tls"] = os.Getenv("S3_TLS")
+	}
 }
 
 func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {

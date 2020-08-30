@@ -48,7 +48,7 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
-			store, err := fs.Get(flagStoreConnectionString)
+			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return

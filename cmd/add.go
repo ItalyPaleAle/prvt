@@ -69,7 +69,7 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 
 			// Create the store object
-			store, err := fs.Get(flagStoreConnectionString)
+			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return

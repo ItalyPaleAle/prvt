@@ -41,7 +41,7 @@ Usage: "prvt repo upgrade --store <string>"
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create the store object
-			store, err := fs.Get(flagStoreConnectionString)
+			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
 				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
 				return

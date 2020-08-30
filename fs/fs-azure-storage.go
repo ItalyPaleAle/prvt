@@ -28,7 +28,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
-	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
@@ -57,32 +57,32 @@ type AzureStorage struct {
 	mux                sync.Mutex
 }
 
-func (f *AzureStorage) Init(connection string, cache *MetadataCache) error {
+func (f *AzureStorage) InitWithDictionary(opts map[string]string, cache *MetadataCache) error {
+	// Required keys: "container", "storageAccount", "accessKey"
+
+	// Load from the environment whatever we can (will be used as fallback
+	f.loadEnvVars(opts)
+
+	// Cache
 	f.cache = cache
 
-	// Ensure the connection string is valid and extract the parts
-	// connection must start with "azureblob:" or "azure:"
-	// Then it must contain the storage account container
-	r := regexp.MustCompile("^(azureblob|azure):([a-z0-9][a-z0-9-]{2,62})$")
-	match := r.FindStringSubmatch(connection)
-	if match == nil || len(match) != 3 {
-		return errors.New("invalid connection string for Azure Blob Storage")
+	// Container
+	if opts["container"] == "" {
+		return errors.New("option 'container' is not defined")
 	}
-	f.storageContainer = match[2]
+	f.storageContainer = opts["container"]
 
-	// Get the storage account name and key from the environment
-	name := os.Getenv("AZURE_STORAGE_ACCOUNT")
-	key := os.Getenv("AZURE_STORAGE_ACCESS_KEY")
-	if name == "" || key == "" {
-		return errors.New("environmental variables AZURE_STORAGE_ACCOUNT and AZURE_STORAGE_ACCESS_KEY are not defined")
+	// Storage account name and key
+	if opts["storageAccount"] == "" || opts["accessKey"] == "" {
+		return errors.New("options 'storageAccount' and/or 'accessKey' are not defined")
 	}
-	f.storageAccountName = name
+	f.storageAccountName = opts["storageAccount"]
 
 	// Storage endpoint
 	f.storageURL = fmt.Sprintf("https://%s.blob.core.windows.net/%s", f.storageAccountName, f.storageContainer)
 
 	// Authenticate with Azure Storage
-	credential, err := azblob.NewSharedKeyCredential(f.storageAccountName, key)
+	credential, err := azblob.NewSharedKeyCredential(f.storageAccountName, opts["accessKey"])
 	if err != nil {
 		return err
 	}
@@ -93,6 +93,40 @@ func (f *AzureStorage) Init(connection string, cache *MetadataCache) error {
 	})
 
 	return nil
+}
+
+func (f *AzureStorage) loadEnvVars(opts map[string]string) {
+	if opts["container"] == "" {
+		opts["container"] = os.Getenv("AZURE_STORAGE_CONTAINER")
+	}
+	if opts["storageAccount"] == "" {
+		opts["storageAccount"] = os.Getenv("AZURE_STORAGE_ACCOUNT")
+	}
+	if opts["accessKey"] == "" {
+		opts["accessKey"] = os.Getenv("AZURE_STORAGE_ACCESS_KEY")
+	}
+}
+
+func (f *AzureStorage) InitWithConnectionString(connection string, cache *MetadataCache) error {
+	opts := make(map[string]string)
+
+	// Ensure the connection string is valid and extract the parts
+	// connection must start with "azureblob:" or "azure:"
+	// Then it must contain the storage account container, and optionally the storage account name and access key
+	parts := strings.Split(connection, ":")
+	if len(parts) < 2 {
+		return errors.New("invalid connection string")
+	}
+	opts["container"] = parts[1]
+
+	// Check if we have the storage account name and access key
+	if len(parts) >= 4 {
+		opts["storageAccount"] = parts[2]
+		opts["accessKey"] = parts[3]
+	}
+
+	// Init the object from the opts dictionary
+	return f.InitWithDictionary(opts, cache)
 }
 
 func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {
