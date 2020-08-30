@@ -76,7 +76,7 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	if repoId == "" {
 		repoId = "(Repository ID missing)"
 	}
-	fmt.Println("Selected repository:", repoId)
+	fmt.Fprintln(s.LogWriter, "Selected repository:", repoId)
 	c.JSON(http.StatusOK, struct {
 		Repo string `json:"id"`
 	}{

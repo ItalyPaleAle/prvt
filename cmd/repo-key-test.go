@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -43,42 +42,42 @@ This command is particularly useful to determine the ID of a key that you want t
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 				return
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Require info files version 2 or higher
-			if !requireInfoFileVersion(info, 2, flagStoreConnectionString) {
+			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 2, flagStoreConnectionString) {
 				return
 			}
 
 			// Unlock the repository
 			_, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
 
 			// Show the key ID
-			fmt.Println("Repository unlocked using key with ID:", keyId)
+			fmt.Fprintln(cmd.OutOrStdout(), "Repository unlocked using key with ID:", keyId)
 		},
 	}
 

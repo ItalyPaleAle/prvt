@@ -26,7 +26,6 @@ import (
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/repository"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -50,24 +49,24 @@ You must specify a destination, which is a folder inside the repository where yo
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 			flagDestination, err := cmd.Flags().GetString("destination")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'destination'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'destination'", err)
 				return
 			}
 
 			// Get the file/folder name from the args
 			if len(args) < 1 {
-				utils.ExitWithError(utils.ErrorUser, "no file or folder specified", nil)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "no file or folder specified", nil)
 				return
 			}
 
 			// Destination must start with "/"
 			if !strings.HasPrefix(flagDestination, "/") {
-				utils.ExitWithError(utils.ErrorUser, "destination must start with /", nil)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "destination must start with /", nil)
 				return
 			}
 
@@ -79,30 +78,30 @@ You must specify a destination, which is a folder inside the repository where yo
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 				return
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Require info files version 3 or higher before any operation that changes the store (which would update the index to the protobuf-based format)
-			if !requireInfoFileVersion(info, 3, flagStoreConnectionString) {
+			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 3, flagStoreConnectionString) {
 				return
 			}
 
 			// Derive the master key
 			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
 			store.SetMasterKey(keyId, masterKey)
@@ -145,15 +144,15 @@ You must specify a destination, which is a folder inside the repository where yo
 			for el := range res {
 				switch el.Status {
 				case repository.RepositoryStatusOK:
-					fmt.Println("Added:", el.Path)
+					fmt.Fprintln(cmd.OutOrStdout(), "Added:", el.Path)
 				case repository.RepositoryStatusIgnored:
-					fmt.Println("Ignoring:", el.Path)
+					fmt.Fprintln(cmd.OutOrStdout(), "Ignoring:", el.Path)
 				case repository.RepositoryStatusExisting:
-					fmt.Println("Skipping existing file:", el.Path)
+					fmt.Fprintln(cmd.OutOrStdout(), "Skipping existing file:", el.Path)
 				case repository.RepositoryStatusInternalError:
-					fmt.Printf("Internal error adding file '%s': %s\n", el.Path, el.Err)
+					fmt.Fprintf(cmd.OutOrStdout(), "Internal error adding file '%s': %s\n", el.Path, el.Err)
 				case repository.RepositoryStatusUserError:
-					fmt.Printf("Error adding file '%s': %s\n", el.Path, el.Err)
+					fmt.Fprintf(cmd.OutOrStdout(), "Error adding file '%s': %s\n", el.Path, el.Err)
 				}
 			}
 		},

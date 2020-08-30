@@ -15,10 +15,11 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package utils
+package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -29,7 +30,7 @@ const (
 )
 
 // ExitWithError prints and error then terminates the app
-func ExitWithError(errType string, errMessage string, errData error) {
+func ExitWithError(out io.Writer, errType string, errMessage string, errData error) {
 	prefix := ""
 	status := 1
 	switch errType {
@@ -42,9 +43,9 @@ func ExitWithError(errType string, errMessage string, errData error) {
 	}
 
 	if errData != nil {
-		fmt.Printf("%s %s\n%s\n", prefix, errMessage, errData.Error())
+		fmt.Fprintf(out, "%s %s\n%s\n", prefix, errMessage, errData.Error())
 	} else {
-		fmt.Printf("%s %s\n", prefix, errMessage)
+		fmt.Fprintf(out, "%s %s\n", prefix, errMessage)
 	}
 	os.Exit(status)
 }

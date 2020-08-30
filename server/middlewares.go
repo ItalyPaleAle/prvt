@@ -68,7 +68,7 @@ func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 				Store: s.Store,
 			}
 
-			fmt.Println("Repository unlocked with key:", keyId)
+			fmt.Fprintln(s.LogWriter, "Repository unlocked with key:", keyId)
 		}
 
 		// Store the key ID in the context

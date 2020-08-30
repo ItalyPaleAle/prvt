@@ -25,7 +25,6 @@ import (
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/repository"
 	"github.com/ItalyPaleAle/prvt/server"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -53,32 +52,32 @@ You can use the optional "--address" and "--port" flags to control what address 
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 			flagBindPort, err := cmd.Flags().GetString("port")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'port'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'port'", err)
 				return
 			}
 			flagBindAddress, err := cmd.Flags().GetString("address")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'address'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'address'", err)
 				return
 			}
 			flagVerbose, err := cmd.Flags().GetBool("verbose")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'verbose'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'verbose'", err)
 				return
 			}
 			flagNoUnlock, err := cmd.Flags().GetBool("no-unlock")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'no-unlock'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'no-unlock'", err)
 				return
 			}
 			flagNoRepo, err := cmd.Flags().GetBool("no-repo")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'no-repo'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'no-repo'", err)
 				return
 			}
 
@@ -86,25 +85,25 @@ You can use the optional "--address" and "--port" flags to control what address 
 			if !flagNoRepo {
 				// Ensure the connection string is set
 				if flagStoreConnectionString == "" {
-					utils.ExitWithError(utils.ErrorUser, "Missing store connection string", errors.New("Use the '--store' flag to pass a store when '--no-repo' is not set."))
+					ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Missing store connection string", errors.New("Use the '--store' flag to pass a store when '--no-repo' is not set."))
 					return
 				}
 
 				// Create the store object
 				store, err = fs.GetWithConnectionString(flagStoreConnectionString)
 				if err != nil || store == nil {
-					utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+					ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 					return
 				}
 
 				// Request the info file
 				info, err = store.GetInfoFile()
 				if err != nil {
-					utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+					ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 					return
 				}
 				if info == nil {
-					utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+					ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 					return
 				}
 
@@ -113,7 +112,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 					// Derive the master key
 					masterKey, keyId, errMessage, err := GetMasterKey(info)
 					if err != nil {
-						utils.ExitWithError(utils.ErrorUser, errMessage, err)
+						ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 						return
 					}
 					store.SetMasterKey(keyId, masterKey)
@@ -130,14 +129,15 @@ You can use the optional "--address" and "--port" flags to control what address 
 
 			// Start the server
 			srv := server.Server{
-				Store:    store,
-				Verbose:  flagVerbose,
-				Repo:     repo,
-				Infofile: info,
+				Store:     store,
+				Verbose:   flagVerbose,
+				Repo:      repo,
+				Infofile:  info,
+				LogWriter: cmd.OutOrStdout(),
 			}
 			err = srv.Start(flagBindAddress, flagBindPort)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Could not start server", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Could not start server", err)
 				return
 			}
 		},

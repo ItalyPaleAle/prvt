@@ -24,7 +24,6 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -43,39 +42,39 @@ Shows the list of all files and folders contained in the repository at a given p
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 1 {
-				utils.ExitWithError(utils.ErrorUser, "Can only pass one path", nil)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Can only pass one path", nil)
 				return
 			}
 
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 				return
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Derive the master key
 			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
 			store.SetMasterKey(keyId, masterKey)
@@ -95,7 +94,7 @@ Shows the list of all files and folders contained in the repository at a given p
 			// Get the list of files in the folder
 			list, err := index.Instance.ListFolder(path)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error listing the contents of the folder", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error listing the contents of the folder", err)
 				return
 			}
 
@@ -111,9 +110,9 @@ Shows the list of all files and folders contained in the repository at a given p
 			// Print the result
 			for _, el := range list {
 				if el.Directory {
-					fmt.Println(el.Path + "/")
+					fmt.Fprintln(cmd.OutOrStdout(), el.Path+"/")
 				} else {
-					fmt.Println(el.Path)
+					fmt.Fprintln(cmd.OutOrStdout(), el.Path)
 				}
 			}
 		},

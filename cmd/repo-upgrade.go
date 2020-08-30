@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -40,43 +39,43 @@ Usage: "prvt repo upgrade --store <string>"
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 				return
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Upgrade the info file
 			errMessage, err := UpgradeInfoFile(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
 
 			// Store the info file
 			err = store.SetInfoFile(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot store the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot store the info file", err)
 				return
 			}
 
-			fmt.Println("Repository upgraded")
+			fmt.Fprintln(cmd.OutOrStdout(), "Repository upgraded")
 		},
 	}
 

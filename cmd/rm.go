@@ -23,7 +23,6 @@ import (
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/repository"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -44,44 +43,44 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
-				utils.ExitWithError(utils.ErrorUser, "No file to remove", nil)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "No file to remove", nil)
 				return
 			}
 
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 				return
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Require info files version 3 or higher before any operation that changes the store (which would update the index to the protobuf-based format)
-			if !requireInfoFileVersion(info, 3, flagStoreConnectionString) {
+			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 3, flagStoreConnectionString) {
 				return
 			}
 
 			// Derive the master key
 			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
 			store.SetMasterKey(keyId, masterKey)
@@ -108,13 +107,13 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			for el := range res {
 				switch el.Status {
 				case repository.RepositoryStatusOK:
-					fmt.Println("Removed:", el.Path)
+					fmt.Fprintln(cmd.OutOrStdout(), "Removed:", el.Path)
 				case repository.RepositoryStatusNotFound:
-					fmt.Println("Not found:", el.Path)
+					fmt.Fprintln(cmd.OutOrStdout(), "Not found:", el.Path)
 				case repository.RepositoryStatusInternalError:
-					fmt.Printf("Internal error removing path '%s': %s\n", el.Path, el.Err)
+					fmt.Fprintf(cmd.OutOrStdout(), "Internal error removing path '%s': %s\n", el.Path, el.Err)
 				case repository.RepositoryStatusUserError:
-					fmt.Printf("Error removing path '%s': %s\n", el.Path, el.Err)
+					fmt.Fprintf(cmd.OutOrStdout(), "Error removing path '%s': %s\n", el.Path, el.Err)
 				}
 			}
 		},

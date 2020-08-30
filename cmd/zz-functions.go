@@ -19,22 +19,22 @@ package cmd
 
 import (
 	"errors"
+	"io"
 	"os"
 
 	"github.com/ItalyPaleAle/prvt/infofile"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
 
 // Requires a minimum version of the info file to continue
-func requireInfoFileVersion(info *infofile.InfoFile, version uint16, connectionString string) bool {
+func requireInfoFileVersion(out io.Writer, info *infofile.InfoFile, version uint16, connectionString string) bool {
 	if connectionString == "" {
 		connectionString = "<string>"
 	}
 
 	if info.Version < version {
-		utils.ExitWithError(utils.ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store `+connectionString+`" to upgrade this repository to the latest format`))
+		ExitWithError(out, ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store `+connectionString+`" to upgrade this repository to the latest format`))
 		return false
 	}
 

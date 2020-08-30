@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -43,35 +42,35 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 			flagGPGKey, err := cmd.Flags().GetString("gpg")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'gpg'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'gpg'", err)
 				return
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 				return
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Require info files version 2 or higher
-			if !requireInfoFileVersion(info, 2, flagStoreConnectionString) {
+			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 2, flagStoreConnectionString) {
 				return
 			}
 
@@ -79,39 +78,39 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			if flagGPGKey != "" {
 				for _, k := range info.Keys {
 					if k.GPGKey == flagGPGKey {
-						utils.ExitWithError(utils.ErrorUser, "A GPG key with the same ID is already authorized to unlock this repository", err)
+						ExitWithError(cmd.ErrOrStderr(), ErrorUser, "A GPG key with the same ID is already authorized to unlock this repository", err)
 						return
 					}
 				}
 			}
 
 			// First, unlock the repository
-			fmt.Println("Unlocking the repository: if prompted for a passphrase, please type an existing one")
+			fmt.Fprintln(cmd.OutOrStdout(), "Unlocking the repository: if prompted for a passphrase, please type an existing one")
 			masterKey, _, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
-			fmt.Println("Repository unlocked")
+			fmt.Fprintln(cmd.OutOrStdout(), "Repository unlocked")
 
 			// Add the new key
 			if flagGPGKey == "" {
-				fmt.Println("Type the new passphrase")
+				fmt.Fprintln(cmd.OutOrStdout(), "Type the new passphrase")
 			}
-			_, errMessage, err = AddKey(info, masterKey, flagGPGKey)
+			keyId, errMessage, err := AddKey(info, masterKey, flagGPGKey)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
 
 			// Store the info file
 			err = store.SetInfoFile(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot store the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot store the info file", err)
 				return
 			}
 
-			fmt.Println("Key added")
+			fmt.Fprintln(cmd.OutOrStdout(), "Key added with id:", keyId)
 		},
 	}
 

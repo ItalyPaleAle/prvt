@@ -20,6 +20,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,13 +36,19 @@ import (
 )
 
 type Server struct {
-	Store    fs.Fs
-	Verbose  bool
-	Repo     *repository.Repository
-	Infofile *infofile.InfoFile
+	Store     fs.Fs
+	Verbose   bool
+	Repo      *repository.Repository
+	Infofile  *infofile.InfoFile
+	LogWriter io.Writer
 }
 
 func (s *Server) Start(address, port string) error {
+	// Log writer
+	if s.LogWriter == nil {
+		s.LogWriter = os.Stdout
+	}
+
 	// Set gin to production mode
 	gin.SetMode(gin.ReleaseMode)
 
@@ -50,7 +57,7 @@ func (s *Server) Start(address, port string) error {
 
 	// Add middlewares: logger (if desired) and recovery
 	if s.Verbose {
-		router.Use(gin.Logger())
+		router.Use(gin.LoggerWithWriter(s.LogWriter))
 	}
 	router.Use(gin.Recovery())
 
@@ -113,22 +120,22 @@ func (s *Server) Start(address, port string) error {
 	// Handle graceful shutdown on SIGINT
 	idleConnsClosed := make(chan struct{})
 	go func() {
-		s := make(chan os.Signal, 1)
-		signal.Notify(s, os.Interrupt, syscall.SIGTERM)
-		<-s
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+		<-ch
 
 		// We received an interrupt signal, shut down
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		if err := server.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
-			fmt.Printf("HTTP server shutdown error: %v\n", err)
+			fmt.Fprintf(s.LogWriter, "HTTP server shutdown error: %v\n", err)
 		}
 		cancel()
 		close(idleConnsClosed)
 	}()
 
 	// Listen to connections
-	fmt.Printf("Listening on http://%s:%s\n", address, port)
+	fmt.Fprintf(s.LogWriter, "Listening on http://%s:%s\n", address, port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}

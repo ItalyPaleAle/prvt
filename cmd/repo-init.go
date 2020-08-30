@@ -23,7 +23,6 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -47,26 +46,26 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 			flagGPGKey, err := cmd.Flags().GetString("gpg")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'gpg'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'gpg'", err)
 				return
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize repository", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize repository", err)
 				return
 			}
 
 			// Create the info file after generating a new master key
 			info, errMessage, err := NewInfoFile(flagGPGKey)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorUser, errMessage, err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
 				return
 			}
 
@@ -77,18 +76,18 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			// We are expecting this to be empty
 			infoExisting, err := store.GetInfoFile()
 			if err == nil && infoExisting != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error initializing repository", errors.New("A repository is already initialized in this store"))
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error initializing repository", errors.New("A repository is already initialized in this store"))
 				return
 			}
 
 			// Store the info file
 			err = store.SetInfoFile(info)
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot store the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot store the info file", err)
 				return
 			}
 
-			fmt.Printf("Initialized new repository in the store %s\n", flagStoreConnectionString)
+			fmt.Fprintf(cmd.OutOrStdout(), "Initialized new repository in the store %s\n", flagStoreConnectionString)
 		},
 	}
 

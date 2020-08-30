@@ -36,9 +36,9 @@ func NewVersionCmd() *cobra.Command {
 
 		Run: func(cmd *cobra.Command, args []string) {
 			if buildinfo.BuildID == "" || buildinfo.CommitHash == "" {
-				fmt.Println("This prvt build does not contain a build identifier, and it was probably fetched from the repository as source")
+				fmt.Fprintln(cmd.OutOrStdout(), "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source")
 			} else {
-				fmt.Printf("prvt %s\nBuild ID: %s (%s)\nGit commit: %s\nRuntime: %s\n", buildinfo.AppVersion, buildinfo.BuildID, buildinfo.BuildTime, buildinfo.CommitHash, runtime.Version())
+				fmt.Fprintf(cmd.OutOrStdout(), "prvt %s\nBuild ID: %s (%s)\nGit commit: %s\nRuntime: %s\n", buildinfo.AppVersion, buildinfo.BuildID, buildinfo.BuildTime, buildinfo.CommitHash, runtime.Version())
 			}
 		},
 	}

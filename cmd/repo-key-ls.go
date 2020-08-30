@@ -22,7 +22,6 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/keys"
-	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -42,42 +41,42 @@ Usage: "prvt repo key ls --store <string>"
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				utils.ExitWithError(utils.ErrorUser, "Could not initialize store", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
 				return
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				utils.ExitWithError(utils.ErrorApp, "Error requesting the info file", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
 				return
 			}
 			if info == nil {
-				utils.ExitWithError(utils.ErrorUser, "Repository is not initialized", err)
+				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
 				return
 			}
 
 			// Require info files version 2 or higher
-			if !requireInfoFileVersion(info, 2, flagStoreConnectionString) {
+			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 2, flagStoreConnectionString) {
 				return
 			}
 
 			// Table headers
-			fmt.Println("KEY TYPE    | KEY ID")
-			fmt.Println("------------|--------------------")
+			fmt.Fprintln(cmd.OutOrStdout(), "KEY TYPE    | KEY ID")
+			fmt.Fprintln(cmd.OutOrStdout(), "------------|--------------------")
 
 			// Show all keys in a table
 			// First, show all passphrases
 			for _, k := range info.Keys {
 				if k.GPGKey == "" {
-					fmt.Printf("Passphrase  | p:%X\n", k.MasterKey[0:8])
+					fmt.Fprintf(cmd.OutOrStdout(), "Passphrase  | p:%X\n", k.MasterKey[0:8])
 				}
 			}
 			// Now, show all GPG keys
@@ -89,7 +88,7 @@ Usage: "prvt repo key ls --store <string>"
 						uid = "  (" + uid + ")"
 					}
 
-					fmt.Println("GPG Key     | " + k.GPGKey + uid)
+					fmt.Fprintln(cmd.OutOrStdout(), "GPG Key     | "+k.GPGKey+uid)
 				}
 			}
 		},
