@@ -9,6 +9,7 @@ packrd/
 # Development
 old/
 test/
+test2/
 test.sh
 
 # Created by https://www.gitignore.io/api/go,linux,macos,windows,visualstudiocode

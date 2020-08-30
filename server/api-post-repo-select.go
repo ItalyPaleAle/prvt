@@ -22,6 +22,8 @@ import (
 	"net/http"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/index"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -66,13 +68,15 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	// Note that the repo is still locked at this stage
 	s.Store = store
 	s.Infofile = info
+	s.Repo = nil
+	index.Instance.SetStore(store)
 
 	// Response
 	repoId := s.Infofile.RepoId
 	if repoId == "" {
 		repoId = "(Repository ID missing)"
 	}
-	fmt.Println("Selected repository", repoId)
+	fmt.Println("Selected repository:", repoId)
 	c.JSON(http.StatusOK, struct {
 		Repo string `json:"id"`
 	}{
