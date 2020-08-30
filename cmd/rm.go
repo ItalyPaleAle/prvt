@@ -29,10 +29,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-	)
-
 	c := &cobra.Command{
 		Use:   "rm",
 		Short: "Remove a file or folder",
@@ -48,6 +44,13 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
 				utils.ExitWithError(utils.ErrorUser, "No file to remove", nil)
+				return
+			}
+
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 
@@ -117,7 +120,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, true)
+	addStoreFlag(c, true)
 
 	// Add the command
 	rootCmd.AddCommand(c)

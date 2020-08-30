@@ -33,11 +33,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-		flagDestination           string
-	)
-
 	c := &cobra.Command{
 		Use:   "add",
 		Short: "Add a file or folder",
@@ -51,6 +46,18 @@ You must specify a destination, which is a folder inside the repository where yo
 `,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				return
+			}
+			flagDestination, err := cmd.Flags().GetString("destination")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'destination'", err)
+				return
+			}
+
 			// Get the file/folder name from the args
 			if len(args) < 1 {
 				utils.ExitWithError(utils.ErrorUser, "no file or folder specified", nil)
@@ -152,8 +159,8 @@ You must specify a destination, which is a folder inside the repository where yo
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, true)
-	c.Flags().StringVarP(&flagDestination, "destination", "d", "", "destination folder")
+	addStoreFlag(c, true)
+	c.Flags().StringP("destination", "d", "", "destination folder")
 	c.MarkFlagRequired("destination")
 
 	// Add the command

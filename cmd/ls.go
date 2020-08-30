@@ -30,10 +30,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-	)
-
 	c := &cobra.Command{
 		Use:   "ls",
 		Short: "List files and folders",
@@ -47,6 +43,13 @@ Shows the list of all files and folders contained in the repository at a given p
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 1 {
 				utils.ExitWithError(utils.ErrorUser, "Can only pass one path", nil)
+				return
+			}
+
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
 				return
 			}
 
@@ -116,7 +119,7 @@ Shows the list of all files and folders contained in the repository at a given p
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, true)
+	addStoreFlag(c, true)
 
 	// Add the command
 	rootCmd.AddCommand(c)

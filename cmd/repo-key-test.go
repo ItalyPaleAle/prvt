@@ -27,10 +27,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-	)
-
 	c := &cobra.Command{
 		Use:   "test",
 		Short: "Test a key for unlocking the repo",
@@ -43,6 +39,13 @@ This command is particularly useful to determine the ID of a key that you want t
 		DisableAutoGenTag: true,
 
 		Run: func(cmd *cobra.Command, args []string) {
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				return
+			}
+
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
@@ -79,7 +82,7 @@ This command is particularly useful to determine the ID of a key that you want t
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, true)
+	addStoreFlag(c, true)
 
 	// Add the command
 	repoKeyCmd.AddCommand(c)

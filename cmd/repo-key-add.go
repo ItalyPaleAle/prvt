@@ -27,11 +27,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-		flagGPGKey                string
-	)
-
 	c := &cobra.Command{
 		Use:   "add",
 		Short: "Add a passphrase or GPG key to the repo",
@@ -44,6 +39,18 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 		DisableAutoGenTag: true,
 
 		Run: func(cmd *cobra.Command, args []string) {
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				return
+			}
+			flagGPGKey, err := cmd.Flags().GetString("gpg")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'gpg'", err)
+				return
+			}
+
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
@@ -108,8 +115,8 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, true)
-	c.Flags().StringVarP(&flagGPGKey, "gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
+	addStoreFlag(c, true)
+	c.Flags().StringP("gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
 
 	// Add the command
 	repoKeyCmd.AddCommand(c)

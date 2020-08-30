@@ -28,10 +28,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-	)
-
 	c := &cobra.Command{
 		Use:   "ls",
 		Short: "List all keys for the repo",
@@ -42,6 +38,13 @@ Usage: "prvt repo key ls --store <string>"
 		DisableAutoGenTag: true,
 
 		Run: func(cmd *cobra.Command, args []string) {
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				return
+			}
+
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
@@ -92,7 +95,7 @@ Usage: "prvt repo key ls --store <string>"
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, true)
+	addStoreFlag(c, true)
 
 	// Add the command
 	repoKeyCmd.AddCommand(c)

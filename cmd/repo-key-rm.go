@@ -28,11 +28,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-		flagKeyId                 string
-	)
-
 	c := &cobra.Command{
 		Use:   "rm",
 		Short: "Remove a passphrase or GPG key",
@@ -47,6 +42,18 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 		DisableAutoGenTag: true,
 
 		Run: func(cmd *cobra.Command, args []string) {
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				return
+			}
+			flagKeyId, err := cmd.Flags().GetString("key")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'key'", err)
+				return
+			}
+
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
@@ -110,8 +117,8 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, true)
-	c.Flags().StringVarP(&flagKeyId, "key", "k", "", "ID of the key to remove")
+	addStoreFlag(c, true)
+	c.Flags().StringP("key", "k", "", "ID of the key to remove")
 	c.MarkFlagRequired("key")
 
 	// Add the command

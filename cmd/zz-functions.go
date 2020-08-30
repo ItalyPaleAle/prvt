@@ -42,10 +42,10 @@ func requireInfoFileVersion(info *infofile.InfoFile, version uint16, connectionS
 }
 
 // Adds the --store flag, with a default value read from the environment
-func addStoreFlag(c *cobra.Command, flag *string, required bool) {
+func addStoreFlag(c *cobra.Command, required bool) {
 	// Check if we have a value in the PRVT_STORE env var
 	env := os.Getenv("PRVT_STORE")
-	c.Flags().StringVarP(flag, "store", "s", env, "connection string for the store")
+	c.Flags().StringP("store", "s", env, "connection string for the store")
 	if env == "" && required {
 		c.MarkFlagRequired("store")
 	}

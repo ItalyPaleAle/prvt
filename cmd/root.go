@@ -44,6 +44,8 @@ You can add files and folders to a repository with the "prvt add" command.
 
 Use the "prvt serve" command to launch a local server so you can view the files with a web browser (decrypted on-the-fly).
 
+With "prvt ls" you can list files and folders inside the repository, at a given path.
+
 Lastly, the "prvt rm" command lets you remove files from the repository.
 
 prvt is open source, licensed under GNU General Public License version 3.0.

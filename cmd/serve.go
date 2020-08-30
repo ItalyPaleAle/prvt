@@ -31,15 +31,6 @@ import (
 )
 
 func init() {
-	var (
-		flagStoreConnectionString string
-		flagBindPort              string
-		flagBindAddress           string
-		flagVerbose               bool
-		flagNoUnlock              bool
-		flagNoRepo                bool
-	)
-
 	c := &cobra.Command{
 		Use:   "serve",
 		Short: "Start the server",
@@ -57,6 +48,38 @@ You can use the optional "--address" and "--port" flags to control what address 
 				info  *infofile.InfoFile
 				err   error
 			)
+
+			// Flags
+			flagStoreConnectionString, err := cmd.Flags().GetString("store")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'store'", err)
+				return
+			}
+			flagBindPort, err := cmd.Flags().GetString("port")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'port'", err)
+				return
+			}
+			flagBindAddress, err := cmd.Flags().GetString("address")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'address'", err)
+				return
+			}
+			flagVerbose, err := cmd.Flags().GetBool("verbose")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'verbose'", err)
+				return
+			}
+			flagNoUnlock, err := cmd.Flags().GetBool("no-unlock")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'no-unlock'", err)
+				return
+			}
+			flagNoRepo, err := cmd.Flags().GetBool("no-repo")
+			if err != nil {
+				utils.ExitWithError(utils.ErrorApp, "Cannot get flag 'no-repo'", err)
+				return
+			}
 
 			// Check if we have a store flag
 			if !flagNoRepo {
@@ -120,12 +143,12 @@ You can use the optional "--address" and "--port" flags to control what address 
 	}
 
 	// Flags
-	addStoreFlag(c, &flagStoreConnectionString, false)
-	c.Flags().StringVarP(&flagBindAddress, "address", "a", "127.0.0.1", "address to bind to")
-	c.Flags().StringVarP(&flagBindPort, "port", "p", "3129", "port to bind to")
-	c.Flags().BoolVarP(&flagVerbose, "verbose", "v", false, "show request log")
-	c.Flags().BoolVar(&flagNoUnlock, "no-unlock", false, "do not unlock the repo")
-	c.Flags().BoolVar(&flagNoRepo, "no-repo", false, "do not connect to a repository")
+	addStoreFlag(c, false)
+	c.Flags().StringP("address", "a", "127.0.0.1", "address to bind to")
+	c.Flags().StringP("port", "p", "3129", "port to bind to")
+	c.Flags().BoolP("verbose", "v", false, "show request log")
+	c.Flags().Bool("no-unlock", false, "do not unlock the repo")
+	c.Flags().Bool("no-repo", false, "do not connect to a repository")
 
 	// Add the command
 	rootCmd.AddCommand(c)
