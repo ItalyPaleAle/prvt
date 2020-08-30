@@ -56,6 +56,7 @@ func (s *Server) Start(address, port string) error {
 
 	// Add routes
 	router.GET("/api/info", s.GetInfoHandler)
+	router.POST("/api/repo/select", s.PostRepoSelectHandler)
 
 	// Routes that require an open repository
 	{
