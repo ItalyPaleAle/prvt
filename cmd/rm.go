@@ -28,7 +28,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewRmCmd is for "prvt rm"
+func NewRmCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "rm",
 		Short: "Remove a file or folder",
@@ -122,6 +123,5 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 	// Flags
 	addStoreFlag(c, true)
 
-	// Add the command
-	rootCmd.AddCommand(c)
+	return c
 }

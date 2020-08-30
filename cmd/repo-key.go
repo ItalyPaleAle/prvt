@@ -21,13 +21,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var repoKeyCmd = &cobra.Command{
-	Use:               "key",
-	Short:             "Manage keys that can unlock the repository",
-	Long:              `Commands to add and remove keys that can unlock the repository.`,
-	DisableAutoGenTag: true,
-}
+// NewRepoKeyCmd is for "prvt repo key"
+func NewRepoKeyCmd() *cobra.Command {
+	c := &cobra.Command{
+		Use:               "key",
+		Short:             "Manage keys that can unlock the repository",
+		Long:              `Commands to add and remove keys that can unlock the repository.`,
+		DisableAutoGenTag: true,
+	}
 
-func init() {
-	repoCmd.AddCommand(repoKeyCmd)
+	// Sub-commands
+	c.AddCommand(NewRepoKeyAddCmd())
+	c.AddCommand(NewRepoKeyLsCmd())
+	c.AddCommand(NewRepoKeyRmCmd())
+	c.AddCommand(NewRepoKeyTestCmd())
+
+	return c
 }

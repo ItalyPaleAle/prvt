@@ -27,7 +27,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewRepoKeyLsCmd is for "prvt repo key ls"
+func NewRepoKeyLsCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "ls",
 		Short: "List all keys for the repo",
@@ -97,6 +98,5 @@ Usage: "prvt repo key ls --store <string>"
 	// Flags
 	addStoreFlag(c, true)
 
-	// Add the command
-	repoKeyCmd.AddCommand(c)
+	return c
 }

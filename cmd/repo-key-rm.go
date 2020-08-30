@@ -27,7 +27,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewRepoKeyRmCmd is for "prvt repo key rm"
+func NewRepoKeyRmCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "rm",
 		Short: "Remove a passphrase or GPG key",
@@ -121,6 +122,5 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 	c.Flags().StringP("key", "k", "", "ID of the key to remove")
 	c.MarkFlagRequired("key")
 
-	// Add the command
-	repoKeyCmd.AddCommand(c)
+	return c
 }

@@ -30,7 +30,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewServeCmd is for "prvt serve"
+func NewServeCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "serve",
 		Short: "Start the server",
@@ -150,6 +151,5 @@ You can use the optional "--address" and "--port" flags to control what address 
 	c.Flags().Bool("no-unlock", false, "do not unlock the repo")
 	c.Flags().Bool("no-repo", false, "do not connect to a repository")
 
-	// Add the command
-	rootCmd.AddCommand(c)
+	return c
 }

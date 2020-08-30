@@ -29,7 +29,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewLsCmd is for "prvt ls"
+func NewLsCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "ls",
 		Short: "List files and folders",
@@ -121,6 +122,5 @@ Shows the list of all files and folders contained in the repository at a given p
 	// Flags
 	addStoreFlag(c, true)
 
-	// Add the command
-	rootCmd.AddCommand(c)
+	return c
 }

@@ -28,7 +28,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewRepoInitCmd is for "prvt repo init"
+func NewRepoInitCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new repository",
@@ -95,6 +96,5 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 	addStoreFlag(c, true)
 	c.Flags().StringP("gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
 
-	// Add the command
-	repoCmd.AddCommand(c)
+	return c
 }

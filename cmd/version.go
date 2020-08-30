@@ -26,7 +26,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewVersionCmd is for "prvt version"
+func NewVersionCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:               "version",
 		Short:             "Show prvt version",
@@ -42,5 +43,5 @@ func init() {
 		},
 	}
 
-	rootCmd.AddCommand(c)
+	return c
 }

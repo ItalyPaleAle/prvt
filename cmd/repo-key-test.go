@@ -26,7 +26,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewRepoKeyTestCmd is for "prvt repo key test"
+func NewRepoKeyTestCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "test",
 		Short: "Test a key for unlocking the repo",
@@ -84,6 +85,5 @@ This command is particularly useful to determine the ID of a key that you want t
 	// Flags
 	addStoreFlag(c, true)
 
-	// Add the command
-	repoKeyCmd.AddCommand(c)
+	return c
 }

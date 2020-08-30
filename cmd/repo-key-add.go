@@ -26,7 +26,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewRepoKeyAddCmd is for "prvt repo key add"
+func NewRepoKeyAddCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "add",
 		Short: "Add a passphrase or GPG key to the repo",
@@ -118,6 +119,5 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 	addStoreFlag(c, true)
 	c.Flags().StringP("gpg", "g", "", "protect the master key with the gpg key with this address (optional)")
 
-	// Add the command
-	repoKeyCmd.AddCommand(c)
+	return c
 }

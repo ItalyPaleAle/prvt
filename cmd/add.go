@@ -32,7 +32,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewAddCmd is for "prvt add"
+func NewAddCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "add",
 		Short: "Add a file or folder",
@@ -163,6 +164,5 @@ You must specify a destination, which is a folder inside the repository where yo
 	c.Flags().StringP("destination", "d", "", "destination folder")
 	c.MarkFlagRequired("destination")
 
-	// Add the command
-	rootCmd.AddCommand(c)
+	return c
 }

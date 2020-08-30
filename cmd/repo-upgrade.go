@@ -26,7 +26,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// NewRepoUpgradeCmd is for "prvt repo upgrade"
+func NewRepoUpgradeCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade a repository",
@@ -82,6 +83,5 @@ Usage: "prvt repo upgrade --store <string>"
 	// Flags
 	addStoreFlag(c, true)
 
-	// Add the command
-	repoCmd.AddCommand(c)
+	return c
 }

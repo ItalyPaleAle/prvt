@@ -21,13 +21,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var repoCmd = &cobra.Command{
-	Use:               "repo",
-	Short:             "Create and manage a repository",
-	Long:              `Commands to create and manage a repository.`,
-	DisableAutoGenTag: true,
-}
+// NewRepoCmd is for "prvt repo"
+func NewRepoCmd() *cobra.Command {
+	c := &cobra.Command{
+		Use:               "repo",
+		Short:             "Create and manage a repository",
+		Long:              `Commands to create and manage a repository.`,
+		DisableAutoGenTag: true,
+	}
 
-func init() {
-	rootCmd.AddCommand(repoCmd)
+	// Sub-commands
+	c.AddCommand(NewRepoInitCmd())
+	c.AddCommand(NewRepoKeyCmd())
+	c.AddCommand(NewRepoUpgradeCmd())
+
+	return c
 }
