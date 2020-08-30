@@ -25,6 +25,7 @@ import (
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/keys"
 
+	"github.com/gofrs/uuid"
 	"github.com/manifoldco/promptui"
 )
 
@@ -74,8 +75,8 @@ func NewInfoFile(gpgKey string) (info *infofile.InfoFile, errMessage string, err
 
 // UpgradeInfoFile upgrades an info file to the latest version
 func UpgradeInfoFile(info *infofile.InfoFile) (errMessage string, err error) {
-	// Can only upgrade info files version 1 and 2
-	if info.Version != 1 && info.Version != 2 {
+	// Can only upgrade info files versions 1-3
+	if info.Version < 1 || info.Version > 3 {
 		return "Unsupported repository version", errors.New("This repository has already been upgraded or is using an unsupported version")
 	}
 
@@ -93,8 +94,18 @@ func UpgradeInfoFile(info *infofile.InfoFile) (errMessage string, err error) {
 	/*if info.Version < 3 {
 	}*/
 
+	// Upgrade 3 -> 4
+	if info.Version < 4 {
+		// Generate a new UUID
+		repoId, err := uuid.NewV4()
+		if err != nil {
+			return "Could not generate a new UUID for the repo", err
+		}
+		info.RepoId = repoId.String()
+	}
+
 	// Update the version
-	info.Version = 3
+	info.Version = 4
 
 	return "", nil
 }

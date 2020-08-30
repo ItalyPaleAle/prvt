@@ -153,7 +153,8 @@ The `_info.json` file is the only file in the repository that is not encrypted.
 This file is a JSON document containing four keys:
 
 - The name of the app (`app`) that created it. This is always `prvt`.
-- The version (`ver`) of the info file. The latest value, from prvt version 0.4, is `3`.
+- The version (`ver`) of the info file. The latest value, from prvt version 0.5, is `4`.
+- A unique ID for the repo (`id`). This is a randomly-generated UUID and it's used to identify which repo you're working on.
 - The data path (`dp`), which is the name of the sub-folder where the encrypted data is stored. The default value is `data`. (This value can't be set using the prvt CLI, but it's defined here to enable backwards compatibility with repositories created by previous versions of prvt.)
 - The list of passphrases and keys (`k`).
 
@@ -172,7 +173,8 @@ For example, for a repository that allows only one passphrase to unlock it (the 
 ```json
 {
   "app": "prvt",
-  "ver": 2,
+  "ver": 4,
+  "id": "baed6250-2a97-4b03-b846-ec92d17ddd7e",
   "dp": "data",
   "k": [
     {

@@ -67,11 +67,15 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	s.Store = store
 	s.Infofile = info
 
-	// Reponse
-	fmt.Println("Selected repository of type ", args["type"])
+	// Response
+	repoId := s.Infofile.RepoId
+	if repoId == "" {
+		repoId = "(Repository ID missing)"
+	}
+	fmt.Println("Selected repository", repoId)
 	c.JSON(http.StatusOK, struct {
-		Type string `json:"type"`
+		Repo string `json:"id"`
 	}{
-		Type: args["type"],
+		Repo: repoId,
 	})
 }

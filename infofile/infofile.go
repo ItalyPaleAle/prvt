@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/gofrs/uuid"
 )
 
 const UnknownGPGKey = "UnknownGPGKey"
@@ -43,22 +45,33 @@ type InfoFile struct {
 	Version  uint16 `json:"ver"`
 	DataPath string `json:"dp,omitempty"`
 
-	// Fields for version 1
+	// Fields for version 1 only
 	// Passphrase
 	Salt             []byte `json:"slt,omitempty"`
 	ConfirmationHash []byte `json:"ph,omitempty"`
 	// GPG-encrypted key
 	EncryptedKey []byte `json:"ek,omitempty"`
 
-	// Fields for version 2
+	// Fields for version 2+
 	Keys []InfoFileKey `json:"k,omitempty"`
+
+	// Fields for version 4+
+	RepoId string `json:"id"`
 }
 
 // New creates a new info file
 func New() (*InfoFile, error) {
+	// Generate a new UUID
+	repoId, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+
+	// Info file
 	info := &InfoFile{
 		App:      "prvt",
-		Version:  3,
+		Version:  4,
+		RepoId:   repoId.String(),
 		DataPath: "data",
 	}
 	return info, nil
@@ -182,7 +195,7 @@ func (info *InfoFile) Validate() error {
 				return errors.New("invalid confirmation hash in info file")
 			}
 		}
-	} else if info.Version == 2 || info.Version == 3 {
+	} else if info.Version >= 2 && info.Version <= 4 {
 		// Parse version 2 and 3
 		if len(info.Keys) == 0 {
 			return errors.New("repository does not have any key")
