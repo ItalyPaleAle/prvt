@@ -23,6 +23,7 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/buildinfo"
 	"github.com/ItalyPaleAle/prvt/cmd"
+
 	"github.com/spf13/cobra"
 )
 
