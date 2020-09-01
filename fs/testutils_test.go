@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"path"
 	"reflect"
@@ -123,16 +124,22 @@ func (s *testFs) testGetInfoFile() {
 	assert.True(s.t, reflect.DeepEqual(info, s.info))
 }
 
-// Store an encrypted file
+// Store encrypted files
 func (s *testFs) testSet() {
+	var (
+		in       io.Reader
+		metadata *crypto.Metadata
+		err      error
+	)
+
 	// Store text file
-	in := bytes.NewReader(s.files["divinacommedia.txt"])
-	metadata := &crypto.Metadata{
+	in = bytes.NewReader(s.files["divinacommedia.txt"])
+	metadata = &crypto.Metadata{
 		Name:        "divinacommedia.txt",
 		ContentType: "text/plain",
 		Size:        int64(len(s.files["divinacommedia.txt"])),
 	}
-	_, err := s.store.Set(context.Background(), "divinacommedia.txt", in, nil, metadata)
+	_, err = s.store.Set(context.Background(), "divinacommedia.txt", in, nil, metadata)
 	if !assert.NoError(s.t, err) {
 		s.t.FailNow()
 	}
@@ -140,6 +147,33 @@ func (s *testFs) testSet() {
 	// Error: empty name
 	_, err = s.store.Set(context.Background(), "", in, nil, metadata)
 	if !assert.Error(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// Store image
+	in = bytes.NewReader(s.files["kitera-dent-BIj4LObC6es-unsplash.jpg"])
+	metadata = &crypto.Metadata{
+		Name:        "kitera-dent-BIj4LObC6es-unsplash.jpg",
+		ContentType: "image/jpeg",
+		Size:        int64(len(s.files["kitera-dent-BIj4LObC6es-unsplash.jpg"])),
+	}
+	_, err = s.store.Set(context.Background(), "kitera-dent-BIj4LObC6es-unsplash.jpg", in, nil, metadata)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// Context canceled
+	ctx, cancel := context.WithCancel(context.Background())
+	f := bytes.NewReader(s.files["kitera-dent-BIj4LObC6es-unsplash.jpg"])
+	pr, pw := io.Pipe()
+	go func() {
+		// Copy the first 10kb, then cancel the context, then copy the rest
+		io.CopyN(pw, f, 10240)
+		cancel()
+		io.Copy(pw, f)
+	}()
+	_, err = s.store.Set(ctx, "kitera-dent-BIj4LObC6es-unsplash.jpg", pr, nil, metadata)
+	if !assert.Error(s.t, err) || !assert.Equal(s.t, context.Canceled, err) {
 		s.t.FailNow()
 	}
 }
