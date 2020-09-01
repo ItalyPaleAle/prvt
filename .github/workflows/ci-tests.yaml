@@ -22,6 +22,10 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ^${{env.GO_VERSION}}
+    
+    - name: Go version
+      run: |
+        go version
 
     - name: Check out code
       uses: actions/checkout@v2
@@ -31,7 +35,9 @@ jobs:
         go get -v -t -d ./...
 
     - name: Build
-      run: go build -v .
+      run: |
+        go build -v .
 
     - name: Test
-      run: go test -v prvt/...
+      run: |
+        go test -v ./...
