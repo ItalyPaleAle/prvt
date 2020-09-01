@@ -63,7 +63,7 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 		ContentType: mimeType,
 		Size:        size,
 	}
-	_, err = repo.Store.SetWithContext(ctx, fileId.String(), in, nil, metadata)
+	_, err = repo.Store.Set(ctx, fileId.String(), in, nil, metadata)
 	if err != nil {
 		return RepositoryStatusInternalError, err
 	}

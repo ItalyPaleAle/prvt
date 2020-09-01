@@ -214,11 +214,7 @@ func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 	return
 }
 
-func (f *S3) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	return f.GetWithContext(context.Background(), name, out, metadataCb)
-}
-
-func (f *S3) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *S3) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -372,11 +368,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	return
 }
 
-func (f *S3) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
-	return f.SetWithContext(context.Background(), name, in, tag, metadata)
-}
-
-func (f *S3) SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
+func (f *S3) Set(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return nil, err
@@ -405,7 +397,7 @@ func (f *S3) SetWithContext(ctx context.Context, name string, in io.Reader, tag 
 	return nil, nil
 }
 
-func (f *S3) Delete(name string, tag interface{}) (err error) {
+func (f *S3) Delete(ctx context.Context, name string, tag interface{}) (err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -417,7 +409,7 @@ func (f *S3) Delete(name string, tag interface{}) (err error) {
 		folder = f.dataPath + "/"
 	}
 
-	err = f.client.RemoveObject(context.Background(), f.bucketName, folder+name, minio.RemoveObjectOptions{})
+	err = f.client.RemoveObject(ctx, f.bucketName, folder+name, minio.RemoveObjectOptions{})
 
 	return
 }

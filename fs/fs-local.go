@@ -152,11 +152,7 @@ func (f *Local) SetInfoFile(info *infofile.InfoFile) (err error) {
 	return
 }
 
-func (f *Local) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	return f.GetWithContext(context.Background(), name, out, metadataCb)
-}
-
-func (f *Local) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *Local) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -319,11 +315,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 	return
 }
 
-func (f *Local) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
-	return f.SetWithContext(context.Background(), name, in, tag, metadata)
-}
-
-func (f *Local) SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
+func (f *Local) Set(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -357,7 +349,7 @@ func (f *Local) SetWithContext(ctx context.Context, name string, in io.Reader, t
 	return nil, nil
 }
 
-func (f *Local) Delete(name string, tag interface{}) (err error) {
+func (f *Local) Delete(ctx context.Context, name string, tag interface{}) (err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return

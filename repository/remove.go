@@ -18,13 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package repository
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/index"
 )
 
 // RemovePath removes a path by its prefix, and reports each element removed in the res channel
-func (repo *Repository) RemovePath(path string, res chan<- PathResultMessage) {
+func (repo *Repository) RemovePath(ctx context.Context, path string, res chan<- PathResultMessage) {
 	// Remove from the index and get the list of objects to delete
 	objects, paths, err := index.Instance.DeleteFile(path)
 	if err != nil {
@@ -45,7 +46,7 @@ func (repo *Repository) RemovePath(path string, res chan<- PathResultMessage) {
 
 	// Delete the files
 	for i := range objects {
-		err = repo.Store.Delete(objects[i], nil)
+		err = repo.Store.Delete(ctx, objects[i], nil)
 		if err != nil {
 			res <- PathResultMessage{
 				Path:   paths[i],

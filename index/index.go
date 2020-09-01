@@ -19,6 +19,7 @@ package index
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/ioutil"
 	"strings"
@@ -98,7 +99,7 @@ func (i *Index) Refresh(force bool) error {
 	var data []byte
 	buf := &bytes.Buffer{}
 	isJSON := false
-	found, tag, err := i.store.Get("_index", buf, func(metadata *crypto.Metadata, metadataSize int32) bool {
+	found, tag, err := i.store.Get(context.Background(), "_index", buf, func(metadata *crypto.Metadata, metadataSize int32) bool {
 		// Check if we're decoding a legacy JSON file
 		if metadata.ContentType == "application/json" {
 			isJSON = true
@@ -183,7 +184,7 @@ func (i *Index) save(obj *IndexFile) error {
 		Size:        int64(len(data)),
 	}
 	buf := bytes.NewBuffer(data)
-	tag, err := i.store.Set("_index", buf, i.cacheTag, metadata)
+	tag, err := i.store.Set(context.Background(), "_index", buf, i.cacheTag, metadata)
 	if err != nil {
 		return err
 	}

@@ -156,7 +156,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 	if rng != nil {
 		found, _, err = s.Store.GetWithRange(ctx, fileId, out, rng, metadataCb)
 	} else {
-		found, _, err = s.Store.GetWithContext(ctx, fileId, out, metadataCb)
+		found, _, err = s.Store.Get(ctx, fileId, out, metadataCb)
 	}
 	if err != nil {
 		// Ignore error ErrMetadataOnly if we're making a head request

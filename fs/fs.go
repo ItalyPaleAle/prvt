@@ -116,24 +116,18 @@ type Fs interface {
 
 	// Get returns a stream to a file in the filesystem
 	// It also returns a tag (which might be empty) that should be passed to the Set method if you want to subsequentially update the contents of the file
-	Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
+	Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
-	// GetWithContext is like Get, but accepts a custom context
-	GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
-
-	// GetWithRange is like GetWithContext, but accepts a custom range
+	// GetWithRange is like Get, but accepts a custom range
 	GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
-	Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)
-
-	// SetWithContext is like Set, but accepts a custom context
-	SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)
+	Set(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error)
 
 	// Delete a file from the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
-	Delete(name string, tag interface{}) (err error)
+	Delete(ctx context.Context, name string, tag interface{}) (err error)
 }
 
 // FsOptions is the interface for the options for the filesystem

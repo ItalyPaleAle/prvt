@@ -209,11 +209,7 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 	return
 }
 
-func (f *AzureStorage) Get(name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	return f.GetWithContext(context.Background(), name, out, metadataCb)
-}
-
-func (f *AzureStorage) GetWithContext(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -413,11 +409,7 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	return
 }
 
-func (f *AzureStorage) Set(name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
-	return f.SetWithContext(context.Background(), name, in, tag, metadata)
-}
-
-func (f *AzureStorage) SetWithContext(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
+func (f *AzureStorage) Set(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -488,7 +480,7 @@ func (f *AzureStorage) SetWithContext(ctx context.Context, name string, in io.Re
 	return tagOut, nil
 }
 
-func (f *AzureStorage) Delete(name string, tag interface{}) (err error) {
+func (f *AzureStorage) Delete(ctx context.Context, name string, tag interface{}) (err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -520,6 +512,6 @@ func (f *AzureStorage) Delete(name string, tag interface{}) (err error) {
 	}
 
 	// Delete the blob
-	_, err = blockBlobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionInclude, accessConditions)
+	_, err = blockBlobURL.Delete(ctx, azblob.DeleteSnapshotsOptionInclude, accessConditions)
 	return
 }

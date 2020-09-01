@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
@@ -97,7 +98,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			res := make(chan repository.PathResultMessage)
 			go func() {
 				for _, e := range args {
-					repo.RemovePath(e, res)
+					repo.RemovePath(context.Background(), e, res)
 				}
 
 				close(res)

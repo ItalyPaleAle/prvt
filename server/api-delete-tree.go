@@ -40,7 +40,7 @@ func (s *Server) DeleteTreeHandler(c *gin.Context) {
 	// Remove the path
 	res := make(chan repository.PathResultMessage)
 	go func() {
-		s.Repo.RemovePath(path, res)
+		s.Repo.RemovePath(c.Request.Context(), path, res)
 		close(res)
 	}()
 
