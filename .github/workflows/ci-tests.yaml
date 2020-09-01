@@ -14,7 +14,7 @@ env:
 jobs:
 
   build:
-    name: Build
+    name: Go build and test
     runs-on: ubuntu-20.04
     steps:
 
@@ -34,4 +34,4 @@ jobs:
       run: go build -v .
 
     - name: Test
-      run: go test -v .
+      run: go test -v prvt/...
