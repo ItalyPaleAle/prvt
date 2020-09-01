@@ -93,12 +93,6 @@ type Fs interface {
 	// InitWithConnectionString inits the object by passing a connection string and the cache object
 	InitWithConnectionString(connection string, cache *MetadataCache) error
 
-	// SetDataPath sets the path where the data is stored (read from the info file)
-	SetDataPath(path string)
-
-	// GetDataPath returns the path where the data is stored
-	GetDataPath() string
-
 	// SetMasterKey sets the master key (used to encrypt/decrypt files) in the object
 	SetMasterKey(keyId string, key []byte)
 
@@ -143,16 +137,6 @@ type fsBase struct {
 	keyId     string
 	masterKey []byte
 	dataPath  string
-}
-
-// SetDataPath sets the path where the data is stored (read from the info file)
-func (f *fsBase) SetDataPath(path string) {
-	f.dataPath = path
-}
-
-// GetDataPath returns the path where the data is stored
-func (f *fsBase) GetDataPath() string {
-	return f.dataPath
 }
 
 // SetMasterKey sets the master key (used to encrypt/decrypt files) in the object
