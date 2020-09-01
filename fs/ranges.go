@@ -119,5 +119,9 @@ func (c *RequestRange) RequestHeaderValue() string {
 
 // ResponseHeaderValue returns the value for the Content-Range HTTP response reader, in bytes
 func (c *RequestRange) ResponseHeaderValue() string {
-	return fmt.Sprintf("bytes %d-%d/%d", c.Start, c.Start+c.Length-1, c.FileSize)
+	if c.FileSize > 0 {
+		return fmt.Sprintf("bytes %d-%d/%d", c.Start, c.Start+c.Length-1, c.FileSize)
+	} else {
+		return fmt.Sprintf("bytes %d-%d/*", c.Start, c.Start+c.Length-1)
+	}
 }
