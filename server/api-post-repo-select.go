@@ -44,7 +44,7 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	}
 
 	// Create the store object
-	store, err := fs.GetWithDictionary(args)
+	store, err := fs.GetWithOptionsMap(args)
 	if err != nil || store == nil {
 		c.Error(err)
 		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not initialize the store"})

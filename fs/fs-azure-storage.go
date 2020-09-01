@@ -57,7 +57,7 @@ type AzureStorage struct {
 	mux                sync.Mutex
 }
 
-func (f *AzureStorage) InitWithDictionary(opts map[string]string, cache *MetadataCache) error {
+func (f *AzureStorage) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "container", "storageAccount", "accessKey"
 
 	// Load from the environment whatever we can (will be used as fallback
@@ -126,7 +126,7 @@ func (f *AzureStorage) InitWithConnectionString(connection string, cache *Metada
 	}
 
 	// Init the object from the opts dictionary
-	return f.InitWithDictionary(opts, cache)
+	return f.InitWithOptionsMap(opts, cache)
 }
 
 func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {

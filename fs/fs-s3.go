@@ -55,7 +55,7 @@ type S3 struct {
 	mux        sync.Mutex
 }
 
-func (f *S3) InitWithDictionary(opts map[string]string, cache *MetadataCache) error {
+func (f *S3) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "bucket", "accessKey", "secretKey"
 	// Optional keys: "endpoint", "tls"
 
@@ -141,7 +141,7 @@ func (f *S3) InitWithConnectionString(connection string, cache *MetadataCache) e
 	}
 
 	// Init the object from the opts dictionary
-	return f.InitWithDictionary(opts, cache)
+	return f.InitWithOptionsMap(opts, cache)
 }
 
 func (f *S3) loadEnvVars(opts map[string]string) {

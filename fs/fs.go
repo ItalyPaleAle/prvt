@@ -31,9 +31,9 @@ import (
 
 var fsTypes = map[string]reflect.Type{}
 
-// GetWithDictionary returns a store given the options dictionary
+// GetWithOptionsMap returns a store given the options map
 // The dictionary must have a key "type" for the type of fs to use
-func GetWithDictionary(opts map[string]string) (store Fs, err error) {
+func GetWithOptionsMap(opts map[string]string) (store Fs, err error) {
 	// Init the cache
 	cache := &MetadataCache{}
 	err = cache.Init()
@@ -52,7 +52,7 @@ func GetWithDictionary(opts map[string]string) (store Fs, err error) {
 		return
 	}
 	store = reflect.New(fsTyp).Interface().(Fs)
-	err = store.InitWithDictionary(opts, cache)
+	err = store.InitWithOptionsMap(opts, cache)
 
 	return
 }
@@ -87,8 +87,8 @@ func GetWithConnectionString(connection string) (store Fs, err error) {
 
 // Fs is the interface for the filesystem
 type Fs interface {
-	// InitWithDictionary inits the object by passing an options dictionary
-	InitWithDictionary(opts map[string]string, cache *MetadataCache) error
+	// InitWithOptionsMap inits the object by passing an options map
+	InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error
 
 	// InitWithConnectionString inits the object by passing a connection string and the cache object
 	InitWithConnectionString(connection string, cache *MetadataCache) error

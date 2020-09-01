@@ -54,7 +54,7 @@ type Local struct {
 	mux      sync.Mutex
 }
 
-func (f *Local) InitWithDictionary(opts map[string]string, cache *MetadataCache) error {
+func (f *Local) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "path"
 	path := opts["path"]
 	if path == "" {
