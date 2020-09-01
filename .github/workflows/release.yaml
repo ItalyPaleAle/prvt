@@ -7,7 +7,7 @@ on:
       - 'v*'
 
 env:
-  GO_BUILDER_IMAGE: 'golang:1.14-alpine'
+  GO_BUILDER_IMAGE: 'golang:1.15-alpine'
   NODE_BUILDER_IMAGE: 'node:12-alpine'
   PACKR_VERSION: 2.7.1
   
