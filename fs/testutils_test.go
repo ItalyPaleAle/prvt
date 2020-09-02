@@ -23,9 +23,11 @@ import (
 	"encoding/base64"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"path"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
@@ -33,6 +35,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	// Init the rng
+	rand.Seed(time.Now().UnixNano())
+}
 
 // Performs tests for a store object, already initialized
 type testFs struct {
@@ -397,12 +404,6 @@ func (s *testFs) testDelete() {
 		s.t.FailNow()
 	}
 
-	// Error: file not found
-	err = s.store.Delete(context.Background(), "divinacommedia.txt", nil)
-	if !assert.Error(s.t, err) {
-		s.t.FailNow()
-	}
-
 	// Error: empty name
 	err = s.store.Delete(context.Background(), "", nil)
 	if !assert.Error(s.t, err) {
@@ -475,4 +476,15 @@ func staticInfoFile() *infofile.InfoFile {
 			},
 		},
 	}
+}
+
+const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+// RandString generates a random string with the letters above
+func RandString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

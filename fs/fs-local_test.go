@@ -46,10 +46,12 @@ func TestFsLocal(t *testing.T) {
 	}
 
 	// Run the tests
-	tester := &testFs{
-		t:     t,
-		store: store,
-		cache: cache,
-	}
-	tester.Run()
+	t.Run("common tests", func(t *testing.T) {
+		tester := &testFs{
+			t:     t,
+			store: store,
+			cache: cache,
+		}
+		tester.Run()
+	})
 }
