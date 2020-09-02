@@ -260,15 +260,19 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 		// Need to read the metadata and cache it
 		// For that, we need to read the header and the first package, which are at most 64kb + (32+256) bytes
 		read := make([]byte, 64*1024+32+256)
-		_, err = io.ReadFull(file, read)
+		var n int
+		n, err = io.ReadFull(file, read)
 		// Ignore ErrUnexpectedEOF which means that the file is shorter than what we were looking for
 		if err != nil && err != io.ErrUnexpectedEOF {
 			f.mux.Unlock()
 			return
 		}
 
-		// Decrypt the data
+		// Get a buffer and discard the bytes that were not read (and filled with 0's)
 		buf := bytes.NewBuffer(read)
+		buf.Truncate(n)
+
+		// Decrypt the data
 		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, buf, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
