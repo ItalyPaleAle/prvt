@@ -48,8 +48,9 @@ jobs:
 
       - name: Fetch tools
         run: |
-          # Install goveralls
+          # Install goveralls and go-acc
           curl -sf https://gobinaries.com/github.com/mattn/goveralls@v0.0.6 | PREFIX=. sh
+          curl -sf https://gobinaries.com/github.com/ory/go-acc@v0.2.6 | PREFIX=. sh
 
       - name: Get dependencies
         run: |
@@ -61,7 +62,7 @@ jobs:
 
       - name: Test
         run: |
-          go test -race -covermode atomic -coverprofile=covprofile -coverpkg=./... ./...
+          ./go-acc ./...
         env:
           S3_ENDPOINT: "localhost:9000"
           S3_TLS: "false"
@@ -69,4 +70,4 @@ jobs:
       - name: Send coverage
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./goveralls -coverprofile=covprofile -service=github
+        run: ./goveralls -coverprofile=coverage.txt -service=github
