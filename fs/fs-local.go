@@ -384,6 +384,8 @@ func (f *Local) Delete(ctx context.Context, name string, tag interface{}) (err e
 		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 	}
 
+	// Note that we're not removing the data from the cache, as it's identified by the UUID which will not be used by other files
+
 	// Delete the file
 	err = os.Remove(f.basePath + folder + name)
 	return

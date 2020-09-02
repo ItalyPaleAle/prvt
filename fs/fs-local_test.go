@@ -49,6 +49,7 @@ func TestFsLocal(t *testing.T) {
 	tester := &testFs{
 		t:     t,
 		store: store,
+		cache: cache,
 	}
 	tester.Run()
 }
