@@ -252,10 +252,13 @@ func (f *S3) Get(ctx context.Context, name string, out io.Writer, metadataCb cry
 	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(ctx, out, obj, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
-		metadataCb(md, sz)
+		if metadataCb != nil {
+			metadataCb(md, sz)
+		}
 		return true
 	})
-	if err != nil {
+	// Ignore ErrMetadataOnly so the metadata is still added to cache
+	if err != nil && err != crypto.ErrMetadataOnly {
 		return
 	}
 
@@ -342,7 +345,9 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	rng.SetFileSize(metadata.Size)
 
 	// Send the metadata to the callback
-	metadataCb(metadata, metadataLength)
+	if metadataCb != nil {
+		metadataCb(metadata, metadataLength)
+	}
 
 	// Request the actual ranges that we need
 	opts = minio.GetObjectOptions{}

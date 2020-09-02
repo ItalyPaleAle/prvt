@@ -144,7 +144,13 @@ func (f *Local) SetInfoFile(info *infofile.InfoFile) (err error) {
 	}
 
 	// Write to file
-	err = ioutil.WriteFile(f.basePath+"_info.json", data, 0644)
+	err = ioutil.WriteFile(f.basePath+"_info.json.tmp", data, 0644)
+	if err != nil {
+		return
+	}
+
+	// Rename to make the write atomic
+	err = os.Rename(f.basePath+"_info.json.tmp", f.basePath+"_info.json")
 	if err != nil {
 		return
 	}
@@ -193,10 +199,13 @@ func (f *Local) Get(ctx context.Context, name string, out io.Writer, metadataCb 
 	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(ctx, out, file, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
-		metadataCb(md, sz)
+		if metadataCb != nil {
+			metadataCb(md, sz)
+		}
 		return true
 	})
-	if err != nil {
+	// Ignore ErrMetadataOnly so the metadata is still added to cache
+	if err != nil && err != crypto.ErrMetadataOnly {
 		return
 	}
 
@@ -254,6 +263,7 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 		_, err = io.ReadFull(file, read)
 		// Ignore ErrUnexpectedEOF which means that the file is shorter than what we were looking for
 		if err != nil && err != io.ErrUnexpectedEOF {
+			f.mux.Unlock()
 			return
 		}
 
@@ -280,7 +290,9 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 	rng.SetFileSize(metadata.Size)
 
 	// Send the metadata to the callback
-	metadataCb(metadata, metadataLength)
+	if metadataCb != nil {
+		metadataCb(metadata, metadataLength)
+	}
 
 	// Move the file pointer to the beginning of the range
 	_, err = file.Seek(rng.StartBytes(), 0)
@@ -333,15 +345,22 @@ func (f *Local) Set(ctx context.Context, name string, in io.Reader, tag interfac
 		}
 	}
 
-	// Create the file
-	file, err := os.Create(f.basePath + folder + name)
+	// Create a temporary file; we'll rename it later
+	file, err := os.Create(f.basePath + folder + name + ".tmp")
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
 
 	// Encrypt the data and write it to file
 	err = crypto.EncryptFile(file, utils.ReaderFuncWithContext(ctx, in), f.masterKey, metadata)
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	file.Close()
+
+	// Rename the file
+	err = os.Rename(f.basePath+folder+name+".tmp", f.basePath+folder+name)
 	if err != nil {
 		return nil, err
 	}

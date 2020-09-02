@@ -29,4 +29,8 @@ type Header struct {
 const MaxMetadataLength = 32766
 
 // MetadataCb is the callback for the function that receives the metadata object, as well as the length of the encoded metadata (including the size bytes)
-type MetadataCb func(*Metadata, int32) bool
+type MetadataCb func(metadata *Metadata, metadataSize int32)
+
+// MetadataCbReturn is like MetadataCb, but it supports a return value
+// The callback should return true if everything went fine, or false to interrupt reading/decrypting the data after the metadata
+type MetadataCbReturn func(metadata *Metadata, metadataSize int32) (ok bool)

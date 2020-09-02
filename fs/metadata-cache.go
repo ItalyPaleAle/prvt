@@ -75,9 +75,24 @@ func (c *MetadataCache) Contains(name string) bool {
 	return c.cache.Contains(name)
 }
 
+// Keys returns the list of keys in the cache
+func (c *MetadataCache) Keys() []string {
+	keys := c.cache.Keys()
+	res := make([]string, len(keys))
+	for i, el := range keys {
+		res[i] = el.(string)
+	}
+	return res
+}
+
 // Remove an element from the cache
 func (c *MetadataCache) Remove(name string) {
 	c.cache.Remove(name)
+}
+
+// Purge the cache, removing all elements
+func (c *MetadataCache) Purge() {
+	c.cache.Purge()
 }
 
 type metadataCacheEntry struct {

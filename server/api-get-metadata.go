@@ -62,7 +62,7 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 	}
 
 	// Request the metadata
-	found, _, err := s.Store.Get(c.Request.Context(), el.FileId, nil, func(metadata *crypto.Metadata, metadataSize int32) bool {
+	found, _, err := s.Store.Get(c.Request.Context(), el.FileId, nil, func(metadata *crypto.Metadata, metadataSize int32) {
 		pos := strings.LastIndex(el.Path, "/") + 1
 		response := metadataResponse{
 			FileId:   el.FileId,
@@ -73,7 +73,6 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 			Size:     metadata.Size,
 		}
 		c.JSON(http.StatusOK, response)
-		return true
 	})
 	if err != nil && err != crypto.ErrMetadataOnly {
 		// Ignore canceled contexts, e.g. if the browser canceled the request

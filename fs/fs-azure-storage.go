@@ -209,7 +209,7 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 	return
 }
 
-func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCbReturn) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -263,10 +263,13 @@ func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, meta
 	headerVersion, headerLength, wrappedKey, err := crypto.DecryptFile(ctx, out, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 		metadata = md
 		metadataLength = sz
-		metadataCb(md, sz)
+		if metadataCb != nil {
+			metadataCb(md, sz)
+		}
 		return true
 	})
-	if err != nil {
+	// Ignore ErrMetadataOnly so the metadata is still added to cache
+	if err != nil && err != crypto.ErrMetadataOnly {
 		return
 	}
 
@@ -283,7 +286,7 @@ func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, meta
 	return
 }
 
-func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCbReturn) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -367,7 +370,9 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	rng.SetFileSize(metadata.Size)
 
 	// Send the metadata to the callback
-	metadataCb(metadata, metadataLength)
+	if metadataCb != nil {
+		metadataCb(metadata, metadataLength)
+	}
 
 	// Request the actual ranges that we need
 	resp, err = blockBlobURL.Download(ctx, rng.StartBytes(), rng.LengthBytes(), azblob.BlobAccessConditions{}, false)

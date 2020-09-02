@@ -42,7 +42,7 @@ var ErrMetadataOnly = errors.New("output stream is nil, only metadata was return
 // The function requires a masterKey, a 32-byte key for AES-256, which is used to un-wrap the unique key for the file
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file, the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
 // The function returns the version and length of the header, the wrapped key, and an error if any
-func DecryptFile(ctx context.Context, out io.Writer, in io.Reader, masterKey []byte, metadataCb MetadataCb) (uint16, int32, []byte, error) {
+func DecryptFile(ctx context.Context, out io.Writer, in io.Reader, masterKey []byte, metadataCb MetadataCbReturn) (uint16, int32, []byte, error) {
 	// Get the file header which contains the wrapped key
 	headerVersion, headerLen, wrappedKey, in, err := GetFileHeader(in)
 	if err != nil {
@@ -97,7 +97,7 @@ func GetFileHeader(in io.Reader) (uint16, int32, []byte, io.Reader, error) {
 // The function requires a wrapped key and the master key
 // It also requires a sequence number, that is the number of the first package/chunk we expect to decrypt
 // The function optionally accepts a metadata callback. When the metadata is extracted from the file (only from package #0), the callback is invoked with the metadata. The callback is invoked before the function starts streaming data to the out stream
-func DecryptPackages(ctx context.Context, out io.Writer, in io.Reader, headerVersion uint16, wrappedKey []byte, masterKey []byte, seqNum, offset uint32, length int64, metadataCb MetadataCb) error {
+func DecryptPackages(ctx context.Context, out io.Writer, in io.Reader, headerVersion uint16, wrappedKey []byte, masterKey []byte, seqNum, offset uint32, length int64, metadataCb MetadataCbReturn) error {
 	// Unwrap the key for the file, using the master key
 	key, err := UnwrapKey(masterKey, wrappedKey)
 	if err != nil {
@@ -149,7 +149,7 @@ func DecryptPackages(ctx context.Context, out io.Writer, in io.Reader, headerVer
 type decryptWriter struct {
 	Ctx           context.Context
 	OutStream     io.Writer
-	Cb            MetadataCb
+	Cb            MetadataCbReturn
 	HeaderVersion uint16
 	ReadMetadata  bool
 	Offset        uint32

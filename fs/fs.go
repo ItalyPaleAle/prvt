@@ -124,14 +124,6 @@ type Fs interface {
 	Delete(ctx context.Context, name string, tag interface{}) (err error)
 }
 
-// FsOptions is the interface for the options for the filesystem
-type FsOptions interface {
-	// SetOptions the options and validate them
-	SetOptions(options map[string]string) (err error)
-	// Get returns the value for an option, or the empty string if not set
-	Get(key string) (value string)
-}
-
 // Base class for filesystems, which contains the key and data path
 type fsBase struct {
 	keyId     string
