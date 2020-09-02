@@ -27,7 +27,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ^${{env.GO_VERSION}}
-      
+
       - name: Go version
         run: |
           go version
@@ -46,6 +46,11 @@ jobs:
             minio/minio \
               server /data
 
+      - name: Fetch tools
+        run: |
+          # Install goveralls
+          curl -sf https://gobinaries.com/github.com/mattn/goveralls@v0.0.6 | PREFIX=. sh
+
       - name: Get dependencies
         run: |
           go get -v -t -d ./...
@@ -56,7 +61,12 @@ jobs:
 
       - name: Test
         run: |
-          go test -v ./...
+          go test -race -covermode atomic -coverprofile=covprofile ./...
         env:
           S3_ENDPOINT: "localhost:9000"
           S3_TLS: "false"
+
+      - name: Send coverage
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./goveralls -coverprofile=covprofile -service=github
