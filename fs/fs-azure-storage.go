@@ -33,6 +33,7 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -209,7 +210,7 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 	return
 }
 
-func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCbReturn) (found bool, tag interface{}, err error) {
+func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -286,7 +287,7 @@ func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, meta
 	return
 }
 
-func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCbReturn) (found bool, tag interface{}, err error) {
+func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -435,12 +436,11 @@ func (f *AzureStorage) Set(ctx context.Context, name string, in io.Reader, tag i
 
 	// Encrypt the data and upload it
 	pr, pw := io.Pipe()
+	var innerErr error
 	go func() {
-		err := crypto.EncryptFile(pw, in, f.masterKey, metadata)
-		if err != nil {
-			panic(err)
-		}
-		pw.Close()
+		defer pw.Close()
+		r := utils.ReaderFuncWithContext(ctx, in)
+		innerErr = crypto.EncryptFile(pw, r, f.masterKey, metadata)
 	}()
 
 	// If we have a tag (ETag), we will allow the upload to succeed only if the tag matches
@@ -470,6 +470,9 @@ func (f *AzureStorage) Set(ctx context.Context, name string, in io.Reader, tag i
 		MaxBuffers:       2,
 		AccessConditions: accessConditions,
 	})
+	if innerErr != nil {
+		return nil, innerErr
+	}
 	if err != nil {
 		if stgErr, ok := err.(azblob.StorageError); !ok {
 			return nil, fmt.Errorf("network error while uploading the file: %s", err.Error())
