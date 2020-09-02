@@ -32,25 +32,25 @@ func (f ioctx) Read(p []byte) (n int, err error) {
 }
 
 // WriterFuncWithContext returns a stream writer that supports a context
-func WriterFuncWithContext(ctx context.Context, in io.Writer) ioctx {
+func WriterFuncWithContext(ctx context.Context, w io.Writer) ioctx {
 	return func(p []byte) (int, error) {
 		select {
 		case <-ctx.Done():
 			return 0, ctx.Err()
 		default:
-			return in.Write(p)
+			return w.Write(p)
 		}
 	}
 }
 
 // ReaderFuncWithContext returns a stream reader that supports a context
-func ReaderFuncWithContext(ctx context.Context, in io.Reader) ioctx {
+func ReaderFuncWithContext(ctx context.Context, r io.Reader) ioctx {
 	return func(p []byte) (int, error) {
 		select {
 		case <-ctx.Done():
 			return 0, ctx.Err()
 		default:
-			return in.Read(p)
+			return r.Read(p)
 		}
 	}
 }

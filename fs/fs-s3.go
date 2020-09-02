@@ -31,6 +31,7 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -48,8 +49,7 @@ func init() {
 type S3 struct {
 	fsBase
 
-	client     *minio.Client
-	core       *minio.Core
+	client     *minio.Core
 	bucketName string
 	cache      *MetadataCache
 	mux        sync.Mutex
@@ -99,11 +99,7 @@ func (f *S3) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) er
 		Secure: tls,
 	}
 	var err error
-	f.client, err = minio.New(endpoint, minioOpts)
-	if err != nil {
-		return err
-	}
-	f.core, err = minio.NewCore(endpoint, minioOpts)
+	f.client, err = minio.NewCore(endpoint, minioOpts)
 	if err != nil {
 		return err
 	}
@@ -164,9 +160,14 @@ func (f *S3) loadEnvVars(opts map[string]string) {
 
 func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Request the file from S3
-	obj, _, _, err := f.core.GetObject(context.Background(), f.bucketName, "_info.json", minio.GetObjectOptions{})
+	obj, _, _, err := f.client.GetObject(context.Background(), f.bucketName, "_info.json", minio.GetObjectOptions{})
 	if err != nil {
-		return nil, err
+		// Check if it's a minio error and it's a not found one
+		e, ok := err.(minio.ErrorResponse)
+		if ok && e.Code == "NoSuchKey" {
+			err = nil
+		}
+		return
 	}
 	defer obj.Close()
 
@@ -204,7 +205,7 @@ func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 	buf := bytes.NewReader(data)
 
 	// Upload the file
-	_, err = f.client.PutObject(context.Background(), f.bucketName, "_info.json", buf, int64(len(data)), minio.PutObjectOptions{
+	_, err = f.client.Client.PutObject(context.Background(), f.bucketName, "_info.json", buf, int64(len(data)), minio.PutObjectOptions{
 		ContentType: "application/json",
 	})
 	if err != nil {
@@ -229,11 +230,12 @@ func (f *S3) Get(ctx context.Context, name string, out io.Writer, metadataCb cry
 	found = true
 
 	// Request the file from S3
-	obj, stat, _, err := f.core.GetObject(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
+	obj, stat, _, err := f.client.GetObject(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
 	if err != nil {
 		// Check if it's a minio error and it's a not found one
 		e, ok := err.(minio.ErrorResponse)
 		if ok && e.Code == "NoSuchKey" {
+			err = nil
 			found = false
 		}
 		return
@@ -300,11 +302,12 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 		// Request the file from S3
 		opts = minio.GetObjectOptions{}
 		opts.SetRange(0, length)
-		obj, stat, _, err = f.core.GetObject(innerCtx, f.bucketName, folder+name, opts)
+		obj, stat, _, err = f.client.GetObject(innerCtx, f.bucketName, folder+name, opts)
 		if err != nil {
 			// Check if it's a minio error and it's a not found one
 			e, ok := err.(minio.ErrorResponse)
 			if ok && e.Code == "NoSuchKey" {
+				err = nil
 				found = false
 			}
 			f.mux.Unlock()
@@ -352,7 +355,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	// Request the actual ranges that we need
 	opts = minio.GetObjectOptions{}
 	opts.SetRange(rng.StartBytes(), rng.EndBytes()-1)
-	obj, stat, _, err = f.core.GetObject(ctx, f.bucketName, folder+name, opts)
+	obj, stat, _, err = f.client.GetObject(ctx, f.bucketName, folder+name, opts)
 	if err != nil {
 		return
 	}
@@ -387,14 +390,16 @@ func (f *S3) Set(ctx context.Context, name string, in io.Reader, tag interface{}
 
 	// Encrypt the data and upload it
 	pr, pw := io.Pipe()
+	var innerErr error
 	go func() {
-		err := crypto.EncryptFile(pw, in, f.masterKey, metadata)
-		if err != nil {
-			panic(err)
-		}
-		pw.Close()
+		defer pw.Close()
+		r := utils.ReaderFuncWithContext(ctx, in)
+		innerErr = crypto.EncryptFile(pw, r, f.masterKey, metadata)
 	}()
-	_, err = f.client.PutObject(ctx, f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
+	_, err = f.client.Client.PutObject(ctx, f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
+	if innerErr != nil {
+		return nil, innerErr
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +419,7 @@ func (f *S3) Delete(ctx context.Context, name string, tag interface{}) (err erro
 		folder = f.dataPath + "/"
 	}
 
-	err = f.client.RemoveObject(ctx, f.bucketName, folder+name, minio.RemoveObjectOptions{})
+	err = f.client.Client.RemoveObject(ctx, f.bucketName, folder+name, minio.RemoveObjectOptions{})
 
 	return
 }
