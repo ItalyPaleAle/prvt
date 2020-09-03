@@ -60,6 +60,7 @@ type AzureStorage struct {
 
 func (f *AzureStorage) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "container", "storageAccount", "accessKey"
+	// Optional keys: "tls", "endpointSuffix", "customEndpoint"
 
 	// Load from the environment whatever we can (will be used as fallback
 	f.loadEnvVars(opts)
@@ -79,8 +80,26 @@ func (f *AzureStorage) InitWithOptionsMap(opts map[string]string, cache *Metadat
 	}
 	f.storageAccountName = opts["storageAccount"]
 
-	// Storage endpoint
-	f.storageURL = fmt.Sprintf("https://%s.blob.core.windows.net/%s", f.storageAccountName, f.storageContainer)
+	// Check if we're using TLS
+	protocol := "https"
+	tlsStr := strings.ToLower(opts["tls"])
+	if tlsStr == "0" || tlsStr == "n" || tlsStr == "no" || tlsStr == "false" {
+		protocol = "http"
+	}
+
+	// Check if need to use a custom storage endpoint (e.g. for Azurite)
+	if opts["customEndpoint"] != "" {
+		f.storageURL = fmt.Sprintf("%s://%s/%s/%s", protocol, opts["customEndpoint"], f.storageAccountName, f.storageContainer)
+	} else {
+		// Storage account endpoint suffix to support Azure China, Azure Germany, Azure Gov, or Azure Stack
+		endpointSuffix := "core.windows.net"
+		if opts["endpointSuffix"] != "" {
+			endpointSuffix = opts["endpointSuffix"]
+		}
+
+		// Storage endpoint
+		f.storageURL = fmt.Sprintf("%s://%s.blob.%s/%s", protocol, f.storageAccountName, endpointSuffix, f.storageContainer)
+	}
 
 	// Authenticate with Azure Storage
 	credential, err := azblob.NewSharedKeyCredential(f.storageAccountName, opts["accessKey"])
@@ -105,6 +124,15 @@ func (f *AzureStorage) loadEnvVars(opts map[string]string) {
 	}
 	if opts["accessKey"] == "" {
 		opts["accessKey"] = os.Getenv("AZURE_STORAGE_ACCESS_KEY")
+	}
+	if opts["tls"] == "" {
+		opts["tls"] = os.Getenv("AZURE_STORAGE_TLS")
+	}
+	if opts["endpointSuffix"] == "" {
+		opts["endpointSuffix"] = os.Getenv("AZURE_STORAGE_ENDPOINT_SUFFIX")
+	}
+	if opts["customEndpoint"] == "" {
+		opts["customEndpoint"] = os.Getenv("AZURE_STORAGE_CUSTOM_ENDPOINT")
 	}
 }
 
