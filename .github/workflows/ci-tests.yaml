@@ -35,7 +35,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      # Can't use a GitHub Action service because that doesn't allow overriding the container's entrypoint
+      # Can't use a GitHub Action service because that doesn't allow overriding the container's command
       - name: Start minio
         run: |
           docker run \
@@ -45,6 +45,15 @@ jobs:
             -e "MINIO_SECRET_KEY=${{env.AWS_SECRET_ACCESS_KEY}}" \
             minio/minio \
               server /data
+
+      - name: Start Azurite
+        run: |
+          docker run \
+            -d \
+            -p 10000:10000 \
+            mcr.microsoft.com/azure-storage/azurite \
+              azurite-blob --blobHost 0.0.0.0 --blobPort 10000
+        
 
       - name: Fetch tools
         run: |
@@ -66,6 +75,10 @@ jobs:
         env:
           S3_ENDPOINT: "localhost:9000"
           S3_TLS: "false"
+          AZURE_STORAGE_ACCOUNT: "devstoreaccount1"
+          AZURE_STORAGE_ACCESS_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+          AZURE_STORAGE_CUSTOM_ENDPOINT: "localhost:10000"
+          AZURE_STORAGE_TLS: "false"
 
       - name: Send coverage
         env:
