@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"fmt"
 	"os"
 
 	cmd "github.com/ItalyPaleAle/prvt/cmd"
@@ -27,7 +26,14 @@ import (
 func main() {
 	rootCmd := cmd.NewRootCmd()
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(10)
+		//fmt.Fprintln(rootCmd.ErrOrStderr(), err)
+
+		// Status code
+		status := 1
+		errExec, ok := err.(cmd.ExecError)
+		if ok {
+			status = errExec.StatusCode()
+		}
+		os.Exit(status)
 	}
 }

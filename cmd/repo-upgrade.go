@@ -35,47 +35,43 @@ func NewRepoUpgradeCmd() *cobra.Command {
 Usage: "prvt repo upgrade --store <string>"
 `,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
-				return
+				return NewExecError(ErrorApp, "Error requesting the info file", err)
 			}
 			if info == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
-				return
+				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
 			// Upgrade the info file
 			errMessage, err := UpgradeInfoFile(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 
 			// Store the info file
 			err = store.SetInfoFile(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot store the info file", err)
-				return
+				return NewExecError(ErrorApp, "Cannot store the info file", err)
 			}
 
 			fmt.Fprintln(cmd.OutOrStdout(), "Repository upgraded")
+
+			return nil
 		},
 	}
 

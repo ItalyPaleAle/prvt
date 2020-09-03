@@ -25,9 +25,10 @@ import (
 	"github.com/ItalyPaleAle/prvt/cmd"
 )
 
+type errCbFunc func(error)
 type validateFunc func(string)
 
-func runCmd(t *testing.T, args []string, stdoutValidate validateFunc, stderrValidate validateFunc) {
+func runCmd(t *testing.T, args []string, errCb errCbFunc, stdoutValidate validateFunc, stderrValidate validateFunc) {
 	if args == nil {
 		args = []string{}
 	}
@@ -39,7 +40,16 @@ func runCmd(t *testing.T, args []string, stdoutValidate validateFunc, stderrVali
 	rootCmd.SetOut(bStdout)
 	rootCmd.SetErr(bStderr)
 	rootCmd.SetArgs(args)
-	rootCmd.Execute()
+	err := rootCmd.Execute()
+
+	// If there's an error, pass it to the callback if present; otherwise, fail with it
+	if err != nil {
+		if errCb != nil {
+			errCb(err)
+		} else {
+			t.Fatal(err)
+		}
+	}
 
 	// Read the output
 	stdout, err := ioutil.ReadAll(bStdout)
@@ -51,14 +61,9 @@ func runCmd(t *testing.T, args []string, stdoutValidate validateFunc, stderrVali
 		t.Fatal(err)
 	}
 
-	// Validate stdout
+	// Validate stdout if requested, otherwise accept everything
 	if stdoutValidate != nil {
 		stdoutValidate(string(stdout))
-	} else {
-		// Ensure it's empty
-		if len(stdout) != 0 {
-			t.Errorf("stdout is not empty:\n%s\n", stdout)
-		}
 	}
 
 	// Validate stderr

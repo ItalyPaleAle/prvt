@@ -18,7 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package tests
 
 import (
+	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/ItalyPaleAle/prvt/cmd"
@@ -51,8 +53,11 @@ func (s *funcTestSuite) Run() {
 		s.promptPwd.SetPasswords("hello world")
 		runCmd(t,
 			[]string{"repo", "init", "--store", "local:" + s.dirs[0]},
+			nil,
 			func(stdout string) {
-				// No-op
+				if !strings.HasPrefix(stdout, "Initialized new repository in the store local:") {
+					t.FailNow()
+				}
 			},
 			nil,
 		)
@@ -61,11 +66,10 @@ func (s *funcTestSuite) Run() {
 
 // Set up testing environment; returns a callback whose execution should be deferred till all tests are run
 func (s *funcTestSuite) setup() func() {
-	// Set streams for promptui and disable exiting on error
+	// Set streams for promptui
 	s.promptPwd = &passwordPrompter{}
 	cmd.PromptuiStdin = s.promptPwd
 	cmd.PromptuiStdout = s.promptPwd
-	cmd.NoExitOnError = true
 
 	// Create 2 temporary folders for the tests
 	s.dirs = []string{
@@ -77,7 +81,6 @@ func (s *funcTestSuite) setup() func() {
 		// Restore globals
 		cmd.PromptuiStdin = os.Stdin
 		cmd.PromptuiStdout = os.Stdout
-		cmd.NoExitOnError = false
 	}
 }
 
@@ -91,14 +94,18 @@ func (o *passwordPrompter) SetPasswords(passwords ...string) {
 }
 
 func (o *passwordPrompter) Read(p []byte) (n int, err error) {
-	pass := ""
-	if len(o.passwords) == 1 {
-		pass = o.passwords[0]
-		o.passwords = []string{}
-	} else if len(o.passwords) > 1 {
-		pass, o.passwords = o.passwords[0], o.passwords[1:]
+	if len(o.passwords) == 0 {
+		n = 0
+		err = io.EOF
+	} else {
+		n = copy(p, o.passwords[0]+"\n")
+		if len(o.passwords) > 1 {
+			// pop from the queue
+			o.passwords = o.passwords[1:]
+		} else {
+			o.passwords = []string{}
+		}
 	}
-	n = copy(p, pass+"\n")
 	return
 }
 

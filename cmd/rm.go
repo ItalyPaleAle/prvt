@@ -42,47 +42,42 @@ Removes a file or folder (recursively) from the repository. Once removed, files 
 To remove a file, specify its exact path. To remove a folder recursively, specify the name of the folder, ending with /*
 `,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "No file to remove", nil)
-				return
+				return NewExecError(ErrorUser, "No file to remove", nil)
 			}
 
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
-				return
+				return NewExecError(ErrorApp, "Error requesting the info file", err)
 			}
 			if info == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
-				return
+				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
 			// Require info files version 3 or higher before any operation that changes the store (which would update the index to the protobuf-based format)
-			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 3, flagStoreConnectionString) {
-				return
+			err = requireInfoFileVersion(info, 3, flagStoreConnectionString)
+			if err != nil {
+				return err
 			}
 
 			// Derive the master key
 			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 			store.SetMasterKey(keyId, masterKey)
 
@@ -117,6 +112,8 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 					fmt.Fprintf(cmd.OutOrStdout(), "Error removing path '%s': %s\n", el.Path, el.Err)
 				}
 			}
+
+			return nil
 		},
 	}
 

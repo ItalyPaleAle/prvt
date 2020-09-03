@@ -19,8 +19,6 @@ package cmd
 
 import (
 	"fmt"
-	"io"
-	"os"
 )
 
 // Error types
@@ -29,29 +27,44 @@ const (
 	ErrorUser = "user"
 )
 
-// Disables exiting the application in case of error; used by tests
-var NoExitOnError bool = false
+// ExecError is a custom error object that implements the error interface
+type ExecError struct {
+	Type    string
+	Message string
+	Data    error
+}
 
-// ExitWithError prints and error then terminates the app
-func ExitWithError(out io.Writer, errType string, errMessage string, errData error) {
+func (e ExecError) Error() string {
 	prefix := ""
-	status := 1
-	switch errType {
+	switch e.Type {
 	case ErrorApp:
-		prefix = "[Fatal error]"
-		status = 2
+		prefix = "[Fatal error] "
 	case ErrorUser:
-		prefix = "[Error]"
-		status = 4
+		prefix = "[Error] "
 	}
 
-	if errData != nil {
-		fmt.Fprintf(out, "%s %s\n%s\n", prefix, errMessage, errData.Error())
+	if e.Data != nil {
+		return fmt.Sprintf("%s%s\n%s\n", prefix, e.Message, e.Data.Error())
 	} else {
-		fmt.Fprintf(out, "%s %s\n", prefix, errMessage)
+		return fmt.Sprintf("%s%s\n", prefix, e.Message)
 	}
+}
 
-	if !NoExitOnError {
-		os.Exit(status)
+func (e ExecError) StatusCode() int {
+	switch e.Type {
+	case ErrorApp:
+		return 2
+	case ErrorUser:
+		return 4
+	default:
+		return 1
+	}
+}
+
+func NewExecError(errType string, errMessage string, errData error) error {
+	return ExecError{
+		Type:    errType,
+		Message: errMessage,
+		Data:    errData,
 	}
 }

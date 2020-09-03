@@ -38,48 +38,43 @@ If you want to add a GPG key (including GPG keys stored in security tokens or sm
 In order to use GPG keys, you need to have GPG version 2 installed separately. You also need a GPG keypair (public and private) in your keyring.`,
 		DisableAutoGenTag: true,
 
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 			flagGPGKey, err := cmd.Flags().GetString("gpg")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'gpg'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'gpg'", err)
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
-				return
+				return NewExecError(ErrorApp, "Error requesting the info file", err)
 			}
 			if info == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
-				return
+				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
 			// Require info files version 2 or higher
-			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 2, flagStoreConnectionString) {
-				return
+			err = requireInfoFileVersion(info, 2, flagStoreConnectionString)
+			if err != nil {
+				return err
 			}
 
 			// If we have a GPG key, ensure it's not already added
 			if flagGPGKey != "" {
 				for _, k := range info.Keys {
 					if k.GPGKey == flagGPGKey {
-						ExitWithError(cmd.ErrOrStderr(), ErrorUser, "A GPG key with the same ID is already authorized to unlock this repository", err)
-						return
+						return NewExecError(ErrorUser, "A GPG key with the same ID is already authorized to unlock this repository", err)
 					}
 				}
 			}
@@ -88,8 +83,7 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			fmt.Fprintln(cmd.OutOrStdout(), "Unlocking the repository: if prompted for a passphrase, please type an existing one")
 			masterKey, _, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "Repository unlocked")
 
@@ -99,18 +93,18 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			}
 			keyId, errMessage, err := AddKey(info, masterKey, flagGPGKey)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 
 			// Store the info file
 			err = store.SetInfoFile(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot store the info file", err)
-				return
+				return NewExecError(ErrorApp, "Cannot store the info file", err)
 			}
 
 			fmt.Fprintln(cmd.OutOrStdout(), "Key added with id:", keyId)
+
+			return nil
 		},
 	}
 

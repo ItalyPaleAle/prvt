@@ -35,6 +35,7 @@ func TestCLICore(t *testing.T) {
 
 		runCmd(t,
 			nil,
+			nil,
 			func(stdout string) {
 				// Ensure this contains the description
 				if !strings.HasPrefix(stdout, "prvt") {
@@ -71,6 +72,7 @@ func TestCLICore(t *testing.T) {
 
 			runCmd(t,
 				el.Args,
+				nil,
 				func(stdout string) {
 					// Ensure this contains the description
 					if !strings.HasPrefix(stdout, el.Command.Long) {
@@ -88,6 +90,7 @@ func TestCLIVersionCommand(t *testing.T) {
 	t.Run("no version defined", func(t *testing.T) {
 		runCmd(t,
 			[]string{"version"},
+			nil,
 			func(stdout string) {
 				// Ensure this starts with "This prvt build does not contain a build identifier,"
 				if !strings.HasPrefix(string(stdout), "This prvt build does not contain a build identifier,") {
@@ -106,6 +109,7 @@ func TestCLIVersionCommand(t *testing.T) {
 
 		runCmd(t,
 			[]string{"version"},
+			nil,
 			func(stdout string) {
 				expect := "prvt ci\nBuild ID: 1 (2020)\nGit commit: a1b2c3d4e5f6\nRuntime: go1."
 				if !strings.HasPrefix(string(stdout), expect) {

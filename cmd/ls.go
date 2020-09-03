@@ -40,42 +40,36 @@ Usage: "prvt ls [<path>] --store <string>"
 Shows the list of all files and folders contained in the repository at a given path. If the path is omitted, it's assumed to be "/", which is the root of the repository.
 `,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 1 {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Can only pass one path", nil)
-				return
+				return NewExecError(ErrorUser, "Can only pass one path", nil)
 			}
 
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
-				return
+				return NewExecError(ErrorApp, "Error requesting the info file", err)
 			}
 			if info == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
-				return
+				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
 			// Derive the master key
 			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 			store.SetMasterKey(keyId, masterKey)
 
@@ -94,8 +88,7 @@ Shows the list of all files and folders contained in the repository at a given p
 			// Get the list of files in the folder
 			list, err := index.Instance.ListFolder(path)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error listing the contents of the folder", err)
-				return
+				return NewExecError(ErrorApp, "Error listing the contents of the folder", err)
 			}
 
 			// Sort the result
@@ -115,6 +108,8 @@ Shows the list of all files and folders contained in the repository at a given p
 					fmt.Fprintln(cmd.OutOrStdout(), el.Path)
 				}
 			}
+
+			return nil
 		},
 	}
 

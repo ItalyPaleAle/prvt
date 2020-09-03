@@ -37,35 +37,32 @@ Usage: "prvt repo key ls --store <string>"
 `,
 		DisableAutoGenTag: true,
 
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
-				return
+				return NewExecError(ErrorApp, "Error requesting the info file", err)
 			}
 			if info == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
-				return
+				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
 			// Require info files version 2 or higher
-			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 2, flagStoreConnectionString) {
-				return
+			err = requireInfoFileVersion(info, 2, flagStoreConnectionString)
+			if err != nil {
+				return err
 			}
 
 			// Table headers
@@ -91,6 +88,8 @@ Usage: "prvt repo key ls --store <string>"
 					fmt.Fprintln(cmd.OutOrStdout(), "GPG Key     | "+k.GPGKey+uid)
 				}
 			}
+
+			return nil
 		},
 	}
 

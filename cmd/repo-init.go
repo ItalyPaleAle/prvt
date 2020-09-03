@@ -42,31 +42,27 @@ If you want to use a GPG key to protect this repository (including GPG keys stor
 In order to use GPG keys, you need to have GPG version 2 installed separately. You also need a GPG keypair (public and private) in your keyring.
 `,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 			flagGPGKey, err := cmd.Flags().GetString("gpg")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'gpg'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'gpg'", err)
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize repository", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize repository", err)
 			}
 
 			// Create the info file after generating a new master key
 			info, errMessage, err := NewInfoFile(flagGPGKey)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 
 			// Set up the index
@@ -76,18 +72,18 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			// We are expecting this to be empty
 			infoExisting, err := store.GetInfoFile()
 			if err == nil && infoExisting != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error initializing repository", errors.New("A repository is already initialized in this store"))
-				return
+				return NewExecError(ErrorApp, "Error initializing repository", errors.New("A repository is already initialized in this store"))
 			}
 
 			// Store the info file
 			err = store.SetInfoFile(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot store the info file", err)
-				return
+				return NewExecError(ErrorApp, "Cannot store the info file", err)
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "Initialized new repository in the store %s\n", flagStoreConnectionString)
+
+			return nil
 		},
 	}
 

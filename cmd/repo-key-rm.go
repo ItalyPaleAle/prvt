@@ -41,78 +41,71 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 `,
 		DisableAutoGenTag: true,
 
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 			flagKeyId, err := cmd.Flags().GetString("key")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'key'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'key'", err)
 			}
 
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
-				return
+				return NewExecError(ErrorApp, "Error requesting the info file", err)
 			}
 			if info == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
-				return
+				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
 			// Require info files version 2 or higher
-			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 2, flagStoreConnectionString) {
-				return
+			err = requireInfoFileVersion(info, 2, flagStoreConnectionString)
+			if err != nil {
+				return err
 			}
 
 			// Require at least 2 keys in the repository
 			if len(info.Keys) < 2 {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Cannot remove the only key", errors.New("This repository has only one key, which cannot be removed"))
-				return
+				return NewExecError(ErrorUser, "Cannot remove the only key", errors.New("This repository has only one key, which cannot be removed"))
 			}
 
 			// First, unlock the repository
 			fmt.Fprintln(cmd.OutOrStdout(), "Unlocking the repository")
 			_, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "Repository unlocked")
 
 			// The key we're removing must not be the same as the key used to unlock the repository
 			if flagKeyId == keyId {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Invalid key ID", errors.New("You cannot remove the same key you're using to unlock the repository"))
-				return
+				return NewExecError(ErrorUser, "Invalid key ID", errors.New("You cannot remove the same key you're using to unlock the repository"))
 			}
 
 			// Remove the key
 			err = info.RemoveKey(flagKeyId)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Cannot remove the key", err)
-				return
+				return NewExecError(ErrorUser, "Cannot remove the key", err)
 			}
 
 			// Store the info file
 			err = store.SetInfoFile(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot store the info file", err)
-				return
+				return NewExecError(ErrorApp, "Cannot store the info file", err)
 			}
 
 			fmt.Fprintln(cmd.OutOrStdout(), "Key removed")
+
+			return nil
 		},
 	}
 

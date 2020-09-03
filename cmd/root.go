@@ -50,6 +50,7 @@ prvt is open source, licensed under GNU General Public License version 3.0.
 Project: https://github.com/ItalyPaleAle/prvt
 	`,
 		DisableAutoGenTag: true,
+		SilenceUsage:      true,
 	}
 
 	// Sub-commands

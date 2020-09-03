@@ -19,7 +19,6 @@ package cmd
 
 import (
 	"errors"
-	"io"
 	"os"
 
 	"github.com/ItalyPaleAle/prvt/infofile"
@@ -28,17 +27,16 @@ import (
 )
 
 // Requires a minimum version of the info file to continue
-func requireInfoFileVersion(out io.Writer, info *infofile.InfoFile, version uint16, connectionString string) bool {
+func requireInfoFileVersion(info *infofile.InfoFile, version uint16, connectionString string) error {
 	if connectionString == "" {
 		connectionString = "<string>"
 	}
 
 	if info.Version < version {
-		ExitWithError(out, ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store `+connectionString+`" to upgrade this repository to the latest format`))
-		return false
+		return NewExecError(ErrorUser, "Repository needs to be upgraded", errors.New(`Please run "prvt repo upgrade --store `+connectionString+`" to upgrade this repository to the latest format`))
 	}
 
-	return true
+	return nil
 }
 
 // Adds the --store flag, with a default value read from the environment

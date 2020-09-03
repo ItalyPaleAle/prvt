@@ -45,29 +45,25 @@ You can add multiple files or folders from the local file system; folders will b
 You must specify a destination, which is a folder inside the repository where your files will be added. The value for the --destination flag must begin with a slash.
 `,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Flags
 			flagStoreConnectionString, err := cmd.Flags().GetString("store")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'store'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'store'", err)
 			}
 			flagDestination, err := cmd.Flags().GetString("destination")
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Cannot get flag 'destination'", err)
-				return
+				return NewExecError(ErrorApp, "Cannot get flag 'destination'", err)
 			}
 
 			// Get the file/folder name from the args
 			if len(args) < 1 {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "no file or folder specified", nil)
-				return
+				return NewExecError(ErrorUser, "no file or folder specified", nil)
 			}
 
 			// Destination must start with "/"
 			if !strings.HasPrefix(flagDestination, "/") {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "destination must start with /", nil)
-				return
+				return NewExecError(ErrorUser, "destination must start with /", nil)
 			}
 
 			// Ensure destination ends with a "/"
@@ -78,31 +74,28 @@ You must specify a destination, which is a folder inside the repository where yo
 			// Create the store object
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Could not initialize store", err)
-				return
+				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorApp, "Error requesting the info file", err)
-				return
+				return NewExecError(ErrorApp, "Error requesting the info file", err)
 			}
 			if info == nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, "Repository is not initialized", err)
-				return
+				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
 			// Require info files version 3 or higher before any operation that changes the store (which would update the index to the protobuf-based format)
-			if !requireInfoFileVersion(cmd.ErrOrStderr(), info, 3, flagStoreConnectionString) {
-				return
+			err = requireInfoFileVersion(info, 3, flagStoreConnectionString)
+			if err != nil {
+				return err
 			}
 
 			// Derive the master key
 			masterKey, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {
-				ExitWithError(cmd.ErrOrStderr(), ErrorUser, errMessage, err)
-				return
+				return NewExecError(ErrorUser, errMessage, err)
 			}
 			store.SetMasterKey(keyId, masterKey)
 
@@ -155,6 +148,8 @@ You must specify a destination, which is a folder inside the repository where yo
 					fmt.Fprintf(cmd.OutOrStdout(), "Error adding file '%s': %s\n", el.Path, el.Err)
 				}
 			}
+
+			return nil
 		},
 	}
 
