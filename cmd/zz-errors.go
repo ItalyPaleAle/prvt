@@ -29,6 +29,9 @@ const (
 	ErrorUser = "user"
 )
 
+// Disables exiting the application in case of error; used by tests
+var NoExitOnError bool = false
+
 // ExitWithError prints and error then terminates the app
 func ExitWithError(out io.Writer, errType string, errMessage string, errData error) {
 	prefix := ""
@@ -47,5 +50,8 @@ func ExitWithError(out io.Writer, errType string, errMessage string, errData err
 	} else {
 		fmt.Fprintf(out, "%s %s\n", prefix, errMessage)
 	}
-	os.Exit(status)
+
+	if !NoExitOnError {
+		os.Exit(status)
+	}
 }
