@@ -20,6 +20,8 @@ package cmd
 import (
 	"crypto/subtle"
 	"errors"
+	"io"
+	"os"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/infofile"
@@ -28,6 +30,12 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/manifoldco/promptui"
 )
+
+// Input stream for usage with promptui; this can be overridden by tests
+var PromptuiStdin io.ReadCloser = os.Stdin
+
+// Output stream for usage with promptui; this can be overridden by tests
+var PromptuiStdout io.WriteCloser = os.Stdout
 
 // PromptPassphrase prompts the user for a passphrase
 func PromptPassphrase() (string, error) {
@@ -38,8 +46,10 @@ func PromptPassphrase() (string, error) {
 			}
 			return nil
 		},
-		Label: "Passphrase",
-		Mask:  '*',
+		Label:  "Passphrase",
+		Mask:   '*',
+		Stdin:  PromptuiStdin,
+		Stdout: PromptuiStdout,
 	}
 
 	key, err := prompt.Run()
@@ -67,7 +77,7 @@ func NewInfoFile(gpgKey string) (info *infofile.InfoFile, errMessage string, err
 	// Add the key
 	_, errMessage, err = AddKey(info, masterKey, gpgKey)
 	if err != nil {
-		info = nil
+		return nil, "Error adding the key", err
 	}
 
 	return info, "", nil
