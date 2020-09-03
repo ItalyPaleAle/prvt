@@ -71,7 +71,7 @@ jobs:
 
       - name: Test
         run: |
-          ./go-acc ./...
+          ./go-acc ./... -- -v
         env:
           S3_ENDPOINT: "localhost:9000"
           S3_TLS: "false"
