@@ -137,6 +137,11 @@ func (s *funcTestSuite) cmdRepoInit(t *testing.T) {
 }
 
 func (s *funcTestSuite) cmdRepoKey(t *testing.T) {
+	// Skip when running a short test
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// Test the passphrase on the first repo
 	s.promptPwd.SetPasswords("hello world")
 	runCmd(t,
