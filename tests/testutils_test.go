@@ -25,12 +25,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ItalyPaleAle/prvt/buildinfo"
 	"github.com/ItalyPaleAle/prvt/cmd"
 	"github.com/ItalyPaleAle/prvt/utils"
 )
 
 // Run a CLI command
 func runCmd(t *testing.T, args []string, errCb func(error), stdoutValidate func(string), stderrValidate func(string)) {
+	t.Helper()
+
 	if args == nil {
 		args = []string{}
 	}
@@ -81,6 +84,8 @@ func runCmd(t *testing.T, args []string, errCb func(error), stdoutValidate func(
 
 // Checks if the directory containing the repository has the correct number of files
 func checkRepoDirectory(t *testing.T, path string, expectFiles int) {
+	t.Helper()
+
 	// Check if the info and index files exists
 	if exists, _ := utils.IsRegularFile(filepath.Join(path, "_info.json")); !exists {
 		t.Error("file does not exist: _info.json")
@@ -109,6 +114,24 @@ func checkRepoDirectory(t *testing.T, path string, expectFiles int) {
 	}
 	if found != expectFiles {
 		t.Errorf("expected to find %d files, found %d", expectFiles, found)
+	}
+}
+
+// Sets buildinfo metadata and returns a callback that un-sets it
+func setBuildInfo() func() {
+	// Set the version
+	buildinfo.AppVersion = "ci"
+	buildinfo.BuildID = "1"
+	buildinfo.BuildTime = "2020"
+	buildinfo.CommitHash = "a1b2c3d4e5f6"
+
+	return func() {
+		// Reset
+		// Set the version
+		buildinfo.AppVersion = ""
+		buildinfo.BuildID = ""
+		buildinfo.BuildTime = ""
+		buildinfo.CommitHash = ""
 	}
 }
 

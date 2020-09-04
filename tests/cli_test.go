@@ -21,7 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ItalyPaleAle/prvt/buildinfo"
 	"github.com/ItalyPaleAle/prvt/cmd"
 
 	"github.com/spf13/cobra"
@@ -101,12 +100,7 @@ func TestCLIVersionCommand(t *testing.T) {
 	})
 
 	t.Run("with version defined", func(t *testing.T) {
-		// Set the version
-		buildinfo.AppVersion = "ci"
-		buildinfo.BuildID = "1"
-		buildinfo.BuildTime = "2020"
-		buildinfo.CommitHash = "a1b2c3d4e5f6"
-
+		reset := setBuildInfo()
 		runCmd(t,
 			[]string{"version"},
 			nil,
@@ -117,5 +111,6 @@ func TestCLIVersionCommand(t *testing.T) {
 				}
 			},
 			nil)
+		reset()
 	})
 }
