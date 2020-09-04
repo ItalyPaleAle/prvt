@@ -124,7 +124,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 				Infofile:  info,
 				LogWriter: cmd.OutOrStdout(),
 			}
-			err = srv.Start(flagBindAddress, flagBindPort)
+			err = srv.Start(cmd.Context(), flagBindAddress, flagBindPort)
 			if err != nil {
 				return NewExecError(ErrorApp, "Could not start server", err)
 			}

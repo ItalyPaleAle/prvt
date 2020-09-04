@@ -43,7 +43,7 @@ type Server struct {
 	LogWriter io.Writer
 }
 
-func (s *Server) Start(address, port string) error {
+func (s *Server) Start(ctx context.Context, address, port string) error {
 	// Log writer
 	if s.LogWriter == nil {
 		s.LogWriter = os.Stdout
@@ -122,15 +122,19 @@ func (s *Server) Start(address, port string) error {
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-		<-ch
+
+		select {
+		case <-ctx.Done():
+		case <-ch:
+		}
 
 		// We received an interrupt signal, shut down
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		if err := server.Shutdown(ctx); err != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		if err := server.Shutdown(shutdownCtx); err != nil {
 			// Error from closing listeners, or context timeout:
 			fmt.Fprintf(s.LogWriter, "HTTP server shutdown error: %v\n", err)
 		}
-		cancel()
+		shutdownCancel()
 		close(idleConnsClosed)
 	}()
 
