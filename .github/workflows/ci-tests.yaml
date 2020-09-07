@@ -122,7 +122,7 @@ jobs:
         run: |
           choco.exe install minio-server
           mkdir D:\minio
-          minio.exe server D:\minio
+          minio.exe server D:\minio &
         env:
           MINIO_ACCESS_KEY: "${{env.AWS_ACCESS_KEY_ID}}"
           MINIO_SECRET_KEY: "${{env.AWS_SECRET_ACCESS_KEY}}"
@@ -134,7 +134,8 @@ jobs:
           azurite-blob `
             --location D:\azurite `
             --blobHost 0.0.0.0 `
-            --blobPort 10000
+            --blobPort 10000 `
+            &
 
       - name: Import CI GPG key
         run: |
