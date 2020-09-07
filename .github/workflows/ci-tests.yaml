@@ -13,8 +13,8 @@ env:
 
 jobs:
 
-  build:
-    name: Go build and test
+  test-linux:
+    name: Test on Linux
     runs-on: ubuntu-20.04
 
     env:
@@ -60,7 +60,7 @@ jobs:
       - name: Import CI GPG key
         run: |
           gpg --import tests/fixtures/gpg-ci-key.asc
-          echo "${GPGKEY_ID_FULL}:6:" | gpg --import-ownertrust
+          echo "${{env.GPGKEY_ID_FULL}}:6:" | gpg --import-ownertrust
           gpg --list-secret-keys
 
       - name: Fetch tools
@@ -92,3 +92,72 @@ jobs:
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./goveralls -coverprofile=coverage.txt -service=github
+
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-2019
+
+    env:
+      AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+      AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+      GPGKEY_ID: "0x4C6D7DB1D92F58EE"
+      GPGKEY_ID_FULL: "26426A3E380F1D1B67031D3C4C6D7DB1D92F58EE"
+      GPGKEY_USER: "prvt CI <ci@prvt>"
+
+    steps:
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^${{env.GO_VERSION}}
+
+      - name: Go version
+        run: |
+          go.exe version
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      # Can't use a GitHub Action service because that doesn't allow overriding the container's command
+      - name: Start minio
+        run: |
+          docker.exe run \
+            -d \
+            -p 9000:9000 \
+            -e "MINIO_ACCESS_KEY=${{env.AWS_ACCESS_KEY_ID}}" \
+            -e "MINIO_SECRET_KEY=${{env.AWS_SECRET_ACCESS_KEY}}" \
+            minio/minio \
+              server /data
+
+      - name: Start Azurite
+        run: |
+          docker.exe run \
+            -d \
+            -p 10000:10000 \
+            mcr.microsoft.com/azure-storage/azurite \
+              azurite-blob --blobHost 0.0.0.0 --blobPort 10000
+
+      - name: Import CI GPG key
+        run: |
+          gpg.exe --import tests/fixtures/gpg-ci-key.asc
+          echo "${{env.GPGKEY_ID_FULL}}:6:" | gpg.exe --import-ownertrust
+          gpg.exe --list-secret-keys
+
+      - name: Get dependencies
+        run: |
+          go.exe get -v -t -d ./...
+
+      - name: Build
+        run: |
+          go.exe build -v .
+
+      - name: Test
+        run: |
+          go.exe test -v ./...
+        env:
+          S3_ENDPOINT: "localhost:9000"
+          S3_TLS: "false"
+          AZURE_STORAGE_ACCOUNT: "devstoreaccount1"
+          AZURE_STORAGE_ACCESS_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+          AZURE_STORAGE_CUSTOM_ENDPOINT: "localhost:10000"
+          AZURE_STORAGE_TLS: "false"
