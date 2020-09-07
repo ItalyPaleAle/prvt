@@ -121,20 +121,20 @@ jobs:
       # Can't use a GitHub Action service because that doesn't allow overriding the container's command
       - name: Start minio
         run: |
-          docker.exe run \
-            -d \
-            -p 9000:9000 \
-            -e "MINIO_ACCESS_KEY=${{env.AWS_ACCESS_KEY_ID}}" \
-            -e "MINIO_SECRET_KEY=${{env.AWS_SECRET_ACCESS_KEY}}" \
-            minio/minio \
+          docker.exe run `
+            -d `
+            -p 9000:9000 `
+            -e "MINIO_ACCESS_KEY=${{env.AWS_ACCESS_KEY_ID}}" `
+            -e "MINIO_SECRET_KEY=${{env.AWS_SECRET_ACCESS_KEY}}" `
+            minio/minio `
               server /data
 
       - name: Start Azurite
         run: |
-          docker.exe run \
-            -d \
-            -p 10000:10000 \
-            mcr.microsoft.com/azure-storage/azurite \
+          docker.exe run `
+            -d `
+            -p 10000:10000 `
+            mcr.microsoft.com/azure-storage/azurite `
               azurite-blob --blobHost 0.0.0.0 --blobPort 10000
 
       - name: Import CI GPG key
