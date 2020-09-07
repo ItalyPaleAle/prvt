@@ -45,10 +45,11 @@ func (s *Server) DeleteTreeHandler(c *gin.Context) {
 	}()
 
 	// Response
-	response := make([]TreeOperationReponse, 0)
+	response := make([]TreeOperationResponse, 0)
 	for el := range res {
-		r := TreeOperationReponse{
-			Path: el.Path,
+		r := TreeOperationResponse{
+			Path:   el.Path,
+			FileId: el.FileId,
 		}
 		switch el.Status {
 		case repository.RepositoryStatusOK:

@@ -47,4 +47,5 @@ type PathResultMessage struct {
 	Path   string
 	Status int
 	Err    error
+	FileId string
 }

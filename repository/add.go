@@ -33,11 +33,11 @@ import (
 )
 
 // AddStream adds a document to the repository by reading it from a stream
-func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (int, error) {
+func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (fileIdStr string, status int, err error) {
 	// Generate a file id
 	fileId, err := uuid.NewV4()
 	if err != nil {
-		return RepositoryStatusInternalError, err
+		return "", RepositoryStatusInternalError, err
 	}
 
 	// Sanitize the file name added to the index
@@ -50,11 +50,11 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	// Check if the file exists in the index already
 	exists, err := index.Instance.GetFileByPath(sanitizedPath)
 	if err != nil {
-		return RepositoryStatusInternalError, err
+		return "", RepositoryStatusInternalError, err
 	}
 	// Path "/" always exists
 	if exists != nil || sanitizedPath == "/" {
-		return RepositoryStatusExisting, nil
+		return "", RepositoryStatusExisting, nil
 	}
 
 	// Write the data to an encrypted file
@@ -65,36 +65,36 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	}
 	_, err = repo.Store.Set(ctx, fileId.String(), in, nil, metadata)
 	if err != nil {
-		return RepositoryStatusInternalError, err
+		return "", RepositoryStatusInternalError, err
 	}
 
 	// Add to the index
 	err = index.Instance.AddFile(sanitizedPath, fileId.Bytes(), mimeType)
 	if err != nil {
-		return RepositoryStatusInternalError, err
+		return "", RepositoryStatusInternalError, err
 	}
 
-	return RepositoryStatusOK, nil
+	return fileId.String(), RepositoryStatusOK, nil
 }
 
 // AddFile adds a file to the repository
 // This accepts any regular file, and it does not ignore any file
-func (repo *Repository) AddFile(ctx context.Context, folder, target, destinationFolder string) (int, error) {
+func (repo *Repository) AddFile(ctx context.Context, folder, target, destinationFolder string) (fileIdStr string, status int, err error) {
 	path := filepath.Join(folder, target)
 
 	// Check if target exists and it's a regular file
 	exists, err := utils.IsRegularFile(path)
 	if err != nil {
-		return RepositoryStatusInternalError, err
+		return "", RepositoryStatusInternalError, err
 	}
 	if !exists {
-		return RepositoryStatusUserError, errors.New("target does not exist: " + target)
+		return "", RepositoryStatusUserError, errors.New("target does not exist: " + target)
 	}
 
 	// Get a stream to the input file
 	in, err := os.Open(path)
 	if err != nil {
-		return RepositoryStatusInternalError, err
+		return "", RepositoryStatusInternalError, err
 	}
 	defer in.Close()
 
@@ -108,7 +108,7 @@ func (repo *Repository) AddFile(ctx context.Context, folder, target, destination
 	// Get the size of the file
 	stat, err := in.Stat()
 	if err != nil {
-		return RepositoryStatusInternalError, err
+		return "", RepositoryStatusInternalError, err
 	}
 	size := stat.Size()
 
@@ -161,10 +161,11 @@ func (repo *Repository) AddPath(ctx context.Context, folder, target, destination
 
 	// For files, add that
 	if isFile {
-		status, err := repo.AddFile(ctx, folder, target, destinationFolder)
+		fileId, status, err := repo.AddFile(ctx, folder, target, destinationFolder)
 		res <- PathResultMessage{
 			Path:   destinationFolder + target,
 			Status: status,
+			FileId: fileId,
 			Err:    err,
 		}
 	} else {

@@ -57,6 +57,7 @@ func (repo *Repository) RemovePath(ctx context.Context, path string, res chan<- 
 		if err != nil {
 			res <- PathResultMessage{
 				Path:   paths[i],
+				FileId: objects[i],
 				Status: RepositoryStatusInternalError,
 				Err:    fmt.Errorf("Error while removing object from store: %s", err),
 			}
@@ -65,6 +66,7 @@ func (repo *Repository) RemovePath(ctx context.Context, path string, res chan<- 
 
 		res <- PathResultMessage{
 			Path:   paths[i],
+			FileId: objects[i],
 			Status: RepositoryStatusOK,
 		}
 	}

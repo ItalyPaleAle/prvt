@@ -73,10 +73,11 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 	}()
 
 	// Response
-	response := make([]TreeOperationReponse, 0)
+	response := make([]TreeOperationResponse, 0)
 	for el := range res {
-		r := TreeOperationReponse{
-			Path: el.Path,
+		r := TreeOperationResponse{
+			Path:   el.Path,
+			FileId: el.FileId,
 		}
 		switch el.Status {
 		case repository.RepositoryStatusOK:
@@ -166,10 +167,11 @@ func (s *Server) addUploadedFile(ctx context.Context, uploadFile *multipart.File
 	}
 
 	// Add the file
-	result, err := s.Repo.AddStream(ctx, in, filename, destination, mime, size)
+	fileId, result, err := s.Repo.AddStream(ctx, in, filename, destination, mime, size)
 	res <- repository.PathResultMessage{
 		Path:   destination + filename,
 		Status: result,
+		FileId: fileId,
 		Err:    err,
 	}
 }

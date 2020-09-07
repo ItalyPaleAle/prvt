@@ -24,9 +24,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type TreeOperationReponse struct {
+type TreeOperationResponse struct {
 	Path   string `json:"path"`
 	Status string `json:"status"`
+	FileId string `json:"fileId"`
 	Error  string `json:"error,omitempty"`
 }
 
