@@ -120,7 +120,7 @@ jobs:
 
       - name: Fetch and start minio
         run: |
-          choco.exe install minio-server
+          choco.exe install -y minio-server
           mkdir D:\minio
           minio.exe server D:\minio &
         env:
@@ -129,7 +129,7 @@ jobs:
 
       - name: Fetch and start Azurite
         run: |
-          npm.exe install -g azurite
+          npm install -g azurite
           mkdir D:\azurite
           azurite-blob `
             --location D:\azurite `
