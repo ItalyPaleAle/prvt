@@ -53,6 +53,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	t.Run("add files", s.serverAdd)
 	t.Run("list and remove files", s.serverListRemove)
 	t.Run("get file metadata", s.serverFileMetadata)
+	t.Run("get files", s.serverFile)
 	close()
 }
 
@@ -154,60 +155,19 @@ func (s *funcTestSuite) serverAdd(t *testing.T) {
 
 // Add a file by uploading it directly, to the / folder
 func (s *funcTestSuite) serverAddUploadFile(t *testing.T) {
-	// Read the file
-	in, err := ioutil.ReadFile(filepath.Join(s.fixtures, "short.txt"))
+	// Load the test file
+	content, err := ioutil.ReadFile(filepath.Join(s.fixtures, "short.txt"))
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 
-	// Create the request body
-	body := &bytes.Buffer{}
-	mpw := multipart.NewWriter(body)
-	h := make(textproto.MIMEHeader)
-	h.Set("Content-Disposition", `form-data; name="file"; filename="short-text.txt"`)
-	h.Set("Content-Type", "text/plain")
-	partW, err := mpw.CreatePart(h)
-	if err != nil {
-		t.Fatal(err)
+	// Upload the test file
+	s.uploadFile(t, content, "short-text.txt", "/", "text/plain")
+	if t.Failed() {
+		t.FailNow()
 		return
 	}
-	_, err = partW.Write(in)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	mpw.Close()
-
-	// Send the request
-	res, err := s.client.Post(s.serverAddr+"/api/tree/", mpw.FormDataContentType(), body)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	defer res.Body.Close()
-	if res.StatusCode < 200 || res.StatusCode > 299 {
-		t.Fatalf("invalid response status code: %d", res.StatusCode)
-		return
-	}
-	read, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-
-	// Parse the JSON response
-	data := make([]server.TreeOperationReponse, 0)
-	err = json.Unmarshal(read, &data)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-
-	assert.Len(t, data, 1)
-	assert.Equal(t, "", data[0].Error)
-	assert.Equal(t, "added", data[0].Status)
-	assert.Equal(t, "/short-text.txt", data[0].Path)
 }
 
 // Add multiple files via direct upload, to the /upload folder
@@ -271,7 +231,7 @@ func (s *funcTestSuite) serverAddUploadMultiFiles(t *testing.T) {
 	}
 
 	// Parse the JSON response
-	data := make([]server.TreeOperationReponse, 0)
+	data := make([]server.TreeOperationResponse, 0)
 	err = json.Unmarshal(read, &data)
 	if err != nil {
 		t.Fatal(err)
@@ -283,6 +243,7 @@ func (s *funcTestSuite) serverAddUploadMultiFiles(t *testing.T) {
 		assert.Equal(t, "", data[i].Error)
 		assert.Equal(t, "added", data[i].Status)
 		assert.Equal(t, "/upload/"+p, data[i].Path)
+		assert.True(t, data[i].FileId != "")
 	}
 }
 
@@ -316,7 +277,7 @@ func (s *funcTestSuite) serverAddLocalFiles(t *testing.T) {
 	}
 
 	// Parse the JSON response
-	data := make([]server.TreeOperationReponse, 0)
+	data := make([]server.TreeOperationResponse, 0)
 	err = json.Unmarshal(read, &data)
 	if err != nil {
 		t.Fatal(err)
@@ -329,6 +290,7 @@ func (s *funcTestSuite) serverAddLocalFiles(t *testing.T) {
 		assert.Equal(t, "added", data[i].Status)
 		assert.True(t, strings.HasPrefix(data[i].Path, "/added/photos/"))
 		assert.True(t, strings.HasSuffix(data[i].Path, "-unsplash.jpg"))
+		assert.True(t, data[i].FileId != "")
 	}
 }
 
@@ -362,7 +324,7 @@ func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
 	}
 
 	// Parse the JSON response
-	data := make([]server.TreeOperationReponse, 0)
+	data := make([]server.TreeOperationResponse, 0)
 	err = json.Unmarshal(read, &data)
 	if err != nil {
 		t.Fatal(err)
@@ -373,6 +335,7 @@ func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
 	assert.Equal(t, "", data[0].Error)
 	assert.Equal(t, "existing", data[0].Status)
 	assert.Equal(t, "/upload/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg", data[0].Path)
+	assert.Equal(t, "", data[0].FileId)
 }
 
 // Test the endpoint that lists files
@@ -398,7 +361,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		}
 		return data, nil
 	}
-	deleteRequest := func(path string) (data []server.TreeOperationReponse, err error) {
+	deleteRequest := func(path string) (data []server.TreeOperationResponse, err error) {
 		// Send the request, then read the response and parse the JSON response
 		req, err := http.NewRequest("DELETE", s.serverAddr+"/api/tree"+path, nil)
 		if err != nil {
@@ -416,7 +379,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		data = make([]server.TreeOperationReponse, 0)
+		data = make([]server.TreeOperationResponse, 0)
 		err = json.Unmarshal(read, &data)
 		if err != nil {
 			return nil, err
@@ -428,7 +391,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		err           error
 		expect, found []string
 		list          []index.FolderList
-		deleted       []server.TreeOperationReponse
+		deleted       []server.TreeOperationResponse
 	)
 
 	// Request the / path
@@ -516,6 +479,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	}
 	assert.Len(t, deleted, 1)
 	assert.Equal(t, "/short-text.txt", deleted[0].Path)
+	assert.True(t, deleted[0].FileId != "")
 	assert.Equal(t, "removed", deleted[0].Status)
 	assert.Equal(t, "", deleted[0].Error)
 
@@ -538,6 +502,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	}
 	assert.Len(t, deleted, 1)
 	assert.Equal(t, "/short*", deleted[0].Path)
+	assert.Equal(t, "", deleted[0].FileId)
 	assert.Equal(t, "error", deleted[0].Status)
 	assert.True(t, strings.HasPrefix(deleted[0].Error, "Error while removing path from index: path cannot end with *"))
 
@@ -549,6 +514,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	}
 	assert.Len(t, deleted, 1)
 	assert.Equal(t, "/added/", deleted[0].Path)
+	assert.Equal(t, "", deleted[0].FileId)
 	assert.Equal(t, "error", deleted[0].Status)
 	assert.True(t, strings.HasPrefix(deleted[0].Error, "Error while removing path from index: path cannot end with /"))
 
@@ -561,6 +527,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.Len(t, deleted, 4)
 	for i := 0; i < 4; i++ {
 		assert.Equal(t, "", deleted[i].Error)
+		assert.True(t, deleted[i].FileId != "")
 		assert.Equal(t, "removed", deleted[i].Status)
 		assert.True(t, strings.HasPrefix(deleted[i].Path, "/added/photos/"))
 		assert.True(t, strings.HasSuffix(deleted[i].Path, "-unsplash.jpg"))
@@ -641,4 +608,97 @@ func (s *funcTestSuite) serverFileMetadata(t *testing.T) {
 	// Error: empty file name
 	_, err = sendRequest("")
 	assert.EqualError(t, err, "invalid response status code: 400")
+}
+
+// Test retrieving whole files
+func (s *funcTestSuite) serverFile(t *testing.T) {
+	// Load the test file
+	content, err := ioutil.ReadFile(filepath.Join(s.fixtures, "divinacommedia.txt"))
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// Upload the test file
+	fileId := s.uploadFile(t, content, "text1.txt", "/serve-test/", "text/plain")
+	if t.Failed() {
+		t.FailNow()
+		return
+	}
+
+	// Retrieve the file in full
+	res, err := s.client.Get(s.serverAddr + "/file/" + fileId)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// Ensure that the data retrieved is the same
+	assert.Equal(t, content, read)
+}
+
+// Internal function used to upload individual files
+func (s *funcTestSuite) uploadFile(t *testing.T, content []byte, filename string, dest string, contentType string) (fileId string) {
+	t.Helper()
+
+	// Create the request body
+	body := &bytes.Buffer{}
+	mpw := multipart.NewWriter(body)
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", `form-data; name="file"; filename="`+filename+`"`)
+	h.Set("Content-Type", contentType)
+	partW, err := mpw.CreatePart(h)
+	if err != nil {
+		t.Fatal(err)
+		return ""
+	}
+	_, err = partW.Write(content)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	mpw.Close()
+
+	// Send the request
+	res, err := s.client.Post(s.serverAddr+"/api/tree"+dest, mpw.FormDataContentType(), body)
+	if err != nil {
+		t.Fatal(err)
+		return ""
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return ""
+	}
+
+	// Parse the JSON response
+	data := make([]server.TreeOperationResponse, 0)
+	err = json.Unmarshal(read, &data)
+	if err != nil {
+		t.Fatal(err)
+		return ""
+	}
+
+	assert.Len(t, data, 1)
+	assert.Equal(t, "", data[0].Error)
+	assert.Equal(t, "added", data[0].Status)
+	assert.Equal(t, dest+filename, data[0].Path)
+	assert.True(t, len(data[0].FileId) > 0)
+
+	return data[0].FileId
 }
