@@ -131,10 +131,8 @@ jobs:
         run: |
           npm.exe install -g azurite
           mkdir D:\azurite
-          azurite `
-            azurite-blob `
+          azurite-blob `
             --location D:\azurite `
-            --debug D:\azurite-debug.log `
             --blobHost 0.0.0.0 `
             --blobPort 10000
 
