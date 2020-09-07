@@ -20,6 +20,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ItalyPaleAle/prvt/index"
 )
@@ -29,10 +30,16 @@ func (repo *Repository) RemovePath(ctx context.Context, path string, res chan<- 
 	// Remove from the index and get the list of objects to delete
 	objects, paths, err := index.Instance.DeleteFile(path)
 	if err != nil {
+		status := RepositoryStatusInternalError
+		errStr := err.Error()
+		if len(errStr) > 5 && strings.HasPrefix(errStr, "USER ") {
+			status = RepositoryStatusUserError
+			errStr = errStr[5:]
+		}
 		res <- PathResultMessage{
 			Path:   path,
-			Status: RepositoryStatusInternalError,
-			Err:    fmt.Errorf("Error while removing path from index: %s", err),
+			Status: status,
+			Err:    fmt.Errorf("Error while removing path from index: %s", errStr),
 		}
 		return
 	}

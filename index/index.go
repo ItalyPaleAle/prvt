@@ -349,9 +349,9 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 		matchPrefix = true
 		path = path[0 : len(path)-1]
 	} else if strings.HasSuffix(path, "/") {
-		return nil, nil, errors.New("path cannot end with /; to remove a folder, end with /*")
+		return nil, nil, errors.New("USER path cannot end with /; to remove a folder, end with /*")
 	} else if strings.HasSuffix(path, "*") {
-		return nil, nil, errors.New("path cannot end with *: removing globs is supported only for folders using /* as suffix")
+		return nil, nil, errors.New("USER path cannot end with *: removing globs is supported only for folders using /* as suffix")
 	}
 
 	// Iterate through the list of files to find matches
