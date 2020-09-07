@@ -118,24 +118,25 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      # Can't use a GitHub Action service because that doesn't allow overriding the container's command
-      - name: Start minio
+      - name: Fetch and start minio
         run: |
-          docker.exe run `
-            -d `
-            -p 9000:9000 `
-            -e "MINIO_ACCESS_KEY=${{env.AWS_ACCESS_KEY_ID}}" `
-            -e "MINIO_SECRET_KEY=${{env.AWS_SECRET_ACCESS_KEY}}" `
-            minio/minio `
-              server /data
+          choco.exe install minio-server
+          mkdir D:\minio
+          minio.exe server D:\minio
+        env:
+          MINIO_ACCESS_KEY: "${{env.AWS_ACCESS_KEY_ID}}"
+          MINIO_SECRET_KEY: "${{env.AWS_SECRET_ACCESS_KEY}}"
 
-      - name: Start Azurite
+      - name: Fetch and start Azurite
         run: |
-          docker.exe run `
-            -d `
-            -p 10000:10000 `
-            mcr.microsoft.com/azure-storage/azurite `
-              azurite-blob --blobHost 0.0.0.0 --blobPort 10000
+          npm.exe install -g azurite
+          mkdir D:\azurite
+          azurite `
+            azurite-blob `
+            --location D:\azurite `
+            --debug D:\azurite-debug.log `
+            --blobHost 0.0.0.0 `
+            --blobPort 10000
 
       - name: Import CI GPG key
         run: |
