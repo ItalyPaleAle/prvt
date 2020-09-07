@@ -33,13 +33,13 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	args := make(map[string]string)
 	if err := c.Bind(&args); err != nil || len(args) == 0 {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not parse response body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
 		return
 	}
 
 	// Get the storage type
 	if args["type"] == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Key 'type' is required"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Key 'type' is required"})
 		return
 	}
 
@@ -47,7 +47,7 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	store, err := fs.GetWithOptionsMap(args)
 	if err != nil || store == nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not initialize the store"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not initialize the store"})
 		return
 	}
 
@@ -55,12 +55,12 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	info, err := store.GetInfoFile()
 	if err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorResponse{"Could not initialize the store"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse{"Could not initialize the store"})
 		return
 	}
 	if info == nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusForbidden, errorResponse{"Repository is not initialized"})
+		c.AbortWithStatusJSON(http.StatusForbidden, ErrorResponse{"Repository is not initialized"})
 		return
 	}
 

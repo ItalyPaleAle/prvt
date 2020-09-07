@@ -32,7 +32,7 @@ import (
 func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		// Get the information to unlock the repository from the body
-		args := &unlockKeyRequest{}
+		args := &UnlockKeyRequest{}
 		if ok := args.FromBody(c); !ok {
 			return
 		}
@@ -51,7 +51,7 @@ func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 		}
 		if err != nil {
 			msg := fmt.Sprintf("%s: %s", err, errMessage)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{msg})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{msg})
 			return
 		}
 
@@ -80,14 +80,14 @@ func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
 // MiddlewareRequireRepo requires a repository to be selected (even if not unlocked)
 func (s *Server) MiddlewareRequireRepo(c *gin.Context) {
 	if s.Store == nil || s.Infofile == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{"No repository has been selected yet"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"No repository has been selected yet"})
 	}
 }
 
 // MiddlewareRequireUnlock requires the repository to be unlocked before processing
 func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
 	if s.Repo == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{"The repository has not been unlocked"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"The repository has not been unlocked"})
 	}
 }
 
@@ -95,7 +95,7 @@ func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
 func (s *Server) MiddlewareRequireInfoFileVersion(version uint16) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		if s.Infofile.Version < version {
-			c.AbortWithStatusJSON(http.StatusMethodNotAllowed, errorResponse{`This repository needs to be upgraded. Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`})
+			c.AbortWithStatusJSON(http.StatusMethodNotAllowed, ErrorResponse{`This repository needs to be upgraded. Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`})
 		}
 	}
 }

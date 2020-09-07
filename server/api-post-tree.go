@@ -34,8 +34,8 @@ import (
 // PostTreeHandler is the handler for POST /api/tree/:path, which adds documents to the repository
 // The path argument is the destination folder (just like the "-d" argument in the "prvt add" command)
 // The post body can contain either one of:
-// - A file transmitted in the request body (in the "file" field)
-// - The path to a file or folder in the local filesystem (in the "localpath" field(s))
+// - One or more files transmitted in the request body, in the "file" field(s)
+// - The path to a file or folder in the local filesystem, in the "localpath" field(s)
 func (s *Server) PostTreeHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -73,9 +73,9 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 	}()
 
 	// Response
-	response := make([]treeOperationReponse, 0)
+	response := make([]TreeOperationReponse, 0)
 	for el := range res {
-		r := treeOperationReponse{
+		r := TreeOperationReponse{
 			Path: el.Path,
 		}
 		switch el.Status {

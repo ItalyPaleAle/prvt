@@ -27,7 +27,7 @@ import (
 // The same middleware is also used by POST /api/repo/keytest, which tests a key and returns its ID (essentially performing a "dry run" for the unlock operation)
 func (s *Server) PostRepoUnlockHandler(c *gin.Context) {
 	// If we get here, the repository was unlocked successfully (see MiddlewareUnlockRepo)
-	c.JSON(http.StatusOK, repoKeyListItem{
+	c.JSON(http.StatusOK, RepoKeyListItem{
 		KeyId: c.GetString("KeyId"),
 		Type:  c.GetString("KeyType"),
 	})

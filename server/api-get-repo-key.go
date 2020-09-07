@@ -27,15 +27,15 @@ import (
 
 // GetRepoKeyHandler is the handler for GET /api/repo/key, which returns the list of keys allowed to unlock this repository
 func (s *Server) GetRepoKeyHandler(c *gin.Context) {
-	result := repoKeyListResponse{}
+	result := RepoKeyListResponse{}
 
 	if s.Infofile != nil && s.Infofile.Keys != nil && len(s.Infofile.Keys) > 0 {
-		result.Keys = make([]repoKeyListItem, len(s.Infofile.Keys))
+		result.Keys = make([]RepoKeyListItem, len(s.Infofile.Keys))
 
 		// Iterate through the keys
 		for i, k := range s.Infofile.Keys {
 			// Get the key id and type
-			item := repoKeyListItem{}
+			item := RepoKeyListItem{}
 			if k.GPGKey != "" {
 				item.KeyId = k.GPGKey
 				item.Type = "gpg"

@@ -28,19 +28,19 @@ func (s *Server) DeleteRepoKeyHandler(c *gin.Context) {
 	// Get the key ID
 	keyId := c.Param("keyId")
 	if keyId == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Missing key ID from URL"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Missing key ID from URL"})
 		return
 	}
 
 	// Require at least 2 keys in the repository
 	if len(s.Infofile.Keys) < 2 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"This repository has only one key, which cannot be removed"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"This repository has only one key, which cannot be removed"})
 		return
 	}
 
 	// The key we're removing must not be the same as the key used to unlock the repository
 	if keyId == s.Store.GetKeyId() {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"You cannot remove the same key you're using to unlock the repository"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"You cannot remove the same key you're using to unlock the repository"})
 		return
 	}
 

@@ -28,7 +28,7 @@ import (
 // PostRepoKeyHandler is the handler for POST /api/repo/key, which adds a new key
 func (s *Server) PostRepoKeyHandler(c *gin.Context) {
 	// Get the new key
-	args := &addKeyRequest{}
+	args := &AddKeyRequest{}
 	if ok := args.FromBody(c); !ok {
 		return
 	}
@@ -46,7 +46,7 @@ func (s *Server) PostRepoKeyHandler(c *gin.Context) {
 	}
 	if err != nil {
 		msg := fmt.Sprintf("%s: %s", err, errMessage)
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{msg})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{msg})
 		return
 	}
 

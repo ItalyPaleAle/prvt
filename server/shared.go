@@ -24,13 +24,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type treeOperationReponse struct {
+type TreeOperationReponse struct {
 	Path   string `json:"path"`
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
 
-type metadataResponse struct {
+type MetadataResponse struct {
 	FileId   string     `json:"fileId"`
 	Folder   string     `json:"folder"`
 	Name     string     `json:"name"`
@@ -39,63 +39,63 @@ type metadataResponse struct {
 	Size     int64      `json:"size,omitempty"`
 }
 
-type repoKeyListResponse struct {
-	Keys []repoKeyListItem `json:"keys"`
+type RepoKeyListResponse struct {
+	Keys []RepoKeyListItem `json:"keys"`
 }
 
-type repoKeyListItem struct {
+type RepoKeyListItem struct {
 	KeyId string `json:"keyId"`
 	Type  string `json:"type"`
 	UID   string `json:"uid,omitempty"`
 }
 
-type errorResponse struct {
+type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-type unlockKeyRequest struct {
+type UnlockKeyRequest struct {
 	Type       string `json:"type" form:"type"`
 	Passphrase string `json:"passphrase" form:"passphrase"`
 }
 
 // FromBody adds data to the object from a request
-func (p *unlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
+func (p *UnlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the information to unlock the repository from the body
 	if err := c.Bind(p); err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not parse response body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
 		return false
 	}
 
 	// Validate the body
 	if p.Type != "passphrase" && p.Type != "gpg" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Parameter 'type' must be either 'passphrase' or 'gpg'"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Parameter 'type' must be either 'passphrase' or 'gpg'"})
 		return false
 	}
 	if p.Type == "passphrase" && len(p.Passphrase) < 1 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Parameter 'passphrase' must be set when 'type' is 'passphrase'"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Parameter 'passphrase' must be set when 'type' is 'passphrase'"})
 		return false
 	}
 
 	return true
 }
 
-type addKeyRequest struct {
+type AddKeyRequest struct {
 	Passphrase string `json:"passphrase" form:"passphrase"`
 	GPGKeyId   string `json:"gpg" form:"gpg"`
 }
 
 // FromBody adds data to the object from a request
-func (p *addKeyRequest) FromBody(c *gin.Context) (ok bool) {
+func (p *AddKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the content from the body
 	if err := c.Bind(p); err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"Could not parse response body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
 		return false
 	}
 
 	if (p.Passphrase == "" && p.GPGKeyId == "") || (p.Passphrase != "" && p.GPGKeyId != "") {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse{"One and only one of `passphrase` and `gpg` must be set"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"One and only one of `passphrase` and `gpg` must be set"})
 		return false
 	}
 

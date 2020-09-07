@@ -45,9 +45,9 @@ func (s *Server) DeleteTreeHandler(c *gin.Context) {
 	}()
 
 	// Response
-	response := make([]treeOperationReponse, 0)
+	response := make([]TreeOperationReponse, 0)
 	for el := range res {
-		r := treeOperationReponse{
+		r := TreeOperationReponse{
 			Path: el.Path,
 		}
 		switch el.Status {
