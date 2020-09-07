@@ -52,6 +52,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	t.Run("info", s.serverInfo)
 	t.Run("add files", s.serverAdd)
 	t.Run("list and remove files", s.serverListRemove)
+	t.Run("get file metadata", s.serverFileMetadata)
 	close()
 }
 
@@ -95,18 +96,16 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 // Test the API info endpoint
 func (s *funcTestSuite) serverInfo(t *testing.T) {
 	sendRequest := func() (data map[string]string, err error) {
-		var (
-			res  *http.Response
-			read []byte
-		)
-
 		// Send the request, then read the response and parse the JSON response into a map
-		res, err = s.client.Get(s.serverAddr + "/api/info")
+		res, err := s.client.Get(s.serverAddr + "/api/info")
 		if err != nil {
 			return nil, err
 		}
 		defer res.Body.Close()
-		read, err = ioutil.ReadAll(res.Body)
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+		read, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -187,6 +186,10 @@ func (s *funcTestSuite) serverAddUploadFile(t *testing.T) {
 		return
 	}
 	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -257,6 +260,10 @@ func (s *funcTestSuite) serverAddUploadMultiFiles(t *testing.T) {
 		return
 	}
 	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -298,6 +305,10 @@ func (s *funcTestSuite) serverAddLocalFiles(t *testing.T) {
 		return
 	}
 	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -340,6 +351,10 @@ func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
 		return
 	}
 	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -369,6 +384,9 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 			return nil, err
 		}
 		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
 		read, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
@@ -391,6 +409,9 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 			return nil, err
 		}
 		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
 		read, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
@@ -560,5 +581,64 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	}
 	sort.Strings(found)
 	assert.True(t, reflect.DeepEqual(expect, found))
+}
 
+// Test the file metadata endpoint
+func (s *funcTestSuite) serverFileMetadata(t *testing.T) {
+	sendRequest := func(file string) (data *server.MetadataResponse, err error) {
+		// Send the request, then read the response and parse the JSON response into a map
+		res, err := s.client.Get(s.serverAddr + "/api/metadata/" + file)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+		read, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		data = &server.MetadataResponse{}
+		err = json.Unmarshal(read, data)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+
+	var (
+		data       *server.MetadataResponse
+		dataRepeat *server.MetadataResponse
+		err        error
+	)
+
+	// Request metadata using a file path
+	data, err = sendRequest("upload/leigh-williams-CCABYukxjHs-unsplash.jpg")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.Equal(t, "leigh-williams-CCABYukxjHs-unsplash.jpg", data.Name)
+	assert.Equal(t, "/upload/", data.Folder)
+	assert.Equal(t, "image/jpeg", data.MimeType)
+	assert.Equal(t, int64(350990), data.Size)
+	assert.True(t, data.Date != nil)
+	assert.True(t, data.FileId != "")
+
+	// Request the same but using the file id this time
+	dataRepeat, err = sendRequest(data.FileId)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.True(t, reflect.DeepEqual(data, dataRepeat))
+
+	// Error: not found
+	_, err = sendRequest("notfound")
+	assert.EqualError(t, err, "invalid response status code: 404")
+
+	// Error: empty file name
+	_, err = sendRequest("")
+	assert.EqualError(t, err, "invalid response status code: 400")
 }
