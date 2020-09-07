@@ -44,7 +44,7 @@ jobs:
           ls -al ui/dist
 
       - name: Publish web UI artifact
-        uses: actions/upload-artifact@2
+        uses: actions/upload-artifact@v2
         with:
           name: ui
           path: ui/dist/
@@ -74,7 +74,7 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v2
-      
+
       - name: Fetch web UI artifact
         uses: actions/download-artifact@v2
         with:
@@ -207,9 +207,9 @@ jobs:
         run: |
           go.exe test -v ./...
         env:
-          S3_ENDPOINT: "localhost:9000"
+          S3_ENDPOINT: "127.0.0.1:9000"
           S3_TLS: "false"
           AZURE_STORAGE_ACCOUNT: "devstoreaccount1"
           AZURE_STORAGE_ACCESS_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-          AZURE_STORAGE_CUSTOM_ENDPOINT: "localhost:10000"
+          AZURE_STORAGE_CUSTOM_ENDPOINT: "127.0.0.1:10000"
           AZURE_STORAGE_TLS: "false"
