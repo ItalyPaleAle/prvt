@@ -34,8 +34,8 @@ import (
 func (s *Server) GetMetadataHandler(c *gin.Context) {
 	// Get the file parameter and remove the leading /
 	file := c.Param("file")
-	if file == "" {
-		c.AbortWithError(http.StatusBadRequest, errors.New("empty file"))
+	if file == "" || file == "/" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"empty file name"})
 		return
 	}
 	if strings.HasPrefix(file, "/") {
@@ -53,11 +53,11 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 		el, err = index.Instance.GetFileByPath("/" + file)
 	}
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 	if el == nil {
-		c.AbortWithError(http.StatusNotFound, errors.New("file not found in index"))
+		c.AbortWithStatusJSON(http.StatusNotFound, ErrorResponse{"file not found in index"})
 		return
 	}
 
