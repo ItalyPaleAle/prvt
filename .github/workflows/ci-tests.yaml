@@ -123,6 +123,7 @@ jobs:
           choco.exe install -y minio-server
           mkdir D:\minio
           minio.exe server --address 127.0.0.1:9000 D:\minio &
+          New-NetFirewallRule -Action Allow -DisplayName "MinIO" -Direction Inbound -LocalPort 9000 -Protocol TCP
         env:
           MINIO_ACCESS_KEY: "${{env.AWS_ACCESS_KEY_ID}}"
           MINIO_SECRET_KEY: "${{env.AWS_SECRET_ACCESS_KEY}}"
@@ -136,6 +137,7 @@ jobs:
             --blobHost 127.0.0.1 `
             --blobPort 10000 `
             &
+          New-NetFirewallRule -Action Allow -DisplayName "MinIO" -Direction Inbound -LocalPort 10000 -Protocol TCP
 
       - name: Import CI GPG key
         run: |
