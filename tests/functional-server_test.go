@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -39,6 +40,7 @@ import (
 	"github.com/ItalyPaleAle/prvt/cmd"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/server"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -53,7 +55,11 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	t.Run("add files", s.serverAdd)
 	t.Run("list and remove files", s.serverListRemove)
 	t.Run("get file metadata", s.serverFileMetadata)
-	t.Run("get files", s.serverFile)
+	t.Run("get file", s.serverFile)
+	t.Run("file HEAD request", s.serverFileHeadRequest)
+	t.Run("get file chunks", s.serverFileChunks)
+	t.Run("interrupt getting files", s.serverFileInterrupt)
+	t.Run("serving web UI", s.serverWebUI)
 	close()
 }
 
@@ -459,6 +465,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		assert.True(t, e.FileId != "")
 		assert.True(t, e.MimeType == "image/jpeg")
 		found = append(found, e.Path)
+		s.fileIds["/upload/"+e.Path] = e.FileId
 	}
 	sort.Strings(found)
 	assert.True(t, reflect.DeepEqual(expect, found))
@@ -626,6 +633,9 @@ func (s *funcTestSuite) serverFile(t *testing.T) {
 		return
 	}
 
+	// Store the file ID
+	s.fileIds["/serve-test/text1.txt"] = fileId
+
 	// Retrieve the file in full
 	res, err := s.client.Get(s.serverAddr + "/file/" + fileId)
 	if err != nil {
@@ -645,6 +655,242 @@ func (s *funcTestSuite) serverFile(t *testing.T) {
 
 	// Ensure that the data retrieved is the same
 	assert.Equal(t, content, read)
+}
+
+// Test HEAD requests to the file endpoint
+func (s *funcTestSuite) serverFileHeadRequest(t *testing.T) {
+	// Load the test file
+	content, err := ioutil.ReadFile(filepath.Join(s.fixtures, "divinacommedia.txt"))
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// Upload the test file again and store the file id
+	s.fileIds["/serve-test/text2.txt"] = s.uploadFile(t, content, "text2.txt", "/serve-test/", "text/plain")
+	if t.Failed() {
+		t.FailNow()
+		return
+	}
+
+	// Make a head request to the first file (whose metadata should be cached)
+	res, err := s.client.Head(s.serverAddr + "/file/" + s.fileIds["/serve-test/text1.txt"])
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
+
+	// Check the required response headers
+	assert.Equal(t, "bytes", res.Header.Get("Accept-Ranges"))
+	assert.Contains(t, res.Header.Get("Content-Disposition"), `filename="text1.txt"`)
+	assert.Equal(t, strconv.Itoa(len(content)), res.Header.Get("Content-Length"))
+	assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+
+	// Repeat for the second file, whose metadata isn't cached
+	res, err = s.client.Head(s.serverAddr + "/file/" + s.fileIds["/serve-test/text2.txt"])
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
+
+	// Check the required response headers
+	assert.Equal(t, "bytes", res.Header.Get("Accept-Ranges"))
+	assert.Contains(t, res.Header.Get("Content-Disposition"), `filename="text2.txt"`)
+	assert.Equal(t, strconv.Itoa(len(content)), res.Header.Get("Content-Length"))
+	assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+}
+
+// Test retrieving chunks
+func (s *funcTestSuite) serverFileChunks(t *testing.T) {
+	var (
+		content, read []byte
+		err           error
+		req           *http.Request
+		res           *http.Response
+	)
+	// Load the test file
+	content, err = ioutil.ReadFile(filepath.Join(s.fixtures, "divinacommedia.txt"))
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// Upload the test file again and store the file ID
+	s.fileIds["/serve-test/text3.txt"] = s.uploadFile(t, content, "text3.txt", "/serve-test/", "text/plain")
+	if t.Failed() {
+		t.FailNow()
+		return
+	}
+
+	// Retrieve a chunk of the file (from a file with cached metadata)
+	// Then ensure that the data retrieved is the same
+	req, err = http.NewRequest("GET", s.serverAddr+"/file/"+s.fileIds["/serve-test/text2.txt"], nil)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	req.Header.Add("Range", "bytes=65409-65485")
+	res, err = s.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
+	read, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.Equal(t, content[65409:65486], read)
+
+	// Retrieve a chunk of a file whose metadata wasn't cached
+	// Then ensure that the data retrieved is the same
+	req, err = http.NewRequest("GET", s.serverAddr+"/file/"+s.fileIds["/serve-test/text3.txt"], nil)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	req.Header.Add("Range", "bytes=600010-")
+	res, err = s.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return
+	}
+	read, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.Equal(t, content[600010:], read)
+}
+
+// Test interrupting file retrieval
+func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
+	makeRequest := func(url string, addHeaders map[string]string) (err error) {
+		// Context with a timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+		defer cancel()
+
+		// Create the request
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return err
+		}
+		if addHeaders != nil && len(addHeaders) > 0 {
+			for k, v := range addHeaders {
+				req.Header.Add(k, v)
+			}
+		}
+
+		// Submit the request
+		res, err := s.client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+
+		// Read the first 1000 bytes only then cancel the request
+		buf := make([]byte, 1000)
+		n, err := res.Body.Read(buf)
+		if err != nil {
+			return err
+		}
+		assert.Equal(t, 1000, n)
+		cancel()
+
+		// Read the rest: should end prematurely (definitely less than 128KB) with "context canceled"
+		m, err := io.Copy(ioutil.Discard, res.Body)
+		assert.EqualError(t, err, "context canceled")
+		assert.True(t, m < 128*1024)
+
+		return nil
+	}
+
+	var err error
+
+	// Retrieve the file in full
+	err = makeRequest(
+		s.serverAddr+"/file/"+s.fileIds["/upload/leigh-williams-CCABYukxjHs-unsplash.jpg"],
+		nil,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Retrieve a chunk only
+	err = makeRequest(
+		s.serverAddr+"/file/"+s.fileIds["/upload/partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg"],
+		map[string]string{
+			"Range": "bytes=70000-",
+		},
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+// Check that the server is returning the web UI
+func (s *funcTestSuite) serverWebUI(t *testing.T) {
+	// Skip the test if the web UI wasn't compiled
+	path := filepath.Join(s.fixtures, "..", "..", "ui", "dist", "index.html")
+	exists, err := utils.PathExists(path)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !exists {
+		t.Skip("web UI not compiled")
+		return
+	}
+
+	// Read the index file from disk
+	read, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Request the index file from the server
+	res, err := s.client.Get(s.serverAddr)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Errorf("invalid response status code: %d", res.StatusCode)
+		return
+	}
+	received, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Compare the response
+	assert.Equal(t, read, received)
 }
 
 // Internal function used to upload individual files

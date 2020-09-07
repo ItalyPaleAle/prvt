@@ -44,6 +44,7 @@ type funcTestSuite struct {
 	fixtures   string
 	client     *http.Client
 	serverAddr string
+	fileIds    map[string]string
 }
 
 // Run the test suite
@@ -90,6 +91,9 @@ func (s *funcTestSuite) Setup(t *testing.T) func() {
 	s.client = &http.Client{
 		Timeout: 20 * time.Second,
 	}
+
+	// Other variables
+	s.fileIds = make(map[string]string)
 
 	return func() {
 		// Restore globals
