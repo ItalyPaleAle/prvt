@@ -10,10 +10,18 @@ on:
 
 env:
   GO_VERSION: 1.15
-  NODE_BUILDER_IMAGE: 'node:12-alpine'
+  NODE_BUILDER_IMAGE: "node:12-alpine"
   GPGKEY_ID: "0x4C6D7DB1D92F58EE"
   GPGKEY_ID_FULL: "26426A3E380F1D1B67031D3C4C6D7DB1D92F58EE"
   GPGKEY_USER: "prvt CI <ci@prvt>"
+  S3_ENDPOINT: "127.0.0.1:9000"
+  S3_TLS: "false"
+  AZURE_STORAGE_ACCOUNT: "devstoreaccount1"
+  AZURE_STORAGE_ACCESS_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+  AZURE_STORAGE_CUSTOM_ENDPOINT: "127.0.0.1:10000"
+  AZURE_STORAGE_TLS: "false"
+  AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+  AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 jobs:
 
@@ -56,10 +64,6 @@ jobs:
     name: Test on Linux
     runs-on: ubuntu-20.04
     needs: build-ui
-
-    env:
-      AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
-      AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
     steps:
 
@@ -123,13 +127,6 @@ jobs:
       - name: Test
         run: |
           ./go-acc ./... -- -v
-        env:
-          S3_ENDPOINT: "127.0.0.1:9000"
-          S3_TLS: "false"
-          AZURE_STORAGE_ACCOUNT: "devstoreaccount1"
-          AZURE_STORAGE_ACCESS_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-          AZURE_STORAGE_CUSTOM_ENDPOINT: "127.0.0.1:10000"
-          AZURE_STORAGE_TLS: "false"
 
       - name: Send coverage
         env:
@@ -140,10 +137,6 @@ jobs:
     name: Test on Windows
     runs-on: windows-2019
     needs: build-ui
-
-    #env:
-      #AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
-      #AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
     steps:
 
@@ -169,7 +162,7 @@ jobs:
         run: |
           choco.exe install -y minio-server
           mkdir D:\minio
-          minio.exe server --address 127.0.0.1:9000 D:\minio &
+          Start-Process powershell -ArgumentList "minio.exe server --address 127.0.0.1:9000 D:\minio > D:\minio-log.txt" -WindowStyle hidden
           New-NetFirewallRule -Action Allow -DisplayName "MinIO" -Direction Inbound -LocalPort 9000 -Protocol TCP -Profile Domain, Private
         env:
           MINIO_ACCESS_KEY: "${{env.AWS_ACCESS_KEY_ID}}"
@@ -179,11 +172,7 @@ jobs:
         run: |
           npm install -g azurite
           mkdir D:\azurite
-          azurite-blob `
-            --location D:\azurite `
-            --blobHost 127.0.0.1 `
-            --blobPort 10000 `
-            &
+          Start-Process powershell -ArgumentList "azurite-blob --location D:\azurite --blobHost 127.0.0.1 --blobPort 10000 > D:\azurite-log.txt" -WindowStyle hidden
           New-NetFirewallRule -Action Allow -DisplayName "Azurite" -Direction Inbound -LocalPort 10000 -Protocol TCP -Profile Domain, Private
 
       - name: Import CI GPG key
@@ -203,10 +192,3 @@ jobs:
       - name: Test
         run: |
           go.exe test -v ./...
-        env:
-          S3_ENDPOINT: "127.0.0.1:9000"
-          S3_TLS: "false"
-          #AZURE_STORAGE_ACCOUNT: "devstoreaccount1"
-          #AZURE_STORAGE_ACCESS_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-          AZURE_STORAGE_CUSTOM_ENDPOINT: "127.0.0.1:10000"
-          AZURE_STORAGE_TLS: "false"
