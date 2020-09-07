@@ -10,12 +10,49 @@ on:
 
 env:
   GO_VERSION: 1.15
+  NODE_BUILDER_IMAGE: 'node:12-alpine'
 
 jobs:
+
+  build-ui:
+    name: Build UI
+    runs-on: ubuntu-20.04
+
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Build web UI
+        run: |
+          # Build using Docker
+          docker run \
+            --rm \
+            -v "$PWD"/ui:/usr/src/myapp \
+            -w /usr/src/myapp \
+            ${{env.NODE_BUILDER_IMAGE}} \
+              sh -c '
+                set -e
+
+                echo -e "###\nInstalling npm dependencies\n"
+                npm ci
+
+                echo -e "\n###\nBuilding UI\n"
+                APP_VERSION="canary" npm run build
+                '
+          echo -e "\n###\nCompilation done\n"
+          ls -al ui/dist
+
+      - name: Publish web UI artifact
+        uses: actions/upload-artifact@2
+        with:
+          name: ui
+          path: ui/dist/
 
   test-linux:
     name: Test on Linux
     runs-on: ubuntu-20.04
+    needs: build-ui
 
     env:
       AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
@@ -37,6 +74,12 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v2
+      
+      - name: Fetch web UI artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: ui
+          path: ui/dist
 
       # Can't use a GitHub Action service because that doesn't allow overriding the container's command
       - name: Start minio
@@ -96,6 +139,7 @@ jobs:
   test-windows:
     name: Test on Windows
     runs-on: windows-2019
+    needs: build-ui
 
     env:
       AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
@@ -118,12 +162,18 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
+      - name: Fetch web UI artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: ui
+          path: ui\dist
+
       - name: Fetch and start minio
         run: |
           choco.exe install -y minio-server
           mkdir D:\minio
           minio.exe server --address 127.0.0.1:9000 D:\minio &
-          New-NetFirewallRule -Action Allow -DisplayName "MinIO" -Direction Inbound -LocalPort 9000 -Protocol TCP
+          New-NetFirewallRule -Action Allow -DisplayName "MinIO" -Direction Inbound -LocalPort 9000 -Protocol TCP -Profile Domain, Private
         env:
           MINIO_ACCESS_KEY: "${{env.AWS_ACCESS_KEY_ID}}"
           MINIO_SECRET_KEY: "${{env.AWS_SECRET_ACCESS_KEY}}"
@@ -137,7 +187,7 @@ jobs:
             --blobHost 127.0.0.1 `
             --blobPort 10000 `
             &
-          New-NetFirewallRule -Action Allow -DisplayName "MinIO" -Direction Inbound -LocalPort 10000 -Protocol TCP
+          New-NetFirewallRule -Action Allow -DisplayName "Azurite" -Direction Inbound -LocalPort 10000 -Protocol TCP -Profile Domain, Private
 
       - name: Import CI GPG key
         run: |
