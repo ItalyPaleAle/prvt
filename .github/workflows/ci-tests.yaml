@@ -122,7 +122,7 @@ jobs:
         run: |
           choco.exe install -y minio-server
           mkdir D:\minio
-          minio.exe server D:\minio &
+          minio.exe server --address 127.0.0.1:9000 D:\minio &
         env:
           MINIO_ACCESS_KEY: "${{env.AWS_ACCESS_KEY_ID}}"
           MINIO_SECRET_KEY: "${{env.AWS_SECRET_ACCESS_KEY}}"
@@ -133,7 +133,7 @@ jobs:
           mkdir D:\azurite
           azurite-blob `
             --location D:\azurite `
-            --blobHost 0.0.0.0 `
+            --blobHost 127.0.0.1 `
             --blobPort 10000 `
             &
 
