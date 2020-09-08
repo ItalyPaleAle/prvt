@@ -760,6 +760,7 @@ func (s *funcTestSuite) serverFileChunks(t *testing.T) {
 
 // Test interrupting file retrieval
 func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
+	// Logic to detect leaking goroutines after the code below is done running
 	leakOpts := goleak.IgnoreCurrent()
 	defer func() {
 		// There is a timeout to detect connections that are idle, so keep waiting until that before failing a test
@@ -776,9 +777,18 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 		}
 	}()
 
+	// Function to make the requests
 	makeRequest := func(url string, addHeaders map[string]string) (err error) {
 		// Context with a timeout
 		ctx, cancel := context.WithCancel(context.Background())
+
+		// Use a different HTTP client with a smaller buffer (1KB only)
+		client := &http.Client{
+			Transport: &http.Transport{
+				ReadBufferSize:  1024,
+				WriteBufferSize: 1024,
+			},
+		}
 
 		// Create the request
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -793,7 +803,7 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 		}
 
 		// Submit the request
-		res, err := s.client.Do(req)
+		res, err := client.Do(req)
 		if err != nil {
 			cancel()
 			return err
@@ -804,7 +814,7 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 			return fmt.Errorf("invalid response status code: %d", res.StatusCode)
 		}
 
-		// Cancel the request before reading any byte
+		// Cancel the request after reading the headers, before reading the body
 		cancel()
 
 		// Drain the buffer: should end prematurely with "context canceled"
