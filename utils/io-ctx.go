@@ -24,23 +24,8 @@ import (
 
 type ioctx func(p []byte) (int, error)
 
-func (f ioctx) Write(p []byte) (n int, err error) {
-	return f(p)
-}
 func (f ioctx) Read(p []byte) (n int, err error) {
 	return f(p)
-}
-
-// WriterFuncWithContext returns a stream writer that supports a context
-func WriterFuncWithContext(ctx context.Context, w io.Writer) ioctx {
-	return func(p []byte) (int, error) {
-		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
-		default:
-			return w.Write(p)
-		}
-	}
 }
 
 // ReaderFuncWithContext returns a stream reader that supports a context
