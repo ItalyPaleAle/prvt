@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -69,43 +70,13 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	close = s.startServer(t, "--store", "local:"+s.dirs[1], "--no-unlock")
 	t.Run("unlock repo", s.serverUnlockRepo)
 	close()
-}
 
-func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
-	// Start the server by invoking the command
-	serveCmd := cmd.NewServeCmd()
-	serveCmd.SetOut(ioutil.Discard)
-	serveCmd.SetErr(ioutil.Discard)
-	serveCmd.SetArgs(args)
-
-	// Server address
-	address, err := serveCmd.Flags().GetString("address")
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-	port, err := serveCmd.Flags().GetString("port")
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-	s.serverAddr = fmt.Sprintf("http://%s:%s", address, port)
-
-	// Set a context that can be canceled, used to stop the server
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		err := serveCmd.ExecuteContext(ctx)
-		if err != nil {
-			log.Fatal("cannot start server\nargs:", args, "\nerror:", err)
-			return
-		}
-	}()
-
-	// Wait a couple of seconds to ensure the server has started
-	time.Sleep(2 * time.Second)
-
-	// The caller can stop the server
-	return cancel
+	// Test without selecting a repo
+	s.promptPwd.SetPasswords("hello world")
+	close = s.startServer(t, "--no-repo")
+	t.Run("select repo", s.serverSelectRepo)
+	t.Run("unlock repo", s.serverUnlockRepo)
+	close()
 }
 
 // Test the API info endpoint
@@ -354,27 +325,6 @@ func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
 
 // Test the endpoint that lists files
 func (s *funcTestSuite) serverListRemove(t *testing.T) {
-	listRequest := func(path string) (data []index.FolderList, err error) {
-		// Send the request, then read the response and parse the JSON response
-		res, err := s.client.Get(s.serverAddr + "/api/tree" + path)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		if res.StatusCode < 200 || res.StatusCode > 299 {
-			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
-		}
-		read, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		data = make([]index.FolderList, 0)
-		err = json.Unmarshal(read, &data)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	}
 	deleteRequest := func(path string) (data []server.TreeOperationResponse, err error) {
 		// Send the request, then read the response and parse the JSON response
 		req, err := http.NewRequest("DELETE", s.serverAddr+"/api/tree"+path, nil)
@@ -409,7 +359,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	)
 
 	// Request the / path
-	list, err = listRequest("/")
+	list, err = s.listRequest("/")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -432,7 +382,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.True(t, reflect.DeepEqual(expect, found))
 
 	// Repeat the test but without the "/" at the end of the URL
-	list, err = listRequest("")
+	list, err = s.listRequest("")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -455,7 +405,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.True(t, reflect.DeepEqual(expect, found))
 
 	// List the upload folder
-	list, err = listRequest("/upload")
+	list, err = s.listRequest("/upload")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -479,7 +429,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.True(t, reflect.DeepEqual(expect, found))
 
 	// List a path that doesn't exist
-	list, err = listRequest("/not-found")
+	list, err = s.listRequest("/not-found")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -549,7 +499,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	}
 
 	// Request the / path again
-	list, err = listRequest("/")
+	list, err = s.listRequest("/")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -955,6 +905,10 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 		err error
 	)
 
+	// Error: cannot request an API list the file list one without unlocking the repo
+	_, err = s.listRequest("/")
+	assert.EqualError(t, err, "invalid response status code: 401")
+
 	// Error: invalid type
 	_, err = unlockRequest(&server.UnlockKeyRequest{
 		Type: "invalid",
@@ -979,11 +933,125 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	res, err = unlockRequest(&server.UnlockKeyRequest{
 		Type: "gpg",
 	})
-	fmt.Println(res, err)
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.Equal(t, "gpg", res.Type)
 	assert.Equal(t, s.gpgKeyId, res.KeyId)
+
+	// Request the file list again, this time without errors
+	_, err = s.listRequest("/")
+	assert.NoError(t, err)
+}
+
+// Select a repo using the APIs
+func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
+	selectRequest := func(args interface{}) (string, error) {
+		// Build the request body
+		reqBody, err := json.Marshal(args)
+		if err != nil {
+			return "", err
+		}
+
+		// Send the request
+		buf := bytes.NewBuffer(reqBody)
+		res, err := s.client.Post(s.serverAddr+"/api/repo/select/", "application/json", buf)
+		if err != nil {
+			return "", err
+		}
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return "", fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+
+		// Read the response and parse the JSON content
+		read, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", err
+		}
+		data := map[string]string{}
+		err = json.Unmarshal(read, &data)
+		if err != nil {
+			return "", err
+		}
+		repoId, ok := data["id"]
+		if !ok {
+			return "", errors.New("missing key 'id' in response")
+		}
+		return repoId, nil
+	}
+
+	var (
+		repoId string
+		err    error
+	)
+
+	// Error: cannot request an API list the file list one without selecting
+	_, err = s.listRequest("/")
+	assert.EqualError(t, err, "invalid response status code: 401")
+
+	// Error: invalid body
+	_, err = selectRequest(map[string]int{
+		"foo": 1,
+	})
+	assert.EqualError(t, err, "invalid response status code: 400")
+
+	// Error: missing key 'type'
+	_, err = selectRequest(map[string]string{
+		"foo": "bar",
+	})
+	assert.EqualError(t, err, "invalid response status code: 400")
+
+	// Error: missing key 'path' for the local repo
+	_, err = selectRequest(map[string]string{
+		"type": "local",
+	})
+	assert.EqualError(t, err, "invalid response status code: 400")
+
+	// Select the repo
+	repoId, err = selectRequest(map[string]string{
+		"type": "local",
+		"path": s.dirs[1],
+	})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, repoId)
+}
+
+// Internal function that starts the server
+func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
+	// Start the server by invoking the command
+	serveCmd := cmd.NewServeCmd()
+	serveCmd.SetOut(ioutil.Discard)
+	serveCmd.SetErr(ioutil.Discard)
+	serveCmd.SetArgs(args)
+
+	// Server address
+	address, err := serveCmd.Flags().GetString("address")
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+	port, err := serveCmd.Flags().GetString("port")
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+	s.serverAddr = fmt.Sprintf("http://%s:%s", address, port)
+
+	// Set a context that can be canceled, used to stop the server
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		err := serveCmd.ExecuteContext(ctx)
+		if err != nil {
+			log.Fatal("cannot start server\nargs:", args, "\nerror:", err)
+			return
+		}
+	}()
+
+	// Wait a couple of seconds to ensure the server has started
+	time.Sleep(2 * time.Second)
+
+	// The caller can stop the server
+	return cancel
 }
 
 // Internal function used to upload individual files
@@ -1040,4 +1108,27 @@ func (s *funcTestSuite) uploadFile(t *testing.T, content []byte, filename string
 	assert.True(t, len(data[0].FileId) > 0)
 
 	return data[0].FileId
+}
+
+// Internal function that returns the list of files
+func (s *funcTestSuite) listRequest(path string) (data []index.FolderList, err error) {
+	// Send the request, then read the response and parse the JSON response
+	res, err := s.client.Get(s.serverAddr + "/api/tree" + path)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	data = make([]index.FolderList, 0)
+	err = json.Unmarshal(read, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
