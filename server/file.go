@@ -34,6 +34,9 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+// Timeout (in seconds) for detecting idle connections (which are not closed but are hanging)
+const IdleTimeout = 20
+
 // FileHandler is the handler for GET /file/:fileId, which returns a (decrypted) file
 func (s *Server) FileHandler(c *gin.Context) {
 	// Get the fileId
@@ -83,8 +86,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 		notifier := c.Writer.CloseNotify()
 
 		// Add a timeout to detect idle connections (which are not closed but are hanging)
-		timeout := 20 * time.Second
-		t := time.NewTimer(timeout)
+		t := time.NewTimer(IdleTimeout * time.Second)
 		read := make(chan int)
 		go func() {
 			for {
@@ -99,7 +101,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 					if !t.Stop() {
 						<-t.C
 					}
-					t.Reset(timeout)
+					t.Reset(IdleTimeout * time.Second)
 				}
 			}
 		}()

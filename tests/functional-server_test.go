@@ -43,6 +43,7 @@ import (
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 )
 
 // RunServer runs the sequence of tests for the server; must be run run after the CLI tests
@@ -783,6 +784,22 @@ func (s *funcTestSuite) serverFileChunks(t *testing.T) {
 
 // Test interrupting file retrieval
 func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
+	leakOpts := goleak.IgnoreCurrent()
+	defer func() {
+		// There is a timeout to detect connections that are idle, so keep waiting until that before failing a test
+		i := 0
+		err := goleak.Find()
+		for err != nil && i < (server.IdleTimeout*2) {
+			i++
+			time.Sleep(500 * time.Millisecond)
+			err = goleak.Find(leakOpts)
+		}
+		// Check if we still have an error
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	makeRequest := func(url string, addHeaders map[string]string) (err error) {
 		// Context with a timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
