@@ -30,8 +30,6 @@ import (
 func TestCLICore(t *testing.T) {
 	// Root command
 	t.Run("root command", func(t *testing.T) {
-		t.Parallel()
-
 		runCmd(t,
 			nil,
 			nil,
@@ -67,8 +65,6 @@ func TestCLICore(t *testing.T) {
 
 	for _, el := range table {
 		t.Run(el.Name, func(t *testing.T) {
-			t.Parallel()
-
 			runCmd(t,
 				el.Args,
 				nil,
