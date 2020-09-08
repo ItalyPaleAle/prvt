@@ -75,7 +75,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	s.promptPwd.SetPasswords("hello world")
 	close = s.startServer(t, "--no-repo")
 	t.Run("select repo", s.serverSelectRepo)
-	t.Run("unlock repo", s.serverUnlockRepo)
+	t.Run("unlock selected repo", s.serverUnlockRepo)
 	close()
 }
 
@@ -711,6 +711,7 @@ func (s *funcTestSuite) serverFileChunks(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
+	assert.Equal(t, "77", res.Header.Get("Content-Length"))
 	assert.Equal(t, content[65409:65486], read)
 
 	// Retrieve a chunk of a file whose metadata wasn't cached
@@ -736,7 +737,23 @@ func (s *funcTestSuite) serverFileChunks(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
+	assert.Equal(t, "97", res.Header.Get("Content-Length"))
 	assert.Equal(t, content[600010:], read)
+
+	// Error: range not satisfiable (requesting from after length of the file)
+	req, err = http.NewRequest("GET", s.serverAddr+"/file/"+s.fileIds["/serve-test/text3.txt"], nil)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	req.Header.Add("Range", "bytes=10000000-")
+	res, err = s.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer res.Body.Close()
+	assert.Equal(t, 416, res.StatusCode)
 }
 
 // Test interrupting file retrieval
@@ -760,11 +777,11 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 	makeRequest := func(url string, addHeaders map[string]string) (err error) {
 		// Context with a timeout
 		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 
 		// Create the request
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
+			cancel()
 			return err
 		}
 		if addHeaders != nil && len(addHeaders) > 0 {
@@ -776,26 +793,22 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 		// Submit the request
 		res, err := s.client.Do(req)
 		if err != nil {
+			cancel()
 			return err
 		}
 		defer res.Body.Close()
 		if res.StatusCode < 200 || res.StatusCode > 299 {
+			cancel()
 			return fmt.Errorf("invalid response status code: %d", res.StatusCode)
 		}
 
-		// Read the first 1000 bytes only then cancel the request
-		buf := make([]byte, 1000)
-		n, err := res.Body.Read(buf)
-		if err != nil {
-			return err
-		}
-		assert.Equal(t, 1000, n)
+		// Cancel the request before reading any byte
 		cancel()
 
-		// Read the rest: should end prematurely (definitely less than 128KB) with "context canceled"
-		m, err := io.Copy(ioutil.Discard, res.Body)
+		// Drain the buffer: should end prematurely (definitely less than 128KB) with "context canceled"
+		n, err := io.Copy(ioutil.Discard, res.Body)
 		assert.EqualError(t, err, "context canceled")
-		assert.True(t, m < 128*1024)
+		assert.True(t, n < 128*1024)
 
 		return nil
 	}
@@ -998,6 +1011,12 @@ func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
 	// Error: missing key 'type'
 	_, err = selectRequest(map[string]string{
 		"foo": "bar",
+	})
+	assert.EqualError(t, err, "invalid response status code: 400")
+
+	// Error: invalid fs type
+	_, err = selectRequest(map[string]string{
+		"type": "invalid",
 	})
 	assert.EqualError(t, err, "invalid response status code: 400")
 
