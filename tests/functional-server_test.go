@@ -802,7 +802,7 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 
 	makeRequest := func(url string, addHeaders map[string]string) (err error) {
 		// Context with a timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		// Create the request
