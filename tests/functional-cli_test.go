@@ -349,17 +349,18 @@ func (s *funcTestSuite) cmdAdd(t *testing.T) {
 				"Added: /photos/elton-sa-_3g60mG4N80-unsplash.jpg",
 				"Added: /photos/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
 				"Added: /photos/leigh-williams-CCABYukxjHs-unsplash.jpg",
+				"Added: /photos/nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
 				"Added: /photos/partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
 			}
 			actual := strings.Split(stdout, "\n")
 			sort.Strings(actual)
 			if !reflect.DeepEqual(expected, actual) {
-				t.Fatal("output does not match", stdout)
+				t.Error("output does not match", stdout)
 			}
 		},
 		nil,
 	)
-	checkRepoDirectory(t, s.dirs[0], 5)
+	checkRepoDirectory(t, s.dirs[0], 6)
 
 	// Add multiple files, including existing ones
 	s.promptPwd.SetPasswords("hello world")
@@ -375,17 +376,18 @@ func (s *funcTestSuite) cmdAdd(t *testing.T) {
 				"Skipping existing file: /photos/elton-sa-_3g60mG4N80-unsplash.jpg",
 				"Skipping existing file: /photos/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
 				"Skipping existing file: /photos/leigh-williams-CCABYukxjHs-unsplash.jpg",
+				"Skipping existing file: /photos/nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
 				"Skipping existing file: /photos/partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
 			}
 			actual := strings.Split(stdout, "\n")
 			sort.Strings(actual)
 			if !reflect.DeepEqual(expected, actual) {
-				t.Fatal("output does not match", stdout)
+				t.Error("output does not match", stdout)
 			}
 		},
 		nil,
 	)
-	checkRepoDirectory(t, s.dirs[0], 6)
+	checkRepoDirectory(t, s.dirs[0], 7)
 
 	// File does not exist
 	s.promptPwd.SetPasswords("hello world")
@@ -400,7 +402,7 @@ func (s *funcTestSuite) cmdAdd(t *testing.T) {
 		},
 		nil,
 	)
-	checkRepoDirectory(t, s.dirs[0], 6)
+	checkRepoDirectory(t, s.dirs[0], 7)
 
 	// Error: repository is not initialized
 	s.promptPwd.SetPasswords("hello world")
@@ -466,6 +468,7 @@ func (s *funcTestSuite) cmdLsAndRm(t *testing.T) {
 				"elton-sa-_3g60mG4N80-unsplash.jpg",
 				"joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
 				"leigh-williams-CCABYukxjHs-unsplash.jpg",
+				"nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
 				"partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
 				"",
 			}, "\n")
@@ -504,7 +507,7 @@ func (s *funcTestSuite) cmdLsAndRm(t *testing.T) {
 		},
 		nil,
 	)
-	checkRepoDirectory(t, s.dirs[0], 5)
+	checkRepoDirectory(t, s.dirs[0], 6)
 
 	// List the directory again
 	s.promptPwd.SetPasswords("hello world")
@@ -515,6 +518,7 @@ func (s *funcTestSuite) cmdLsAndRm(t *testing.T) {
 			expected := strings.Join([]string{
 				"joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
 				"leigh-williams-CCABYukxjHs-unsplash.jpg",
+				"nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
 				"partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
 				"",
 			}, "\n")
@@ -536,6 +540,7 @@ func (s *funcTestSuite) cmdLsAndRm(t *testing.T) {
 				"Not found: /notfound.txt",
 				"Removed: /photos/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
 				"Removed: /photos/leigh-williams-CCABYukxjHs-unsplash.jpg",
+				"Removed: /photos/nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
 				"Removed: /photos/partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
 				"Removed: /short.txt",
 			}

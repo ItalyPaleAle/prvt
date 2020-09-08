@@ -163,6 +163,7 @@ func (s *funcTestSuite) serverAddUploadMultiFiles(t *testing.T) {
 		"joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
 		"partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
 		"leigh-williams-CCABYukxjHs-unsplash.jpg",
+		"nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
 	}
 	files := make([]*os.File, len(paths))
 	for i, p := range paths {
@@ -269,8 +270,8 @@ func (s *funcTestSuite) serverAddLocalFiles(t *testing.T) {
 		return
 	}
 
-	assert.Len(t, data, 4)
-	for i := 0; i < 4; i++ {
+	assert.Len(t, data, 5)
+	for i := 0; i < 5; i++ {
 		assert.Equal(t, "", data[i].Error)
 		assert.Equal(t, "added", data[i].Status)
 		assert.True(t, strings.HasPrefix(data[i].Path, "/added/photos/"))
@@ -410,10 +411,11 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	assert.Len(t, list, 3)
+	assert.Len(t, list, 4)
 	expect = []string{
 		"joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
 		"leigh-williams-CCABYukxjHs-unsplash.jpg",
+		"nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
 		"partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
 	}
 	found = []string{}
@@ -489,7 +491,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	assert.Len(t, deleted, 4)
+	assert.Len(t, deleted, 5)
 	for i := 0; i < 4; i++ {
 		assert.Equal(t, "", deleted[i].Error)
 		assert.True(t, deleted[i].FileId != "")
@@ -805,10 +807,10 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 		// Cancel the request before reading any byte
 		cancel()
 
-		// Drain the buffer: should end prematurely (definitely less than 128KB) with "context canceled"
+		// Drain the buffer: should end prematurely with "context canceled"
 		n, err := io.Copy(ioutil.Discard, res.Body)
+		t.Logf("Copied %d bytes, and got error %s", n, err)
 		assert.EqualError(t, err, "context canceled")
-		assert.True(t, n < 128*1024)
 
 		return nil
 	}
@@ -817,7 +819,7 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 
 	// Retrieve the file in full
 	err = makeRequest(
-		s.serverAddr+"/file/"+s.fileIds["/upload/leigh-williams-CCABYukxjHs-unsplash.jpg"],
+		s.serverAddr+"/file/"+s.fileIds["/upload/nathan-thomassin-E6xV-UxrKSg-unsplash.jpg"],
 		nil,
 	)
 	if err != nil {
@@ -827,7 +829,7 @@ func (s *funcTestSuite) serverFileInterrupt(t *testing.T) {
 
 	// Retrieve a chunk only
 	err = makeRequest(
-		s.serverAddr+"/file/"+s.fileIds["/upload/partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg"],
+		s.serverAddr+"/file/"+s.fileIds["/upload/nathan-thomassin-E6xV-UxrKSg-unsplash.jpg"],
 		map[string]string{
 			"Range": "bytes=70000-",
 		},
@@ -1070,7 +1072,12 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 	time.Sleep(2 * time.Second)
 
 	// The caller can stop the server
-	return cancel
+	return func() {
+		cancel()
+
+		// Wait a couple of seconds to ensure the server has stopped
+		time.Sleep(2 * time.Second)
+	}
 }
 
 // Internal function used to upload individual files
