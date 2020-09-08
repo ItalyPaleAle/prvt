@@ -49,6 +49,7 @@ import (
 // RunServer runs the sequence of tests for the server; must be run run after the CLI tests
 func (s *funcTestSuite) RunServer(t *testing.T) {
 	var close func()
+
 	// Test on existing repo
 	s.promptPwd.SetPasswords("hello world")
 	close = s.startServer(t, "--store", "local:"+s.dirs[0])
@@ -61,6 +62,12 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	t.Run("get file chunks", s.serverFileChunks)
 	t.Run("interrupt getting files", s.serverFileInterrupt)
 	t.Run("serving web UI", s.serverWebUI)
+	close()
+
+	// Test without unlocking the repo
+	s.promptPwd.SetPasswords("hello world")
+	close = s.startServer(t, "--store", "local:"+s.dirs[1], "--no-unlock")
+	t.Run("unlock repo", s.serverUnlockRepo)
 	close()
 }
 
@@ -908,6 +915,75 @@ func (s *funcTestSuite) serverWebUI(t *testing.T) {
 
 	// Compare the response
 	assert.Equal(t, read, received)
+}
+
+// Unlock a repo using the APIs
+func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
+	unlockRequest := func(args *server.UnlockKeyRequest) (*server.RepoKeyListItem, error) {
+		// Build the request body
+		reqBody, err := json.Marshal(args)
+		if err != nil {
+			return nil, err
+		}
+
+		// Send the request
+		buf := bytes.NewBuffer(reqBody)
+		res, err := s.client.Post(s.serverAddr+"/api/repo/unlock/", "application/json", buf)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+
+		// Read the response and parse the JSON content
+		read, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		data := &server.RepoKeyListItem{}
+		err = json.Unmarshal(read, data)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+
+	var (
+		res *server.RepoKeyListItem
+		err error
+	)
+
+	// Error: invalid type
+	_, err = unlockRequest(&server.UnlockKeyRequest{
+		Type: "invalid",
+	})
+	assert.EqualError(t, err, "invalid response status code: 400")
+
+	// Error: missing passphrase
+	_, err = unlockRequest(&server.UnlockKeyRequest{
+		Type:       "passphrase",
+		Passphrase: "",
+	})
+	assert.EqualError(t, err, "invalid response status code: 400")
+
+	// Error: invalid passphrase
+	_, err = unlockRequest(&server.UnlockKeyRequest{
+		Type:       "passphrase",
+		Passphrase: "not-correct",
+	})
+	assert.EqualError(t, err, "invalid response status code: 401")
+
+	// Unlock with GPG key
+	res, err = unlockRequest(&server.UnlockKeyRequest{
+		Type: "gpg",
+	})
+	fmt.Println(res, err)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, "gpg", res.Type)
+	assert.Equal(t, s.gpgKeyId, res.KeyId)
 }
 
 // Internal function used to upload individual files
