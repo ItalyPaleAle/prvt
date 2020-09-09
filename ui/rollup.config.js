@@ -34,7 +34,7 @@ export default {
             }),
             // We'll extract any component CSS out into a separate file
             css: css => {
-                css.write('dist/css/components.css')
+                css.write('css/components.css')
             }
         }),
 
