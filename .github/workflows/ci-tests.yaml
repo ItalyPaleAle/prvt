@@ -160,9 +160,11 @@ jobs:
 
       - name: Fetch and start minio
         run: |
-          choco.exe install -y minio-server
+          $downloadURL = "https://dl.minio.io/server/minio/release/windows-amd64/minio.exe"
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Invoke-WebRequest -Uri $downloadURL -OutFile "minio.exe"
           mkdir D:\minio
-          Start-Process powershell -ArgumentList "minio.exe server --address 127.0.0.1:9000 D:\minio > D:\minio-log.txt" -WindowStyle hidden
+          Start-Process powershell -ArgumentList ".\minio.exe server --address 127.0.0.1:9000 D:\minio > D:\minio-log.txt" -WindowStyle hidden
           New-NetFirewallRule -Action Allow -DisplayName "MinIO" -Direction Inbound -LocalPort 9000 -Protocol TCP -Profile Domain, Private
         env:
           MINIO_ACCESS_KEY: "${{env.AWS_ACCESS_KEY_ID}}"
