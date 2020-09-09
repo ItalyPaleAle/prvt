@@ -18,64 +18,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package server
 
 import (
-	"fmt"
 	"net/http"
-
-	"github.com/ItalyPaleAle/prvt/index"
-	"github.com/ItalyPaleAle/prvt/keys"
-	"github.com/ItalyPaleAle/prvt/repository"
 
 	"github.com/gin-gonic/gin"
 )
-
-// MiddlewareUnlockRepo tries to unlock the repository
-func (s *Server) MiddlewareUnlockRepo(dryRun bool) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		// Get the information to unlock the repository from the body
-		args := &UnlockKeyRequest{}
-		if ok := args.FromBody(c); !ok {
-			return
-		}
-
-		// Try unlocking the repository
-		var (
-			masterKey  []byte
-			keyId      string
-			errMessage string
-			err        error
-		)
-		if args.Type == "gpg" {
-			masterKey, keyId, errMessage, err = keys.GetMasterKeyWithGPG(s.Infofile)
-		} else {
-			masterKey, keyId, errMessage, err = keys.GetMasterKeyWithPassphrase(s.Infofile, args.Passphrase)
-		}
-		if err != nil {
-			msg := fmt.Sprintf("%s: %s", err, errMessage)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{msg})
-			return
-		}
-
-		// Skip if doing a dry-run (e.g. while testing a key)
-		if !dryRun {
-			// Set the master key
-			s.Store.SetMasterKey(keyId, masterKey)
-
-			// Set up the index
-			index.Instance.SetStore(s.Store)
-
-			// Set up the repository
-			s.Repo = &repository.Repository{
-				Store: s.Store,
-			}
-
-			fmt.Fprintln(s.LogWriter, "Repository unlocked with key:", keyId)
-		}
-
-		// Store the key ID in the context
-		c.Set("KeyId", keyId)
-		c.Set("KeyType", args.Type)
-	}
-}
 
 // MiddlewareRequireRepo requires a repository to be selected (even if not unlocked)
 func (s *Server) MiddlewareRequireRepo(c *gin.Context) {
