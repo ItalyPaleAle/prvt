@@ -41,9 +41,8 @@ type InfoFileKey struct {
 
 // InfoFile is the content of the info file
 type InfoFile struct {
-	App      string `json:"app"`
-	Version  uint16 `json:"ver"`
-	DataPath string `json:"dp,omitempty"`
+	App     string `json:"app"`
+	Version uint16 `json:"ver"`
 
 	// Fields for version 1 only
 	// Passphrase
@@ -53,7 +52,8 @@ type InfoFile struct {
 	EncryptedKey []byte `json:"ek,omitempty"`
 
 	// Fields for version 2+
-	Keys []InfoFileKey `json:"k,omitempty"`
+	DataPath string        `json:"dp,omitempty"`
+	Keys     []InfoFileKey `json:"k,omitempty"`
 
 	// Fields for version 4+
 	RepoId string `json:"id"`
@@ -196,7 +196,7 @@ func (info *InfoFile) Validate() error {
 			}
 		}
 	} else if info.Version >= 2 && info.Version <= 4 {
-		// Parse version 2 and 3
+		// Parse version 2 to 4
 		if len(info.Keys) == 0 {
 			return errors.New("repository does not have any key")
 		}
