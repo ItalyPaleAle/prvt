@@ -19,10 +19,10 @@ package tests
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -32,8 +32,15 @@ import (
 
 // RunPreviousVersions runs the sequence of tests that ensure that prvt can work with repositories created with previous versions
 func (s *funcTestSuite) RunPreviousVersions(t *testing.T) {
-	// vs0.2 has the same data structures as v0.1
+	// Skip when running a short test
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	// v0.2 has the same data structures as v0.1
 	t.Run("prvt 0.2", s.previousVersion_0_2)
+	t.Run("prvt 0.3", s.previousVersion_0_3)
+	t.Run("prvt 0.4", s.previousVersion_0_4)
 }
 
 // Tests for working with repositories created by version 0.2
@@ -79,13 +86,146 @@ func (s *funcTestSuite) previousVersion_0_2(t *testing.T) {
 		[]string{"repo", "upgrade", "--store", "local:" + path},
 		nil,
 		func(stdout string) {
-			fmt.Println(stdout)
+			assert.Equal(t, "Repository upgraded\n", stdout)
 		},
 		nil,
 	)
 
 	// Check that the repo has been upgraded
 	s.previousVersionCheckInfoFile(t, path, 1)
+
+	// Try unlocking the repo again
+	s.promptPwd.SetPasswords("hello world")
+	close = s.startServer(t, "--store", "local:"+path)
+
+	// Should be able to list files
+	newList, err := s.listRequest("/")
+	assert.NoError(t, err)
+	assert.Len(t, newList, 1)
+	assert.True(t, reflect.DeepEqual(list, newList))
+
+	// Stop the server
+	close()
+}
+
+// Tests for working with repositories created by version 0.3
+func (s *funcTestSuite) previousVersion_0_3(t *testing.T) {
+	// Start the server
+	s.promptPwd.SetPasswords("hello world")
+	path := filepath.Join(s.fixtures, "previous-versions", "v0.3")
+	close := s.startServer(t, "--store", "local:"+path)
+
+	// Should be able to list files
+	list, err := s.listRequest("/")
+	if err != nil {
+		close()
+		t.Fatal(err)
+		return
+	}
+	assert.Len(t, list, 1)
+	assert.Equal(t, "pg1000.txt", list[0].Path)
+	assert.Empty(t, list[0].MimeType)
+	assert.Empty(t, list[0].Date)
+
+	// Should be able to request the file
+	s.previousVersionRequestFile(t, list[0].FileId)
+
+	// Stop the server
+	close()
+
+	// Commands such as "prvt add" requires a newer info file (3+)
+	s.promptPwd.SetPasswords("hello world")
+	addPath := filepath.Join(s.fixtures, "photos")
+	runCmd(t,
+		[]string{"add", addPath, "--destination", "/text", "--store", "local:" + path},
+		func(err error) {
+			if !strings.HasPrefix(err.Error(), "[Error] Repository needs to be upgraded") {
+				t.Fatal("error does not match", err)
+			}
+		},
+		nil,
+		nil,
+	)
+
+	// Upgrade the repo
+	s.promptPwd.SetPasswords("hello world")
+	runCmd(t,
+		[]string{"repo", "upgrade", "--store", "local:" + path},
+		nil,
+		func(stdout string) {
+			assert.Equal(t, "Repository upgraded\n", stdout)
+		},
+		nil,
+	)
+
+	// Check that the repo has been upgraded
+	s.previousVersionCheckInfoFile(t, path, 2)
+
+	// Try unlocking the repo again
+	s.promptPwd.SetPasswords("hello world")
+	close = s.startServer(t, "--store", "local:"+path)
+
+	// Should be able to list files
+	newList, err := s.listRequest("/")
+	assert.NoError(t, err)
+	assert.Len(t, newList, 1)
+	assert.True(t, reflect.DeepEqual(list, newList))
+
+	// Stop the server
+	close()
+}
+
+// Tests for working with repositories created by version 0.4
+func (s *funcTestSuite) previousVersion_0_4(t *testing.T) {
+	// Start the server
+	s.promptPwd.SetPasswords("hello world")
+	path := filepath.Join(s.fixtures, "previous-versions", "v0.4")
+	close := s.startServer(t, "--store", "local:"+path)
+
+	// Should be able to list files
+	list, err := s.listRequest("/")
+	if err != nil {
+		close()
+		t.Fatal(err)
+		return
+	}
+	assert.Len(t, list, 1)
+	assert.Equal(t, "pg1000.txt", list[0].Path)
+	assert.NotEmpty(t, list[0].MimeType)
+	assert.NotEmpty(t, list[0].Date)
+
+	// Should be able to request the file
+	s.previousVersionRequestFile(t, list[0].FileId)
+
+	// Stop the server
+	close()
+
+	// Upgrade the repo
+	s.promptPwd.SetPasswords("hello world")
+	runCmd(t,
+		[]string{"repo", "upgrade", "--store", "local:" + path},
+		nil,
+		func(stdout string) {
+			assert.Equal(t, "Repository upgraded\n", stdout)
+		},
+		nil,
+	)
+
+	// Check that the repo has been upgraded
+	s.previousVersionCheckInfoFile(t, path, 3)
+
+	// Try unlocking the repo again
+	s.promptPwd.SetPasswords("hello world")
+	close = s.startServer(t, "--store", "local:"+path)
+
+	// Should be able to list files
+	newList, err := s.listRequest("/")
+	assert.NoError(t, err)
+	assert.Len(t, newList, 1)
+	assert.True(t, reflect.DeepEqual(list, newList))
+
+	// Stop the server
+	close()
 }
 
 func (s *funcTestSuite) previousVersionRequestFile(t *testing.T, fileId string) {
@@ -164,9 +304,9 @@ func (s *funcTestSuite) previousVersionCheckInfoFile(t *testing.T, path string, 
 		t.Error(err)
 		return
 	}
-	assert.Equal(t, 4, info.Version)
+	assert.Equal(t, uint16(4), info.Version)
 	assert.Len(t, info.Keys, 1)
-	assert.NotEmpty(t, "", info.RepoId)
+	assert.NotEmpty(t, info.RepoId)
 
 	// Key DataPath was added in info file v2, so the value remains empty if upgrading from v1
 	if startingVer == 1 {
