@@ -1,16 +1,16 @@
 # prvt
 
-prvt lets you store files on the cloud or on local directories, protected with strong end-to-end encryption, and then conveniently view them within a web browser.
+**Personal, end-to-end encrypted cloud storage.**
 
-With prvt, you can leverage cloud-based object storage (such as AWS S3 or Azure Storage) as a personal, general-purpose cloud storage service, with full end-to-end encryption.
+prvt lets you store files on the cloud or on local directories, protected with strong end-to-end encryption, and then conveniently view them within a web browser. You can leverage cloud-based object storage services (such as AWS S3 or Azure Storage) as a personal, general-purpose cloud storage service, with full end-to-end encryption.
 
 Features:
 
-- Runs on all platforms: Windows, Linux, macOS, and any other platform supported by the Go compiler.
-- Uses industry-standard, strong authenticated encryption algorithms.
+- Runs on all platforms: Windows, Linux, macOS.
+- Uses industry-standard, strong, authenticated encryption algorithms.
 - Supports storing files on [Azure Blob Storage](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview), [AWS S3](https://aws.amazon.com/s3/), other S3-compatible services, and on a local folder.
-- Lets you conveniently browse files using a web browser, displaying supported files (images, videos, PDFs, etc) within the browser itself.
-- Supports using GPG keys or security tokens (such as a smart card or a YubiKey) to restrict access to your data.
+- Conveniently browse files using a web browser, displaying supported files (images, videos, PDFs, etc) within the browser itself.
+- Supports optional GPG keys or security tokens (such as a smart card or a YubiKey) to restrict access to your data.
 
 prvt is free software, released under GNU General Public License version 3.0.
 
@@ -245,3 +245,9 @@ Check out the [Encryption](./Encryption.md) document for detailed information.
 There's no limit on the number of files you can store in a repository.
 
 However, the way the index is implemented relies on a single file, which might make opening or updating the files in a repository slow when you have a lot (many thousands) of files. If you are planning to store a very large number of files, consider splitting them into multiple repositories.
+
+### Can I access the prvt web UI over the network?
+
+Yes, but this is not allowed by default, as the prvt server is listening on 127.0.0.1 only. To connect to a prvt server over the network, set the `--address 0.0.0.0` option for the `prvt serve` command.
+
+Note that prvt is optimized for running on your local machine and does not feature any authentication out-of-the-box. If you expose prvt on the network, anyone can access the files in your repository through the web UI.
