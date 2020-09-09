@@ -31,5 +31,9 @@ module.exports = {
     variants: {
         opacity: ['responsive', 'hover', 'focus', 'disabled'],
     },
-    plugins: []
+    plugins: [],
+    future: {
+        removeDeprecatedGapUtilities: true,
+        purgeLayersByDefault: true
+    },
 }

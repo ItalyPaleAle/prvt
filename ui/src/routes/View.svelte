@@ -115,6 +115,12 @@ function requestMetadata(fileId) {
         for (let i = 0; i < cache.list.length; i++) {
             const el = cache.list[i]
             if (el && el.fileId == fileId) {
+                // If the cached data doesn't include a mime type, the file was likely added using an odler version of prvt, which did not add the metadata to the index
+                // So, we need to skip using the cached data and request the metadata
+                if (el.mimeType === undefined) {
+                    break
+                }
+
                 title = el.path
                 path = cache.folder + '/' + el.path
                 mimeType = el.mimeType
@@ -123,6 +129,7 @@ function requestMetadata(fileId) {
                     // Remove the / from the beginning of the path, if present
                     path = path.slice(1)
                 }
+
                 // Set requesting to a Promise that is immediately resolved, then stop the function
                 requesting = Promise.resolve()
                 return

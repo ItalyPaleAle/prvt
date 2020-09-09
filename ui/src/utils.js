@@ -62,6 +62,12 @@ export function fileType(mimeType) {
         return ''
     }
 
+    // Remove what's after the ;
+    const pos = mimeType.indexOf(';')
+    if (pos > 1) {
+        mimeType = mimeType.slice(0, pos)
+    }
+
     switch (mimeType) {
         case 'application/pdf':
         case 'application/x-pdf':

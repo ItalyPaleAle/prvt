@@ -15,10 +15,12 @@
       <span class="ml-1" title="{metadata.size} bytes" aria-label="{size}">{size}</span>
     </div>
   {/if}
-  <div class="mb-2 ml-4">
-    <i class="fa fa-clock-o fa-fw" aria-hidden="true"></i>
-    <span class="ml-1">{date}</span>
-  </div>
+  {#if date}
+    <div class="mb-2 ml-4">
+      <i class="fa fa-clock-o fa-fw" aria-hidden="true"></i>
+      <span class="ml-1">{date}</span>
+    </div>
+  {/if}
 </div>
 
 <script>
