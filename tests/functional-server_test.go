@@ -72,10 +72,10 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	close()
 
 	// Test without selecting a repo
-	s.promptPwd.SetPasswords("hello world")
 	close = s.startServer(t, "--no-repo")
 	t.Run("select repo", s.serverSelectRepo)
 	t.Run("unlock selected repo", s.serverUnlockRepo)
+	t.Run("manage keys", s.serverManageKeys)
 	close()
 }
 
@@ -894,37 +894,6 @@ func (s *funcTestSuite) serverWebUI(t *testing.T) {
 
 // Unlock a repo using the APIs
 func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
-	unlockRequest := func(args *server.UnlockKeyRequest) (*server.RepoKeyListItem, error) {
-		// Build the request body
-		reqBody, err := json.Marshal(args)
-		if err != nil {
-			return nil, err
-		}
-
-		// Send the request
-		buf := bytes.NewBuffer(reqBody)
-		res, err := s.client.Post(s.serverAddr+"/api/repo/unlock/", "application/json", buf)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		if res.StatusCode < 200 || res.StatusCode > 299 {
-			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
-		}
-
-		// Read the response and parse the JSON content
-		read, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		data := &server.RepoKeyListItem{}
-		err = json.Unmarshal(read, data)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	}
-
 	var (
 		res *server.RepoKeyListItem
 		err error
@@ -935,29 +904,29 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	assert.EqualError(t, err, "invalid response status code: 401")
 
 	// Error: invalid type
-	_, err = unlockRequest(&server.UnlockKeyRequest{
+	_, err = s.unlockRequest(&server.UnlockKeyRequest{
 		Type: "invalid",
-	})
+	}, false)
 	assert.EqualError(t, err, "invalid response status code: 400")
 
 	// Error: missing passphrase
-	_, err = unlockRequest(&server.UnlockKeyRequest{
+	_, err = s.unlockRequest(&server.UnlockKeyRequest{
 		Type:       "passphrase",
 		Passphrase: "",
-	})
+	}, false)
 	assert.EqualError(t, err, "invalid response status code: 400")
 
 	// Error: invalid passphrase
-	_, err = unlockRequest(&server.UnlockKeyRequest{
+	_, err = s.unlockRequest(&server.UnlockKeyRequest{
 		Type:       "passphrase",
 		Passphrase: "not-correct",
-	})
+	}, false)
 	assert.EqualError(t, err, "invalid response status code: 401")
 
 	// Unlock with GPG key
-	res, err = unlockRequest(&server.UnlockKeyRequest{
+	res, err = s.unlockRequest(&server.UnlockKeyRequest{
 		Type: "gpg",
-	})
+	}, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.Equal(t, "gpg", res.Type)
@@ -1045,6 +1014,171 @@ func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, repoId)
+}
+
+// Add, list, test, and remove keys
+func (s *funcTestSuite) serverManageKeys(t *testing.T) {
+	listKeysReq := func() (*server.RepoKeyListResponse, error) {
+		// Send the request
+		res, err := s.client.Get(s.serverAddr + "/api/repo/key")
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+
+		// Read the response and parse the JSON content
+		read, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		data := &server.RepoKeyListResponse{}
+		err = json.Unmarshal(read, data)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+
+	addKeyReq := func(args *server.AddKeyRequest) (string, error) {
+		// Build the request body
+		reqBody, err := json.Marshal(args)
+		if err != nil {
+			return "", err
+		}
+
+		// Send the request
+		buf := bytes.NewBuffer(reqBody)
+		res, err := s.client.Post(s.serverAddr+"/api/repo/key/", "application/json", buf)
+		if err != nil {
+			return "", err
+		}
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return "", fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+
+		// Read the response and parse the JSON content
+		read, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", err
+		}
+		data := map[string]string{}
+		err = json.Unmarshal(read, &data)
+		if err != nil {
+			return "", err
+		}
+		keyId, ok := data["keyId"]
+		if !ok {
+			return "", errors.New("missing key 'keyId' in response")
+		}
+		return keyId, nil
+	}
+
+	deleteKeyReq := func(keyId string) (string, error) {
+		// Send the request
+		req, err := http.NewRequest("DELETE", s.serverAddr+"/api/repo/key/"+keyId, nil)
+		if err != nil {
+			return "", err
+		}
+		res, err := s.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			return "", fmt.Errorf("invalid response status code: %d", res.StatusCode)
+		}
+
+		// Read the response and parse the JSON content
+		read, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", err
+		}
+		data := map[string]string{}
+		err = json.Unmarshal(read, &data)
+		if err != nil {
+			return "", err
+		}
+		removed, ok := data["removed"]
+		if !ok {
+			return "", errors.New("missing key 'removed' in response")
+		}
+		return removed, nil
+	}
+
+	// Get the list of keys
+	list, err := listKeysReq()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.NotNil(t, list)
+	assert.Len(t, list.Keys, 1)
+	assert.Equal(t, "gpg", list.Keys[0].Type)
+	assert.Equal(t, s.gpgKeyId, list.Keys[0].KeyId)
+	assert.Equal(t, s.gpgKeyUser, list.Keys[0].UID)
+
+	// Add a key
+	keyId, err := addKeyReq(&server.AddKeyRequest{
+		Passphrase: "hello world",
+	})
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.NotEmpty(t, keyId)
+
+	// List keys
+	list, err = listKeysReq()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.NotNil(t, list)
+	assert.Len(t, list.Keys, 2)
+
+	// Test the GPG key
+	key, err := s.unlockRequest(&server.UnlockKeyRequest{
+		Type: "gpg",
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.NotNil(t, key)
+	assert.Equal(t, s.gpgKeyId, key.KeyId)
+
+	// Test the passphrase
+	key, err = s.unlockRequest(&server.UnlockKeyRequest{
+		Type:       "passphrase",
+		Passphrase: "hello world",
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.NotNil(t, key)
+	assert.Equal(t, keyId, key.KeyId)
+
+	// Error: cannot remove the key that's used to unlock the repository
+	_, err = deleteKeyReq(s.gpgKeyId)
+	assert.EqualError(t, err, "invalid response status code: 400")
+
+	// Remove the passphrase
+	removed, err := deleteKeyReq(keyId)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	assert.Equal(t, keyId, removed)
+
+	// Error: cannot remove the only key
+	_, err = deleteKeyReq(s.gpgKeyId)
+	assert.EqualError(t, err, "invalid response status code: 400")
+
 }
 
 // Internal function that starts the server
@@ -1163,6 +1297,41 @@ func (s *funcTestSuite) listRequest(path string) (data []index.FolderList, err e
 	}
 	data = make([]index.FolderList, 0)
 	err = json.Unmarshal(read, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (s *funcTestSuite) unlockRequest(args *server.UnlockKeyRequest, keyTest bool) (*server.RepoKeyListItem, error) {
+	// Build the request body
+	reqBody, err := json.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send the request
+	buf := bytes.NewBuffer(reqBody)
+	url := s.serverAddr + "/api/repo/unlock/"
+	if keyTest {
+		url = s.serverAddr + "/api/repo/keytest/"
+	}
+	res, err := s.client.Post(url, "application/json", buf)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+	}
+
+	// Read the response and parse the JSON content
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	data := &server.RepoKeyListItem{}
+	err = json.Unmarshal(read, data)
 	if err != nil {
 		return nil, err
 	}
