@@ -58,6 +58,9 @@ func (s *funcTestSuite) Run(t *testing.T) {
 
 	// Server tests
 	t.Run("server", s.RunServer)
+
+	// Previous versions test
+	t.Run("previous versions", s.RunPreviousVersions)
 }
 
 // Set up testing environment; returns a callback whose execution should be deferred till all tests are run
