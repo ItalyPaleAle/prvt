@@ -66,9 +66,11 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	close()
 
 	// Test without unlocking the repo
+	// This test uses a read-only server too
 	s.promptPwd.SetPasswords("hello world")
-	close = s.startServer(t, "--store", "local:"+s.dirs[1], "--no-unlock")
+	close = s.startServer(t, "--store", "local:"+s.dirs[1], "--no-unlock", "--read-only")
 	t.Run("unlock repo", s.serverUnlockRepo)
+	t.Run("read-only test", s.serverReadOnly)
 	close()
 
 	// Test without selecting a repo
@@ -148,9 +150,9 @@ func (s *funcTestSuite) serverAddUploadFile(t *testing.T) {
 	}
 
 	// Upload the test file
-	s.uploadFile(t, content, "short-text.txt", "/", "text/plain")
-	if t.Failed() {
-		t.FailNow()
+	_, err = s.uploadFile(content, "short-text.txt", "/", "text/plain")
+	if err != nil {
+		t.Fatal(err)
 		return
 	}
 }
@@ -326,32 +328,6 @@ func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
 
 // Test the endpoint that lists files
 func (s *funcTestSuite) serverListRemove(t *testing.T) {
-	deleteRequest := func(path string) (data []server.TreeOperationResponse, err error) {
-		// Send the request, then read the response and parse the JSON response
-		req, err := http.NewRequest("DELETE", s.serverAddr+"/api/tree"+path, nil)
-		if err != nil {
-			return nil, err
-		}
-		res, err := s.client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		if res.StatusCode < 200 || res.StatusCode > 299 {
-			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
-		}
-		read, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		data = make([]server.TreeOperationResponse, 0)
-		err = json.Unmarshal(read, &data)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	}
-
 	var (
 		err           error
 		expect, found []string
@@ -439,7 +415,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.Len(t, list, 0)
 
 	// Delete a file
-	deleted, err = deleteRequest("/short-text.txt")
+	deleted, err = s.deleteRequest("/short-text.txt")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -451,7 +427,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.Equal(t, "", deleted[0].Error)
 
 	// Error: delete a file that doesn't exist
-	deleted, err = deleteRequest("/not-found.txt")
+	deleted, err = s.deleteRequest("/not-found.txt")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -462,7 +438,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.Equal(t, "", deleted[0].Error)
 
 	// Error: cannot delete files with a glob
-	deleted, err = deleteRequest("/short*")
+	deleted, err = s.deleteRequest("/short*")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -474,7 +450,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.True(t, strings.HasPrefix(deleted[0].Error, "Error while removing path from index: path cannot end with *"))
 
 	// Error: to delete a folder, must end with /*
-	deleted, err = deleteRequest("/added/")
+	deleted, err = s.deleteRequest("/added/")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -486,7 +462,7 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 	assert.True(t, strings.HasPrefix(deleted[0].Error, "Error while removing path from index: path cannot end with /"))
 
 	// Delete an entire folder
-	deleted, err = deleteRequest("/added/*")
+	deleted, err = s.deleteRequest("/added/*")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -587,9 +563,9 @@ func (s *funcTestSuite) serverFile(t *testing.T) {
 	}
 
 	// Upload the test file
-	fileId := s.uploadFile(t, content, "text1.txt", "/serve-test/", "text/plain")
-	if t.Failed() {
-		t.FailNow()
+	fileId, err := s.uploadFile(content, "text1.txt", "/serve-test/", "text/plain")
+	if err != nil {
+		t.Fatal(err)
 		return
 	}
 
@@ -627,9 +603,9 @@ func (s *funcTestSuite) serverFileHeadRequest(t *testing.T) {
 	}
 
 	// Upload the test file again and store the file id
-	s.fileIds["/serve-test/text2.txt"] = s.uploadFile(t, content, "text2.txt", "/serve-test/", "text/plain")
-	if t.Failed() {
-		t.FailNow()
+	s.fileIds["/serve-test/text2.txt"], err = s.uploadFile(content, "text2.txt", "/serve-test/", "text/plain")
+	if err != nil {
+		t.Fatal(err)
 		return
 	}
 
@@ -684,9 +660,9 @@ func (s *funcTestSuite) serverFileChunks(t *testing.T) {
 	}
 
 	// Upload the test file again and store the file ID
-	s.fileIds["/serve-test/text3.txt"] = s.uploadFile(t, content, "text3.txt", "/serve-test/", "text/plain")
-	if t.Failed() {
-		t.FailNow()
+	s.fileIds["/serve-test/text3.txt"], err = s.uploadFile(content, "text3.txt", "/serve-test/", "text/plain")
+	if err != nil {
+		t.Fatal(err)
 		return
 	}
 
@@ -933,6 +909,21 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	assert.Equal(t, s.gpgKeyId, res.KeyId)
 
 	// Request the file list again, this time without errors
+	_, err = s.listRequest("/")
+	assert.NoError(t, err)
+}
+
+// Test read-only mode
+func (s *funcTestSuite) serverReadOnly(t *testing.T) {
+	var err error
+
+	// Error: cannot invoke an API like uploading or deleting files in read-only mode
+	_, err = s.deleteRequest("/*")
+	assert.EqualError(t, err, "invalid response status code: 405")
+	_, err = s.uploadFile([]byte{0x00}, "/empty-file.txt", "/", "text/plain")
+	assert.EqualError(t, err, "invalid response status code: 405")
+
+	// Requesting the file list should work however
 	_, err = s.listRequest("/")
 	assert.NoError(t, err)
 }
@@ -1225,9 +1216,7 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 }
 
 // Internal function used to upload individual files
-func (s *funcTestSuite) uploadFile(t *testing.T, content []byte, filename string, dest string, contentType string) (fileId string) {
-	t.Helper()
-
+func (s *funcTestSuite) uploadFile(content []byte, filename string, dest string, contentType string) (fileId string, err error) {
 	// Create the request body
 	body := &bytes.Buffer{}
 	mpw := multipart.NewWriter(body)
@@ -1236,48 +1225,52 @@ func (s *funcTestSuite) uploadFile(t *testing.T, content []byte, filename string
 	h.Set("Content-Type", contentType)
 	partW, err := mpw.CreatePart(h)
 	if err != nil {
-		t.Fatal(err)
-		return ""
+		return "", err
 	}
 	_, err = partW.Write(content)
 	if err != nil {
-		t.Fatal(err)
-		return
+		return "", err
 	}
 	mpw.Close()
 
 	// Send the request
 	res, err := s.client.Post(s.serverAddr+"/api/tree"+dest, mpw.FormDataContentType(), body)
 	if err != nil {
-		t.Fatal(err)
-		return ""
+		return "", err
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode > 299 {
-		t.Fatalf("invalid response status code: %d", res.StatusCode)
-		return
+		return "", fmt.Errorf("invalid response status code: %d", res.StatusCode)
 	}
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		t.Fatal(err)
-		return ""
+		return "", err
 	}
 
 	// Parse the JSON response
 	data := make([]server.TreeOperationResponse, 0)
 	err = json.Unmarshal(read, &data)
 	if err != nil {
-		t.Fatal(err)
-		return ""
+		return "", err
 	}
 
-	assert.Len(t, data, 1)
-	assert.Equal(t, "", data[0].Error)
-	assert.Equal(t, "added", data[0].Status)
-	assert.Equal(t, dest+filename, data[0].Path)
-	assert.True(t, len(data[0].FileId) > 0)
+	if data == nil || len(data) != 1 {
+		return "", errors.New("data does not have 1 element")
+	}
+	if data[0].Error != "" {
+		return "", fmt.Errorf("expected 'error' key to be empty, got '%s'", data[0].Error)
+	}
+	if data[0].Status != "added" {
+		return "", fmt.Errorf("expected 'status' key to be 'added', got '%s'", data[0].Status)
+	}
+	if data[0].Path != (dest + filename) {
+		return "", fmt.Errorf("expected 'path' key to be '%s', got '%s'", (dest + filename), data[0].Path)
+	}
+	if len(data[0].FileId) == 0 {
+		return "", errors.New("key 'FileId' is empty")
+	}
 
-	return data[0].FileId
+	return data[0].FileId, nil
 }
 
 // Internal function that returns the list of files
@@ -1303,6 +1296,34 @@ func (s *funcTestSuite) listRequest(path string) (data []index.FolderList, err e
 	return data, nil
 }
 
+// Internal function that deletes a file
+func (s *funcTestSuite) deleteRequest(path string) (data []server.TreeOperationResponse, err error) {
+	// Send the request, then read the response and parse the JSON response
+	req, err := http.NewRequest("DELETE", s.serverAddr+"/api/tree"+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	data = make([]server.TreeOperationResponse, 0)
+	err = json.Unmarshal(read, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// Internal function that performs an unlock or key test request
 func (s *funcTestSuite) unlockRequest(args *server.UnlockKeyRequest, keyTest bool) (*server.RepoKeyListItem, error) {
 	// Build the request body
 	reqBody, err := json.Marshal(args)
