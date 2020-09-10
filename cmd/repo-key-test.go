@@ -60,12 +60,6 @@ This command is particularly useful to determine the ID of a key that you want t
 				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
-			// Require info files version 2 or higher
-			err = requireInfoFileVersion(info, 2, flagStoreConnectionString)
-			if err != nil {
-				return err
-			}
-
 			// Unlock the repository
 			_, keyId, errMessage, err := GetMasterKey(info)
 			if err != nil {

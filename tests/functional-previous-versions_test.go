@@ -68,9 +68,9 @@ func (s *funcTestSuite) previousVersion_0_2(t *testing.T) {
 	// Stop the server
 	close()
 
-	// Commands such as "prvt repo key test" requires a newer info file
+	// Commands such as "prvt repo key ls" requires a newer info file
 	runCmd(t,
-		[]string{"repo", "key", "test", "--store", "local:" + path},
+		[]string{"repo", "key", "ls", "--store", "local:" + path},
 		func(err error) {
 			if !strings.HasPrefix(err.Error(), "[Error] Repository needs to be upgraded") {
 				t.Fatal("error does not match", err)

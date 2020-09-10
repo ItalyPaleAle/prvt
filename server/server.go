@@ -94,8 +94,8 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 			apis.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
 
 			// These APIs accept requests to unlock the repo
-			apis.POST("/repo/unlock", s.MiddlewareRequireInfoFileVersion(2), s.PostRepoUnlockHandler(false))
-			apis.POST("/repo/keytest", s.MiddlewareRequireInfoFileVersion(2), s.PostRepoUnlockHandler(true))
+			apis.POST("/repo/unlock", s.PostRepoUnlockHandler(false))
+			apis.POST("/repo/keytest", s.PostRepoUnlockHandler(true))
 		}
 	}
 
