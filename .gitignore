@@ -2,9 +2,7 @@
 prvt
 bin
 .bin
-.packr
-packrd/
-*-packr.go
+pkged.go
 
 # Development
 old/

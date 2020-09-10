@@ -3,12 +3,15 @@ APP_VERSION ?= canary
 all: build
 
 clean:
-	rm -rfv ui/dist/*
-	rm -rfv .bin bin
-	packr2 clean
+	rm -rfv ui/dist/* || true
+	rm -rfv .bin bin || true
+	rm -v pkged.go || true
 
-build: build-ui
-	packr2
+build: build-ui build-app
+
+build-app:
+	pkger list
+	pkger
 	go build -o bin
 
 build-ui:
