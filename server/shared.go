@@ -59,6 +59,17 @@ type UnlockKeyRequest struct {
 	Passphrase string `json:"passphrase" form:"passphrase"`
 }
 
+type InfoResponse struct {
+	Name       string `json:"name"`
+	AppVersion string `json:"version,omitempty"`
+	BuildID    string `json:"buildId,omitempty"`
+	BuildTime  string `json:"buildTime,omitempty"`
+	CommitHash string `json:"commitHash,omitempty"`
+	Runtime    string `json:"runtime,omitempty"`
+	Info       string `json:"info,omitempty"`
+	ReadOnly   bool   `json:"readOnly,omitempty"`
+}
+
 // FromBody adds data to the object from a request
 func (p *UnlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the information to unlock the repository from the body

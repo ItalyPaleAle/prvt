@@ -29,28 +29,22 @@ import (
 // GetInfoHandler is the handler for GET /api/info, which returns the info for the app
 func (s *Server) GetInfoHandler(c *gin.Context) {
 	if buildinfo.BuildID == "" || buildinfo.CommitHash == "" {
-		c.JSON(http.StatusOK, struct {
-			Name string `json:"name"`
-			Info string `json:"info"`
-		}{
-			Name: "prvt",
-			Info: "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source",
+		c.JSON(http.StatusOK, InfoResponse{
+			Name:       "prvt",
+			AppVersion: "canary",
+			Info:       "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source",
+			Runtime:    runtime.Version(),
+			ReadOnly:   s.ReadOnly,
 		})
 	} else {
-		c.JSON(http.StatusOK, struct {
-			Name       string `json:"name"`
-			AppVersion string `json:"version"`
-			BuildID    string `json:"buildId"`
-			BuildTime  string `json:"buildTime"`
-			CommitHash string `json:"commitHash"`
-			Runtime    string `json:"runtime"`
-		}{
+		c.JSON(http.StatusOK, InfoResponse{
 			Name:       "prvt",
 			AppVersion: buildinfo.AppVersion,
 			BuildID:    buildinfo.BuildID,
 			BuildTime:  buildinfo.BuildTime,
 			CommitHash: buildinfo.CommitHash,
 			Runtime:    runtime.Version(),
+			ReadOnly:   s.ReadOnly,
 		})
 	}
 }

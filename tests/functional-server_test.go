@@ -83,7 +83,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 
 // Test the API info endpoint
 func (s *funcTestSuite) serverInfo(t *testing.T) {
-	sendRequest := func() (data map[string]string, err error) {
+	sendRequest := func() (data *server.InfoResponse, err error) {
 		// Send the request, then read the response and parse the JSON response into a map
 		res, err := s.client.Get(s.serverAddr + "/api/info")
 		if err != nil {
@@ -97,8 +97,8 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		data = make(map[string]string)
-		err = json.Unmarshal(read, &data)
+		data = &server.InfoResponse{}
+		err = json.Unmarshal(read, data)
 		if err != nil {
 			return nil, err
 		}
@@ -111,9 +111,14 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	assert.Len(t, data, 2)
-	assert.Equal(t, "prvt", data["name"])
-	assert.True(t, len(data["info"]) > 0)
+	assert.Equal(t, "prvt", data.Name)
+	assert.Equal(t, "canary", data.AppVersion)
+	assert.NotEmpty(t, data.Info)
+	assert.Empty(t, data.BuildID)
+	assert.Empty(t, data.BuildTime)
+	assert.Empty(t, data.CommitHash)
+	assert.NotEmpty(t, data.Runtime)
+	assert.Empty(t, data.ReadOnly)
 
 	// Set buildinfo then check again
 	reset := setBuildInfo()
@@ -122,13 +127,14 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	assert.Len(t, data, 6)
-	assert.Equal(t, "prvt", data["name"])
-	assert.True(t, len(data["version"]) > 0)
-	assert.True(t, len(data["buildId"]) > 0)
-	assert.True(t, len(data["buildTime"]) > 0)
-	assert.True(t, len(data["commitHash"]) > 0)
-	assert.True(t, len(data["runtime"]) > 0)
+	assert.Equal(t, "prvt", data.Name)
+	assert.NotEmpty(t, data.AppVersion)
+	assert.Empty(t, data.Info)
+	assert.NotEmpty(t, data.BuildID)
+	assert.NotEmpty(t, data.BuildTime)
+	assert.NotEmpty(t, data.CommitHash)
+	assert.NotEmpty(t, data.Runtime)
+	assert.Empty(t, data.ReadOnly)
 	reset()
 }
 
