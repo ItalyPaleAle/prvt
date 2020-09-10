@@ -41,6 +41,7 @@ type Server struct {
 	Repo      *repository.Repository
 	Infofile  *infofile.InfoFile
 	LogWriter io.Writer
+	ReadOnly  bool
 }
 
 func (s *Server) Start(ctx context.Context, address, port string) error {
@@ -81,11 +82,27 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 			apis := requireUnlock.Group("/api")
 			apis.GET("/tree", s.GetTreeHandler)
 			apis.GET("/tree/*path", s.GetTreeHandler)
-			apis.POST("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.PostTreeHandler)
-			apis.DELETE("/tree/*path", s.MiddlewareRequireInfoFileVersion(3), s.DeleteTreeHandler)
+			apis.POST("/tree/*path",
+				s.MiddlewareRequireReadWrite,
+				s.MiddlewareRequireInfoFileVersion(3),
+				s.PostTreeHandler,
+			)
+			apis.DELETE("/tree/*path",
+				s.MiddlewareRequireReadWrite,
+				s.MiddlewareRequireInfoFileVersion(3),
+				s.DeleteTreeHandler,
+			)
 			apis.GET("/metadata/*file", s.GetMetadataHandler)
-			apis.POST("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.PostRepoKeyHandler)
-			apis.DELETE("/repo/key/:keyId", s.MiddlewareRequireInfoFileVersion(2), s.DeleteRepoKeyHandler)
+			apis.POST("/repo/key",
+				s.MiddlewareRequireReadWrite,
+				s.MiddlewareRequireInfoFileVersion(2),
+				s.PostRepoKeyHandler,
+			)
+			apis.DELETE("/repo/key/:keyId",
+				s.MiddlewareRequireReadWrite,
+				s.MiddlewareRequireInfoFileVersion(2),
+				s.DeleteRepoKeyHandler,
+			)
 		}
 
 		// Other APIs that don't require the repository to be unlocked

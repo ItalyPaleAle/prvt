@@ -26,14 +26,14 @@ import (
 // MiddlewareRequireRepo requires a repository to be selected (even if not unlocked)
 func (s *Server) MiddlewareRequireRepo(c *gin.Context) {
 	if s.Store == nil || s.Infofile == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"No repository has been selected yet"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"No repository has been selected yet."})
 	}
 }
 
 // MiddlewareRequireUnlock requires the repository to be unlocked before processing
 func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
 	if s.Repo == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"The repository has not been unlocked"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"The repository has not been unlocked."})
 	}
 }
 
@@ -41,7 +41,14 @@ func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
 func (s *Server) MiddlewareRequireInfoFileVersion(version uint16) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		if s.Infofile.Version < version {
-			c.AbortWithStatusJSON(http.StatusMethodNotAllowed, ErrorResponse{`This repository needs to be upgraded. Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format`})
+			c.AbortWithStatusJSON(http.StatusMethodNotAllowed, ErrorResponse{`This repository needs to be upgraded. Please run "prvt repo upgrade --store <string>" to upgrade this repository to the latest format.`})
 		}
+	}
+}
+
+// MiddlewareRequireReadWrite disables a route that would edit the repository if we're operating in read-only mode
+func (s *Server) MiddlewareRequireReadWrite(c *gin.Context) {
+	if s.ReadOnly {
+		c.AbortWithStatusJSON(http.StatusMethodNotAllowed, ErrorResponse{`This action is not allowed when the repository is opened in read-only mode.`})
 	}
 }

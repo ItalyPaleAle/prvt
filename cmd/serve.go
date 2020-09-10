@@ -74,6 +74,10 @@ You can use the optional "--address" and "--port" flags to control what address 
 			if err != nil {
 				return NewExecError(ErrorApp, "Cannot get flag 'no-repo'", err)
 			}
+			flagReadOnly, err := cmd.Flags().GetBool("read-only")
+			if err != nil {
+				return NewExecError(ErrorApp, "Cannot get flag 'read-only'", err)
+			}
 
 			// Check if we have a store flag
 			if !flagNoRepo {
@@ -123,6 +127,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 				Repo:      repo,
 				Infofile:  info,
 				LogWriter: cmd.OutOrStdout(),
+				ReadOnly:  flagReadOnly,
 			}
 			err = srv.Start(cmd.Context(), flagBindAddress, flagBindPort)
 			if err != nil {
@@ -140,6 +145,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 	c.Flags().BoolP("verbose", "v", false, "show request log")
 	c.Flags().Bool("no-unlock", false, "do not unlock the repo")
 	c.Flags().Bool("no-repo", false, "do not connect to a repository")
+	c.Flags().Bool("read-only", false, "open repository in read-only mode")
 
 	return c
 }
