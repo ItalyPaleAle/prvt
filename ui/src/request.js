@@ -5,7 +5,7 @@ const requestTimeout = 5000 // 15s
 /**
  * Performs API requests.
  */
-export async function Request(url, options) {
+export function Request(url, options) {
     if (!options) {
         options = {}
     }
@@ -65,28 +65,27 @@ export async function Request(url, options) {
             if (options.rawResponse) {
                 return response
             }
-            else {
-                // We're expecting a JSON document
-                if (!response.headers.get('content-type').match(/application\/json/i)) {
-                    throw Error('Response was not JSON')
-                }
-
-                // Get the JSON data from the response
-                return response.json()
-                    .then((body) => {
-                        // Check if we have a response with status code 200-299
-                        if (!response || !response.ok) {
-                            if (body && body.error) {
-                                // eslint-disable-next-line no-console
-                                console.error('Invalid response status code')
-                                throw Error(body.error)
-                            }
-                            throw Error('Invalid response status code')
-                        }
-
-                        return body
-                    })
+            
+            // We're expecting a JSON document
+            if (!response.headers.get('content-type').match(/application\/json/i)) {
+                throw Error('Response was not JSON')
             }
+
+            // Get the JSON data from the response
+            return response.json()
+                .then((body) => {
+                    // Check if we have a response with status code 200-299
+                    if (!response || !response.ok) {
+                        if (body && body.error) {
+                            // eslint-disable-next-line no-console
+                            console.error('Invalid response status code')
+                            throw Error(body.error)
+                        }
+                        throw Error('Invalid response status code')
+                    }
+
+                    return body
+                })
         })
         .catch((err) => {
             if (err instanceof TimeoutError) {

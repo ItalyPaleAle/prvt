@@ -106,8 +106,8 @@ let addType = 'upload'
 let running = false
 
 // Classes for the active and idle tab
-let activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-shade-200 bg-shade-200 text-text-200'
-let idleTabStyle = 'inline-block py-2 px-4 border rounded-t border-shade-neutral text-text-100 hover:border-shade-100 hover:bg-shade-100'
+const activeTabStyle = 'inline-block py-2 px-4 border rounded-t border-shade-200 bg-shade-200 text-text-200'
+const idleTabStyle = 'inline-block py-2 px-4 border rounded-t border-shade-neutral text-text-100 hover:border-shade-100 hover:bg-shade-100'
 
 // Clean the path
 $: path = cleanPath(params && params.wild)

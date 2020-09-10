@@ -12,7 +12,6 @@
 
 <script>
 import Router from 'svelte-spa-router'
-import active from 'svelte-spa-router/active'
 
 // Routes
 import routes from './routes'

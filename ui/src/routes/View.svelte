@@ -71,7 +71,6 @@ import {fileList} from '../stores'
 import PageTitle from '../components/PageTitle.svelte'
 import DownloadBox from '../components/DownloadBox.svelte'
 import ErrorBox from '../components/ErrorBox.svelte'
-import TitleBarButton from '../components/TitleBarButton.svelte'
 import Path from '../components/Path.svelte'
 import Spinner from '../components/Spinner.svelte'
 

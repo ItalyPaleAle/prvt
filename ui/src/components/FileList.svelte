@@ -45,6 +45,7 @@
 <script>
 // Utils
 import {encodePath, fileTypeIcon, cloneObject} from '../utils'
+import {readOnly} from '../stores'
 import {Request} from '../request'
 
 // Components
@@ -68,9 +69,13 @@ let levelUp = null
 const actionsFolder = [
     {label: 'Delete folder', icon: 'fa-trash', action: deleteFolder, isAlert: true}
 ]
+const actionsFolderRO = []
 const actionsFile = [
     {label: 'Download', icon: 'fa-download', action: downloadFile},
     {label: 'Delete file', icon: 'fa-trash', action: deleteFile, isAlert: true}
+]
+const actionsFileRO = [
+    actionsFile[0]
 ]
 
 // Promise requesting the list of files
@@ -144,11 +149,17 @@ function showActions(element) {
     el.name = el.path
 
     // Display the modal
+    let actions
+    if ($readOnly) {
+        actions = el.isDir ? actionsFolderRO : actionsFileRO
+    } else {
+        actions = el.isDir ? actionsFolder : actionsFile
+    }
     $modal = {
         component: ActionsModal,
         props: {
             element: el,
-            actions: el.isDir ? actionsFolder : actionsFile
+            actions
         }
     }
 }
