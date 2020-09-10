@@ -18,14 +18,16 @@ prvt is free software, released under GNU General Public License version 3.0.
 
 # Installation
 
-> Do not fetch prvt using `go get`!
+## Important: do not use go get
+
+**Do not fetch prvt using `go get`!** prvt requires some additional steps to be compiled. See below for [building from source](#building-from-source). 
 
 ## Homebrew on macOS
 
-The simplest way to install prvt on macOS is to use the Homebrew package manager:
+The simplest way to install prvt on macOS is to use the Homebrew package manager. prvt is distributed as a Cask:
 
 ```sh
-brew install italypaleale/tap/prvt
+brew cask install italypaleale/tap/prvt
 ```
 
 ## Pre-compiled binaries
@@ -34,12 +36,14 @@ You can download a pre-compiled binary for Windows, macOS, and Linux. Check out 
 
 After downloading the archive for your operating system and architecture, extract it and copy the binary anywhere on your system.
 
-> The pre-compiled binary is not signed with an Apple developer certificate, and recent versions of macOS will refuse to run it. You can fix this by running:
+> **Note for macOS:** The pre-compiled binary is not signed with an Apple developer certificate, and recent versions of macOS will refuse to run it. You can fix this by running:
 >
 > ```sh
 > # Use the path where you downloaded prvt to
 > xattr -rc /path/to/prvt
 > ```
+>
+> This step is not necessary if you're using Homebrew.
 
 # Using prvt
 
@@ -219,6 +223,50 @@ prvt repo init
 ```
 
 The value defined with environmental variables acts as a fallback, and you can override it by explicitly set the `--store <string>` flag.
+
+# Building from source
+
+To build prvt from source, you need:
+
+- Go 1.15
+- Packr v2 (2.7.1 or higher): https://github.com/gobuffalo/packr/tree/master/v2
+
+After having cloned the repo locally, you can build prvt with a single command:
+
+```sh
+make
+```
+
+## Development
+
+First build the web UI:
+
+```sh
+# Navigate to the ui/ folder
+cd ui/
+
+# Install dependencies from NPM
+npm ci
+
+# Build for development and start the dev server
+npm run dev
+
+# Generate a production build of the web UI
+npm run build
+```
+
+You can then run prvt by running these commands in the root of the project:
+
+```sh
+go run .
+```
+
+To build the application and generate a self-contained binary, first you need to run packr2 to embed the web UI into the Go application:
+
+```sh
+packr2
+go build -o bin
+```
 
 # FAQ
 
