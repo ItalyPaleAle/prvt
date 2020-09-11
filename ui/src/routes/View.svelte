@@ -20,13 +20,13 @@
         <DownloadBox {url}/>
       {/await}
     {:else if type == 'image'}
-      <img src={url} alt={title} class="w-full h-auto" />
+      <img src={url} alt={title} class="w-auto h-auto max-w-full max-h-90vh mx-auto" />
     {:else if type == 'video'}
       {#await requesting}
         <Spinner />
       {:then}
         <!-- svelte-ignore a11y-media-has-caption -->
-        <video autoplay controls class="w-full h-auto">
+        <video autoplay controls class="w-auto h-auto max-w-full max-h-90vh mx-auto">
           <source src={url} type={mimeType} />
         </video>
       {:catch err}

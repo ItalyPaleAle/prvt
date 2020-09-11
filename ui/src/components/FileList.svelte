@@ -69,13 +69,9 @@ let levelUp = null
 const actionsFolder = [
     {label: 'Delete folder', icon: 'fa-trash', action: deleteFolder, isAlert: true}
 ]
-const actionsFolderRO = []
 const actionsFile = [
-    {label: 'Download', icon: 'fa-download', action: downloadFile},
+    {label: 'Download', icon: 'fa-download', action: downloadFile, allowReadOnly: true},
     {label: 'Delete file', icon: 'fa-trash', action: deleteFile, isAlert: true}
-]
-const actionsFileRO = [
-    actionsFile[0]
 ]
 
 // Promise requesting the list of files
@@ -149,11 +145,9 @@ function showActions(element) {
     el.name = el.path
 
     // Display the modal
-    let actions
+    let actions = (el.isDir ? actionsFolder : actionsFile)
     if ($readOnly) {
-        actions = el.isDir ? actionsFolderRO : actionsFileRO
-    } else {
-        actions = el.isDir ? actionsFolder : actionsFile
+        actions = actions.filter((el) => el.allowReadOnly)
     }
     $modal = {
         component: ActionsModal,

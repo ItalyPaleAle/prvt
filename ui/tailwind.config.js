@@ -22,6 +22,9 @@ module.exports = {
                 'success-300': 'var(--color-success-300)',
                 overlay: 'var(--color-overlay)',
                 alert: 'var(--color-alert)',
+            },
+            maxHeight: {
+                '90vh': '90vh'
             }
         },
         container: {
