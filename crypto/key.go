@@ -20,14 +20,134 @@ package crypto
 import (
 	"crypto/rand"
 	"errors"
+	"runtime"
+	"time"
 
 	"github.com/google/tink/go/kwp/subtle"
+	"github.com/mackerelio/go-osstat/memory"
 	"golang.org/x/crypto/argon2"
 )
 
+// Options for the Argon2 Key Derivation Function
+type Argon2Options struct {
+	// Options for argon2id
+	Variant     string `json:"a2,omitempty"`
+	Version     uint16 `json:"a2v,omitempty"`
+	Memory      uint32 `json:"a2m,omitempty"`
+	Iterations  uint32 `json:"a2t,omitempty"`
+	Parallelism uint8  `json:"a2p,omitempty"`
+}
+
+// Tune sets values for memory, iterations and parallelism based on the performance of this system
+func (o *Argon2Options) Tune() {
+	// Set variant and version
+	o.Variant = "argon2id"
+	o.Version = 0x13
+
+	// Get the number of cores and set parallelism to number of cores, with min of 1 and max of 6
+	cores := runtime.NumCPU()
+	if cores < 1 {
+		o.Parallelism = 1
+	} else if cores > 6 {
+		o.Parallelism = 6
+	} else {
+		o.Parallelism = uint8(cores)
+	}
+
+	// Set the memory usage to the free memory available (rounded to 16MB), with a minimum of 64MB and a maximum of 1GB
+	var mem uint64
+	stat, err := memory.Get()
+	if err == nil {
+		// Convert to KB
+		mem = stat.Free / 1024
+	}
+	if mem < 80<<10 {
+		mem = 80 << 10
+	} else if mem > 1<<30 {
+		mem = 1 << 30
+	} else {
+		// Round to 16MB
+		mem = mem - (mem % (16 << 10))
+	}
+	o.Memory = uint32(mem)
+
+	// Test iterations
+	o.Iterations = 1
+
+	// Run the test to adjust iterations
+	for {
+		time := o.timeExecution()
+
+		// If we're doing one single iteration and this is too slow already, decrease memory by 200MB
+		if o.Iterations == 1 && time > 900 {
+			// Min we'll go to is 80 MB
+			o.Memory -= 200 << 10
+			if o.Memory < 80<<10 {
+				o.Memory = 80 << 10
+				break
+			}
+		} else if time < 300 {
+			// Increase iterations if this is too fast
+			o.Iterations *= 2
+			if o.Iterations > 2<<6 {
+				// Limit to 128 iterations
+				break
+			}
+		} else {
+			// If it's still to slow, decrease iterations and accept that
+			if o.Iterations > 1 && time > 900 {
+				o.Iterations /= 2
+				break
+			}
+			// If we're here, we found optimal parameters
+			break
+		}
+	}
+}
+
+// Validate the values and sets the defaults for the missing ones
+func (o *Argon2Options) Validate() error {
+	// Default variant is argon2id, and only one supported
+	if o.Variant == "" {
+		o.Variant = "argon2id"
+	} else if o.Variant != "argon2id" {
+		return errors.New("unsupported variant for argon2")
+	}
+	// Default version is 19 (0x13), and only one supported
+	if o.Version == 0 {
+		o.Version = 0x13
+	} else if o.Version != 0x13 {
+		return errors.New("unsupported version for argon2")
+	}
+	// Ensure that this library uses version 0x13 too
+	if argon2.Version != 0x13 {
+		panic("argon2 library uses a different version that expected")
+	}
+	// Default memory is 64MB (in KB), for backwards compatibility
+	if o.Memory == 0 {
+		o.Memory = 64 * 1024
+	}
+	// Default iterations is 1, for backwards compatibility
+	if o.Iterations == 0 {
+		o.Iterations = 1
+	}
+	// Default parallelism is 4, for backwards compatibility
+	if o.Parallelism == 0 {
+		o.Parallelism = 4
+	}
+	return nil
+}
+
+func (o *Argon2Options) timeExecution() int64 {
+	testBytes := []byte("aaaaaaaaaaaaaaaa")
+	start := time.Now()
+	argon2.IDKey(testBytes, testBytes, o.Iterations, o.Memory, o.Parallelism, 64)
+	return time.Since(start).Milliseconds()
+}
+
 // KeyFromPassphrase returns the 32-byte key derived from a passphrase and a salt using Argon2id
 // It also returns a "confirmation hash" that can be used to ensure the passphrase is correct
-func KeyFromPassphrase(passphrase string, salt []byte) (key []byte, confirmationHash []byte, err error) {
+func KeyFromPassphrase(passphrase string, salt []byte, kd *Argon2Options) (key []byte, confirmationHash []byte, err error) {
 	// Ensure the passphrase isn't empty and that the salt is 16-byte
 	if passphrase == "" {
 		return nil, nil, errors.New("empty passphrase")
@@ -35,11 +155,15 @@ func KeyFromPassphrase(passphrase string, salt []byte) (key []byte, confirmation
 	if len(salt) != 16 {
 		return nil, nil, errors.New("invalid salt")
 	}
+	// Ensure the options are valid
+	err = kd.Validate()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Derive the key using Argon2id
-	// From the docs: "The draft RFC recommends[2] time=1, and memory=64*1024 is a sensible number. If using that amount of memory (64 MB) is not possible in some contexts then the time parameter can be increased to compensate."
 	// Generate 64 bytes: the first 32 are the key, and the rest is the confirmation hash
-	gen := argon2.IDKey([]byte(passphrase), salt, 1, 64*1024, 4, 64)
+	gen := argon2.IDKey([]byte(passphrase), salt, kd.Iterations, kd.Memory, kd.Parallelism, 64)
 	return gen[0:32], gen[32:64], nil
 }
 

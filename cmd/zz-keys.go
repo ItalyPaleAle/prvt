@@ -131,11 +131,21 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 			return "Error getting passphrase", err
 		}
 
+		// Get the default parameters for Argon2
+		kdfOptions := &crypto.Argon2Options{}
+		_ = kdfOptions.Validate()
+		if err != nil {
+			return "Error validating Argon2 parameters", err
+		}
+
 		// Get the current master key from the passphrase
-		masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
+		masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt, kdfOptions)
 		if err != nil || subtle.ConstantTimeCompare(info.ConfirmationHash, confirmationHash) == 0 {
 			return "Cannot unlock the repository", errors.New("Invalid passphrase")
 		}
+
+		// Now, tune the parameters for Argon2 before wrapping the key again
+		kdfOptions.Tune()
 
 		// Create a new salt
 		newSalt, err := crypto.NewSalt()
@@ -144,7 +154,7 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 		}
 
 		// Create a new wrapping key
-		wrappingKey, newConfirmationHash, err := crypto.KeyFromPassphrase(passphrase, newSalt)
+		wrappingKey, newConfirmationHash, err := crypto.KeyFromPassphrase(passphrase, newSalt, kdfOptions)
 		if err != nil {
 			return "Error deriving the wrapping key", err
 		}
@@ -156,7 +166,7 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 		}
 
 		// Add the key
-		err = info.AddPassphrase(newSalt, newConfirmationHash, wrappedKey)
+		err = info.AddPassphrase(newSalt, newConfirmationHash, wrappedKey, kdfOptions)
 		if err != nil {
 			return "Error adding the key", err
 		}
