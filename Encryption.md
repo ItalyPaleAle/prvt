@@ -101,7 +101,9 @@ The default method of operation of prvt uses a passphrase to derive the wrapping
 
 In this mode of operation, the wrapping key is a 256-bit symmetric key that is derived from the user's passphrase using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm, in the Argon2id variant.
 
-prvt uses the [golang.org/x/crypto/argon2](https://golang.org/x/crypto/argon2) implementation of Argon2id, which is part of the Go project. As per recommendation by the documentation (which itself references the [draft RFC](https://tools.ietf.org/html/draft-irtf-cfrg-argon2-03#section-9.3)), prvt uses Argon2id with time=1 and memory=64MB.
+prvt uses the [golang.org/x/crypto/argon2](https://golang.org/x/crypto/argon2) implementation of Argon2id, which is part of the Go project. prvt 0.5.1 and higher use Argon2id with iterations=4, memory=80MB, and parallelism=2.
+
+It's possible to override the parameters used for Argon2 at runtime, when a new passphrase is added as key (i.e. with `prvt repo key add` or the equivalent REST call), by setting the environmental variables `PRVT_ARGON2_ITERATIONS`, `PRVT_ARGON2_MEMORY` (whose value is in KB) and `PRVT_ARGON2_PARALLELISM`.
 
 When deriving the wrapping key with Argon2id, prvt uses a random 16-byte salt, which is unique for each repository, and it's stored in cleartext in the info file (more on that below).
 
@@ -167,6 +169,13 @@ For master keys that are wrapped with wrapping keys derived from a passphrase, t
 - The wrapped master key (`m`).
 - The salt (`s`) for deriving the master key using Argon2id, a 16-byte sequence encoded as base64.
 - The passphrase's confirmation hash (`p`), a 32-byte sequence encoded as base64.
+- The type of key derivation function used (`f`). The only value supported at the moment is `argon2`, which is the default value if the key is omitted.
+- The options for the key derivation function (`o`). This is a dictionary that, for Argon2, contains the following keys:
+    - `a2`: variant to use: this can only be `argon2id`, which is also the default value if the key is omitted.
+    - `a2v`: version of Argon2: this can only be `19`, which is also the default value if the key is omitted.
+    - `a2m`: memory parameter, in KB; for backwards-compatibility, if the key is omitted the default value is `65536` (64 MB), which is different from the new default value of 80 MB.
+    - `a2t`: iterations parameter; for backwards-compatibility, if the key is omitted the default value is `1`, which is different from the new default value of 4.
+    - `a2p`: parallelism parameter; for backwards-compatibility, if the key is omitted the default value is `4`, which is different from the new default value of 2.
 
 For example, for a repository that allows only one passphrase to unlock it (the document below has been pretty-printed for clarity for this example only):
 
@@ -180,7 +189,15 @@ For example, for a repository that allows only one passphrase to unlock it (the 
     {
       "m": "6AS6jAiD3TBx3/65aB2bs62w9rmP3hjnDC75LtuOFa+mF/FecuHUUQ==",
       "s": "VZMz8W64B4Zyc1Bu5ZS0Zw==",
-      "p": "vpJFfif+EFLOfsX3Nsa9lrRC5xUSheq3yz7/1drlZRg="
+      "p": "vpJFfif+EFLOfsX3Nsa9lrRC5xUSheq3yz7/1drlZRg=",
+      "f": "argon2",
+      "o": {
+        "a2": "argon2id",
+        "a2v": 19,
+        "a2m": 81920,
+        "a2t": 4,
+        "a2p": 2
+      }
     }
   ]
 }
