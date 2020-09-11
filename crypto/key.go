@@ -20,11 +20,12 @@ package crypto
 import (
 	"crypto/rand"
 	"errors"
-	"runtime"
+	"os"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/google/tink/go/kwp/subtle"
-	"github.com/mackerelio/go-osstat/memory"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -38,70 +39,35 @@ type Argon2Options struct {
 	Parallelism uint8  `json:"a2p,omitempty"`
 }
 
-// Tune sets values for memory, iterations and parallelism based on the performance of this system
-func (o *Argon2Options) Tune() {
+// Setup sets the parameters for the key derivation function
+func (o *Argon2Options) Setup() {
 	// Set variant and version
 	o.Variant = "argon2id"
 	o.Version = 0x13
 
-	// Get the number of cores and set parallelism to number of cores, with min of 1 and max of 6
-	cores := runtime.NumCPU()
-	if cores < 1 {
-		o.Parallelism = 1
-	} else if cores > 6 {
-		o.Parallelism = 6
-	} else {
-		o.Parallelism = uint8(cores)
+	// Set parameters to some values that should be reasonable for most systems, including low-power ones
+	o.Iterations = 4
+	o.Memory = 80 << 10
+	o.Parallelism = 2
+
+	// Check if we have the tune function, which is included with a build tag only
+	method := reflect.ValueOf(o).MethodByName("Tune")
+	if method.IsValid() {
+		method.Call([]reflect.Value{})
 	}
 
-	// Set the memory usage to the free memory available (rounded to 16MB), with a minimum of 64MB and a maximum of 1GB
-	var mem uint64
-	stat, err := memory.Get()
-	if err == nil {
-		// Convert to KB
-		mem = stat.Free / 1024
+	// Check if we have environmental variables to tune this
+	iterations, err := strconv.ParseUint(os.Getenv("PRVT_ARGON2_ITERATIONS"), 10, 32)
+	if err == nil && iterations > 0 {
+		o.Iterations = uint32(iterations)
 	}
-	if mem < 80<<10 {
-		mem = 80 << 10
-	} else if mem > 1<<30 {
-		mem = 1 << 30
-	} else {
-		// Round to 16MB
-		mem = mem - (mem % (16 << 10))
+	memory, err := strconv.ParseUint(os.Getenv("PRVT_ARGON2_MEMORY"), 10, 32)
+	if err == nil && memory > 0 {
+		o.Memory = uint32(memory)
 	}
-	o.Memory = uint32(mem)
-
-	// Test iterations
-	o.Iterations = 1
-
-	// Run the test to adjust iterations
-	for {
-		time := o.timeExecution()
-
-		// If we're doing one single iteration and this is too slow already, decrease memory by 200MB
-		if o.Iterations == 1 && time > 900 {
-			// Min we'll go to is 80 MB
-			o.Memory -= 200 << 10
-			if o.Memory < 80<<10 {
-				o.Memory = 80 << 10
-				break
-			}
-		} else if time < 300 {
-			// Increase iterations if this is too fast
-			o.Iterations *= 2
-			if o.Iterations > 2<<6 {
-				// Limit to 128 iterations
-				break
-			}
-		} else {
-			// If it's still to slow, decrease iterations and accept that
-			if o.Iterations > 1 && time > 900 {
-				o.Iterations /= 2
-				break
-			}
-			// If we're here, we found optimal parameters
-			break
-		}
+	parallelism, err := strconv.ParseUint(os.Getenv("PRVT_ARGON2_PARALLELISM"), 10, 8)
+	if err == nil && parallelism > 0 {
+		o.Parallelism = uint8(parallelism)
 	}
 }
 

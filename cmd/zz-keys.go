@@ -145,7 +145,7 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 		}
 
 		// Now, tune the parameters for Argon2 before wrapping the key again
-		kdfOptions.Tune()
+		kdfOptions.Setup()
 
 		// Create a new salt
 		newSalt, err := crypto.NewSalt()

@@ -117,7 +117,7 @@ func AddKeyPassphrase(info *infofile.InfoFile, masterKey []byte, passphrase stri
 	if err != nil {
 		return "", "Error validating Argon2 parameters", err
 	}
-	kdfOptions.Tune()
+	kdfOptions.Setup()
 
 	// Derive the wrapping key, after generating a new salt
 	salt, err = crypto.NewSalt()
