@@ -70,6 +70,11 @@ type InfoResponse struct {
 	ReadOnly   bool   `json:"readOnly,omitempty"`
 }
 
+type RepoInfoResponse struct {
+	Version   uint16 `json:"version"`
+	FileCount int    `json:"files"`
+}
+
 // FromBody adds data to the object from a request
 func (p *UnlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the information to unlock the repository from the body

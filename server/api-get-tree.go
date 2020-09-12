@@ -36,7 +36,7 @@ func (s *Server) GetTreeHandler(c *gin.Context) {
 	}
 
 	// Get the list of files in the folder
-	list, err := index.Instance.ListFolder(path)
+	list, err := s.Repo.Index.ListFolder(path)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return

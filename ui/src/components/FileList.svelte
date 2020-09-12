@@ -153,7 +153,8 @@ function showActions(element) {
         component: ActionsModal,
         props: {
             element: el,
-            actions
+            actions,
+            path
         }
     }
 }
@@ -179,7 +180,9 @@ function deleteTree(element, isDir) {
     const reqPath = (path ? path + '/' : '') + element.path
 
     // First, ask for confirmation
-    const confirmMessage = isDir ? 'Are you sure you want to delete the folder "/' + reqPath + '" and ALL of its content? This is irreversible' : 'Are you sure you want to delete the file "/' + reqPath + '"? This is irreversible.'
+    const confirmMessage = isDir
+        ? 'Are you sure you want to delete the folder "/' + reqPath + '" and ALL of its content? This is irreversible'
+        : 'Are you sure you want to delete the file "/' + reqPath + '"? This is irreversible.'
     if (!confirm(confirmMessage)) {
         return
     }

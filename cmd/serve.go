@@ -110,13 +110,12 @@ You can use the optional "--address" and "--port" flags to control what address 
 					}
 					store.SetMasterKey(keyId, masterKey)
 
-					// Set up the index
-					index.Instance.SetStore(store)
-
-					// Set up the repository
+					// Set up the repository and index
 					repo = &repository.Repository{
 						Store: store,
+						Index: &index.Index{},
 					}
+					repo.Index.SetStore(store)
 				}
 			}
 

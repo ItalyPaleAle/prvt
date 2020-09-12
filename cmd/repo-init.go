@@ -22,7 +22,6 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/index"
 
 	"github.com/spf13/cobra"
 )
@@ -64,9 +63,6 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			if err != nil {
 				return NewExecError(ErrorUser, errMessage, err)
 			}
-
-			// Set up the index
-			index.Instance.SetStore(store)
 
 			// Check if the file exists already
 			// We are expecting this to be empty

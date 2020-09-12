@@ -47,6 +47,12 @@ type FolderList struct {
 	MimeType  string     `json:"mimeType,omitempty"`
 }
 
+// IndexStats contains the result of the
+type IndexStats struct {
+	// Number of files in the repo
+	FileCount int
+}
+
 // Index manages the index for all files and folders
 type Index struct {
 	cache      *IndexFile
@@ -250,6 +256,21 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	i.addToTree(fileEl)
 
 	return nil
+}
+
+// Stat returns the stats for the repo, by reading the index
+// For now, this is just the number of files
+func (i *Index) Stat() (stats *IndexStats, err error) {
+	// Refresh the index if needed
+	if err := i.Refresh(false); err != nil {
+		return nil, err
+	}
+
+	// Count the number of files
+	stats = &IndexStats{
+		FileCount: len(i.cacheFiles),
+	}
+	return
 }
 
 // GetFileByPath returns the list item object for a file, searching by its path

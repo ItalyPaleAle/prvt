@@ -19,6 +19,7 @@ package repository
 
 import (
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/index"
 )
 
 // Constants
@@ -40,6 +41,7 @@ const (
 // Repository is the object that manages the repository
 type Repository struct {
 	Store fs.Fs
+	Index *index.Index
 }
 
 // PathResultMessage is the message passed to the res channel in AddPath/RemovePath

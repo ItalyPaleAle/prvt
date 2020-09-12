@@ -1,12 +1,9 @@
 {#if element}
   <div class="flex flex-col justify-between h-full">
     {#if element.isDir}
-      <div class="flex text-2xl break-all mb-4 text-accent-300">
-        <span class="flex-grow-0"><i class="fa fa-folder-open-o fa-fw" aria-hidden="true"></i></span>
-        <span class="pl-2 flex-grow-1">{element.name}</span>
-      </div>
+      <FolderInfoBox {element} {path} />
     {:else}
-      <InfoBox {element} />
+      <FileInfoBox {element} {path} />
     {/if}
     {#if actions && actions.length}
       <div class="mt-8 flex items-center justify-around flex-wrap">
@@ -27,9 +24,11 @@
 
 <script>
 // Components
-import InfoBox from './InfoBox.svelte'
+import FileInfoBox from './FileInfoBox.svelte'
+import FolderInfoBox from './FolderInfoBox.svelte'
 
 // Props
 export let element = null
 export let actions = {}
+export let path = ''
 </script>

@@ -61,13 +61,12 @@ func (s *Server) PostRepoUnlockHandler(dryRun bool) func(c *gin.Context) {
 			// Set the master key
 			s.Store.SetMasterKey(keyId, masterKey)
 
-			// Set up the index
-			index.Instance.SetStore(s.Store)
-
-			// Set up the repository
+			// Set up the repository and index
 			s.Repo = &repository.Repository{
 				Store: s.Store,
+				Index: &index.Index{},
 			}
+			s.Repo.Index.SetStore(s.Store)
 
 			fmt.Fprintln(s.LogWriter, "Repository unlocked with key:", keyId)
 		}

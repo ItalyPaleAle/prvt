@@ -74,7 +74,8 @@ Shows the list of all files and folders contained in the repository at a given p
 			store.SetMasterKey(keyId, masterKey)
 
 			// Set up the index
-			index.Instance.SetStore(store)
+			idx := &index.Index{}
+			idx.SetStore(store)
 
 			// Get the path and ensure it starts with /
 			path := ""
@@ -86,7 +87,7 @@ Shows the list of all files and folders contained in the repository at a given p
 			}
 
 			// Get the list of files in the folder
-			list, err := index.Instance.ListFolder(path)
+			list, err := idx.ListFolder(path)
 			if err != nil {
 				return NewExecError(ErrorApp, "Error listing the contents of the folder", err)
 			}

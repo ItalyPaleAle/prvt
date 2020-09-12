@@ -51,6 +51,7 @@ func TestCLICore(t *testing.T) {
 		{"prvt add", []string{"add", "--help"}, cmd.NewAddCmd()},
 		{"prvt ls", []string{"ls", "--help"}, cmd.NewLsCmd()},
 		{"prvt repo", []string{"repo", "--help"}, cmd.NewRepoCmd()},
+		{"prvt repo info", []string{"repo", "info", "--help"}, cmd.NewRepoInfoCmd()},
 		{"prvt repo init", []string{"repo", "init", "--help"}, cmd.NewRepoInitCmd()},
 		{"prvt repo key", []string{"repo", "key", "--help"}, cmd.NewRepoKeyCmd()},
 		{"prvt repo key add", []string{"repo", "key", "add", "--help"}, cmd.NewRepoKeyAddCmd()},
