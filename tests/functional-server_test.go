@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"log"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
 	"os"
@@ -1227,8 +1228,14 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 		}
 	}()
 
-	// Wait a few seconds to ensure the server has started
-	time.Sleep(3 * time.Second)
+	// Wait until the server has started, max ~10 seconds
+	for i := 0; i < 15; i++ {
+		_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", address, port), 150*time.Millisecond)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 
 	// The caller can stop the server
 	return func() {
