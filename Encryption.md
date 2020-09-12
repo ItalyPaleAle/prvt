@@ -101,7 +101,7 @@ The default method of operation of prvt uses a passphrase to derive the wrapping
 
 In this mode of operation, the wrapping key is a 256-bit symmetric key that is derived from the user's passphrase using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm, in the Argon2id variant.
 
-prvt uses the [golang.org/x/crypto/argon2](https://golang.org/x/crypto/argon2) implementation of Argon2id, which is part of the Go project. prvt 0.5.1 and higher use Argon2id with iterations=4, memory=80MB, and parallelism=2.
+prvt uses the [golang.org/x/crypto/argon2](https://golang.org/x/crypto/argon2) implementation of Argon2id, which is part of the Go project. prvt 0.6 and higher use Argon2id with iterations=4, memory=80MB, and parallelism=2.
 
 It's possible to override the parameters used for Argon2 at runtime, when a new passphrase is added as key (i.e. with `prvt repo key add` or the equivalent REST call), by setting the environmental variables `PRVT_ARGON2_ITERATIONS`, `PRVT_ARGON2_MEMORY` (whose value is in KB) and `PRVT_ARGON2_PARALLELISM`.
 
@@ -155,7 +155,7 @@ The `_info.json` file is the only file in the repository that is not encrypted.
 This file is a JSON document containing four keys:
 
 - The name of the app (`app`) that created it. This is always `prvt`.
-- The version (`ver`) of the info file. The latest value, from prvt version 0.5, is `4`.
+- The version (`ver`) of the info file. The latest value, from prvt version 0.6, is `5`.
 - A unique ID for the repo (`id`). This is a randomly-generated UUID and it's used to identify which repo you're working on.
 - The data path (`dp`), which is the name of the sub-folder where the encrypted data is stored. The default value is `data`. (This value can't be set using the prvt CLI, but it's defined here to enable backwards compatibility with repositories created by previous versions of prvt.)
 - The list of passphrases and keys (`k`).
@@ -173,9 +173,9 @@ For master keys that are wrapped with wrapping keys derived from a passphrase, t
 - The options for the key derivation function (`o`). This is a dictionary that, for Argon2, contains the following keys:
     - `a2`: variant to use: this can only be `argon2id`, which is also the default value if the key is omitted.
     - `a2v`: version of Argon2: this can only be `19`, which is also the default value if the key is omitted.
-    - `a2m`: memory parameter, in KB; for backwards-compatibility, if the key is omitted the default value is `65536` (64 MB), which is different from the new default value of 80 MB.
-    - `a2t`: iterations parameter; for backwards-compatibility, if the key is omitted the default value is `1`, which is different from the new default value of 4.
-    - `a2p`: parallelism parameter; for backwards-compatibility, if the key is omitted the default value is `4`, which is different from the new default value of 2.
+    - `a2m`: memory parameter, in KB; for backwards-compatibility, if the key is omitted the default value is `8192`, or 80 MB (this was 64 MB in prvt 0.5 and lower).
+    - `a2t`: iterations parameter; for backwards-compatibility, if the key is omitted the default value is `4` (this was `1` in prvt 0.5 and lower).
+    - `a2p`: parallelism parameter; for backwards-compatibility, if the key is omitted the default value is `2` (this was `4` in prvt 0.5 and lower).
 
 For example, for a repository that allows only one passphrase to unlock it (the document below has been pretty-printed for clarity for this example only):
 

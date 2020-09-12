@@ -38,14 +38,16 @@ type InfoFileKey struct {
 	// GPG key id for when using a GPG key
 	GPGKey string `json:"g,omitempty"`
 
-	// Key Derivation Function for when using a passphrase (only "argon2" is currently supported)
-	KDF string `json:"f,omitempty"`
-	// Options for the Key Derivation Function (Argon2 only)
-	KDFOptions *crypto.Argon2Options `json:"o,omitempty"`
 	// ConfirmationHash for when using a passphrase
 	ConfirmationHash []byte `json:"p,omitempty"`
 	// Salt for when using a passphrase
 	Salt []byte `json:"s,omitempty"`
+
+	// Fields for version 5+
+	// Key Derivation Function for when using a passphrase (only "argon2" is currently supported)
+	KDF string `json:"f,omitempty"`
+	// Options for the Key Derivation Function (Argon2 only)
+	KDFOptions *crypto.Argon2Options `json:"o,omitempty"`
 }
 
 // InfoFile is the content of the info file
@@ -79,7 +81,7 @@ func New() (*InfoFile, error) {
 	// Info file
 	info := &InfoFile{
 		App:      "prvt",
-		Version:  4,
+		Version:  5,
 		RepoId:   repoId.String(),
 		DataPath: "data",
 	}
@@ -206,8 +208,8 @@ func (info *InfoFile) Validate() error {
 				return errors.New("invalid confirmation hash in info file")
 			}
 		}
-	} else if info.Version >= 2 && info.Version <= 4 {
-		// Parse version 2 to 4
+	} else if info.Version >= 2 && info.Version <= 5 {
+		// Parse version 2 to 5
 		if len(info.Keys) == 0 {
 			return errors.New("repository does not have any key")
 		}

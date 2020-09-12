@@ -40,15 +40,10 @@ type Argon2Options struct {
 }
 
 // Setup sets the parameters for the key derivation function
-func (o *Argon2Options) Setup() {
+func (o *Argon2Options) Setup() error {
 	// Set variant and version
 	o.Variant = "argon2id"
 	o.Version = 0x13
-
-	// Set parameters to some values that should be reasonable for most systems, including low-power ones
-	o.Iterations = 4
-	o.Memory = 80 << 10
-	o.Parallelism = 2
 
 	// Check if we have the tune function, which is included with a build tag only
 	method := reflect.ValueOf(o).MethodByName("Tune")
@@ -69,6 +64,8 @@ func (o *Argon2Options) Setup() {
 	if err == nil && parallelism > 0 {
 		o.Parallelism = uint8(parallelism)
 	}
+
+	return o.Validate()
 }
 
 // Validate the values and sets the defaults for the missing ones
@@ -89,17 +86,17 @@ func (o *Argon2Options) Validate() error {
 	if argon2.Version != 0x13 {
 		panic("argon2 library uses a different version that expected")
 	}
-	// Default memory is 64MB (in KB), for backwards compatibility
+	// Default memory is 80MB (in KB)
 	if o.Memory == 0 {
-		o.Memory = 64 * 1024
+		o.Memory = 80 * 1024
 	}
-	// Default iterations is 1, for backwards compatibility
+	// Default iterations is 4
 	if o.Iterations == 0 {
-		o.Iterations = 1
+		o.Iterations = 4
 	}
-	// Default parallelism is 4, for backwards compatibility
+	// Default parallelism is 2
 	if o.Parallelism == 0 {
-		o.Parallelism = 4
+		o.Parallelism = 2
 	}
 	return nil
 }
@@ -109,6 +106,17 @@ func (o *Argon2Options) timeExecution() int64 {
 	start := time.Now()
 	argon2.IDKey(testBytes, testBytes, o.Iterations, o.Memory, o.Parallelism, 64)
 	return time.Since(start).Milliseconds()
+}
+
+// LegacyArgon2Options returns an object with the parameters for Argon2 used by prvt version 4 and below
+func LegacyArgon2Options() *Argon2Options {
+	return &Argon2Options{
+		Variant:     "argon2id",
+		Version:     19,
+		Memory:      64 << 10,
+		Iterations:  1,
+		Parallelism: 4,
+	}
 }
 
 // KeyFromPassphrase returns the 32-byte key derived from a passphrase and a salt using Argon2id

@@ -51,8 +51,7 @@ func GetMasterKeyWithPassphrase(info *infofile.InfoFile, passphrase string) (mas
 	if len(info.Salt) != 0 && len(info.ConfirmationHash) != 0 {
 		var confirmationHash []byte
 		// Default KDF options
-		kdfOptions := &crypto.Argon2Options{}
-		_ = kdfOptions.Validate()
+		kdfOptions := crypto.LegacyArgon2Options()
 		masterKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, info.Salt, kdfOptions)
 		if err == nil && subtle.ConstantTimeCompare(info.ConfirmationHash, confirmationHash) == 1 {
 			return masterKey, "LegacyKey", "", nil
@@ -76,13 +75,13 @@ func GetMasterKeyWithPassphrase(info *infofile.InfoFile, passphrase string) (mas
 		if k.KDF != "argon2" && k.KDF != "" {
 			continue
 		}
-		// For backwards compatibility, create the KDF options if empty
+		// For backwards compatibility, create the KDF options if empty and set the values to the legacy ones
 		if k.KDFOptions == nil {
-			k.KDFOptions = &crypto.Argon2Options{}
-			// Skip invalid keys
-			if k.KDFOptions.Validate() != nil {
-				continue
-			}
+			k.KDFOptions = crypto.LegacyArgon2Options()
+		}
+		// Skip invalid keys
+		if k.KDFOptions.Validate() != nil {
+			continue
 		}
 
 		// Try this key
@@ -111,13 +110,12 @@ func AddKeyPassphrase(info *infofile.InfoFile, masterKey []byte, passphrase stri
 		return "", "Key already added", errors.New("This passphrase has already been added to the repository")
 	}
 
-	// Tune parameters for Argon2
+	// Set up parameters for Argon2
 	kdfOptions := &crypto.Argon2Options{}
-	err = kdfOptions.Validate()
+	err = kdfOptions.Setup()
 	if err != nil {
-		return "", "Error validating Argon2 parameters", err
+		return "", "Error setting up Argon2 parameters", err
 	}
-	kdfOptions.Setup()
 
 	// Derive the wrapping key, after generating a new salt
 	salt, err = crypto.NewSalt()
