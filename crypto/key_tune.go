@@ -19,12 +19,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package crypto
 
-// This file contains code that is excluded for now
+// This file contains experimental code that calculates the "optimal" parameters for Argon2 based on the current system
+// The Tune method uses as much available memory, with the max of 1GB, and as many cores as available for parallelization, with a max of 6. It then determines the ideal cost (number of iterations) so a key derivation takes between 0.3 and 0.9 seconds.
+// This way of determining the tuned parameters is described in section 4 of the Argon2 RFC (https://tools.ietf.org/html/draft-irtf-cfrg-argon2-12#section-4)
+
+// To compile this code, build the app with the `tune` tag, e.g. `go build -tags tune .`
+// If this code is compiled, the Tune function is automatically run every time a new key is added (as part of the Setup() method)
 
 import (
 	"runtime"
+	"time"
 
 	"github.com/mackerelio/go-osstat/memory"
+	"golang.org/x/crypto/argon2"
 )
 
 // Tune sets values for memory, iterations and parallelism based on the performance of this system
@@ -88,4 +95,11 @@ func (o *Argon2Options) Tune() {
 			break
 		}
 	}
+}
+
+func (o *Argon2Options) timeExecution() int64 {
+	testBytes := []byte("aaaaaaaaaaaaaaaa")
+	start := time.Now()
+	argon2.IDKey(testBytes, testBytes, o.Iterations, o.Memory, o.Parallelism, 64)
+	return time.Since(start).Milliseconds()
 }

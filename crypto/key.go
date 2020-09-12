@@ -23,7 +23,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"time"
 
 	"github.com/google/tink/go/kwp/subtle"
 	"golang.org/x/crypto/argon2"
@@ -99,13 +98,6 @@ func (o *Argon2Options) Validate() error {
 		o.Parallelism = 2
 	}
 	return nil
-}
-
-func (o *Argon2Options) timeExecution() int64 {
-	testBytes := []byte("aaaaaaaaaaaaaaaa")
-	start := time.Now()
-	argon2.IDKey(testBytes, testBytes, o.Iterations, o.Memory, o.Parallelism, 64)
-	return time.Since(start).Milliseconds()
 }
 
 // LegacyArgon2Options returns an object with the parameters for Argon2 used by prvt version 4 and below
