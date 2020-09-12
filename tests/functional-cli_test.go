@@ -601,7 +601,7 @@ func (s *funcTestSuite) cmdRepoInfo(t *testing.T) {
 		[]string{"repo", "info", "--store", "local:" + s.dirs[0], "--no-unlock"},
 		nil,
 		func(stdout string) {
-			expected := "Repository version:  4\n"
+			expected := "Repository version:  5\n"
 			if stdout != expected {
 				t.Fatal("output does not match", stdout)
 			}
@@ -615,7 +615,7 @@ func (s *funcTestSuite) cmdRepoInfo(t *testing.T) {
 		[]string{"repo", "info", "--store", "local:" + s.dirs[0]},
 		nil,
 		func(stdout string) {
-			expected := "Repository version:  4\nTotal files stored:  1\n"
+			expected := "Repository version:  5\nTotal files stored:  1\n"
 			if stdout != expected {
 				t.Fatal("output does not match", stdout)
 			}
