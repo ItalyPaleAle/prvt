@@ -38,17 +38,40 @@ func (s *funcTestSuite) RunPreviousVersions(t *testing.T) {
 	}
 
 	// v0.2 has the same data structures as v0.1
-	t.Run("prvt 0.2", s.previousVersion_0_2)
-	t.Run("prvt 0.3", s.previousVersion_0_3)
-	t.Run("prvt 0.4", s.previousVersion_0_4)
-	t.Run("prvt 0.5", s.previousVersion_0_5)
+	t.Run("prvt 0.2", func(t *testing.T) {
+		s.previousVersion_0_2(t, false)
+	})
+	t.Run("prvt 0.2-gpg", func(t *testing.T) {
+		s.previousVersion_0_2(t, true)
+	})
+	t.Run("prvt 0.3", func(t *testing.T) {
+		s.previousVersion_0_3(t, false)
+	})
+	t.Run("prvt 0.3-gpg", func(t *testing.T) {
+		s.previousVersion_0_3(t, true)
+	})
+	t.Run("prvt 0.4", func(t *testing.T) {
+		s.previousVersion_0_4(t, false)
+	})
+	t.Run("prvt 0.4-gpg", func(t *testing.T) {
+		s.previousVersion_0_4(t, true)
+	})
+	t.Run("prvt 0.5", func(t *testing.T) {
+		s.previousVersion_0_5(t, false)
+	})
+	t.Run("prvt 0.5-gpg", func(t *testing.T) {
+		s.previousVersion_0_5(t, true)
+	})
 }
 
 // Tests for working with repositories created by version 0.2
-func (s *funcTestSuite) previousVersion_0_2(t *testing.T) {
+func (s *funcTestSuite) previousVersion_0_2(t *testing.T, isGPG bool) {
 	// Start the server
-	s.promptPwd.SetPasswords("hello world")
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.2")
+	path := filepath.Join(s.fixtures, "previous-versions", "v0.2-gpg")
+	if !isGPG {
+		path = filepath.Join(s.fixtures, "previous-versions", "v0.2")
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close := s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files
@@ -69,7 +92,7 @@ func (s *funcTestSuite) previousVersion_0_2(t *testing.T) {
 	// Stop the server
 	close()
 
-	// Commands such as "prvt repo key ls" requires a newer info file
+	// Commands such as "prvt repo key ls" require a newer info file
 	runCmd(t,
 		[]string{"repo", "key", "ls", "--store", "local:" + path},
 		func(err error) {
@@ -82,7 +105,9 @@ func (s *funcTestSuite) previousVersion_0_2(t *testing.T) {
 	)
 
 	// Upgrade the repo
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	runCmd(t,
 		[]string{"repo", "upgrade", "--store", "local:" + path},
 		nil,
@@ -96,7 +121,9 @@ func (s *funcTestSuite) previousVersion_0_2(t *testing.T) {
 	s.previousVersionCheckInfoFile(t, path, 1)
 
 	// Try unlocking the repo again
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close = s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files
@@ -110,10 +137,13 @@ func (s *funcTestSuite) previousVersion_0_2(t *testing.T) {
 }
 
 // Tests for working with repositories created by version 0.3
-func (s *funcTestSuite) previousVersion_0_3(t *testing.T) {
+func (s *funcTestSuite) previousVersion_0_3(t *testing.T, isGPG bool) {
 	// Start the server
-	s.promptPwd.SetPasswords("hello world")
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.3")
+	path := filepath.Join(s.fixtures, "previous-versions", "v0.3-gpg")
+	if !isGPG {
+		path = filepath.Join(s.fixtures, "previous-versions", "v0.3")
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close := s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files
@@ -134,8 +164,10 @@ func (s *funcTestSuite) previousVersion_0_3(t *testing.T) {
 	// Stop the server
 	close()
 
-	// Commands such as "prvt add" requires a newer info file (3+)
-	s.promptPwd.SetPasswords("hello world")
+	// Commands such as "prvt add" require a newer info file (3+)
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	addPath := filepath.Join(s.fixtures, "photos")
 	runCmd(t,
 		[]string{"add", addPath, "--destination", "/text", "--store", "local:" + path},
@@ -149,7 +181,9 @@ func (s *funcTestSuite) previousVersion_0_3(t *testing.T) {
 	)
 
 	// Upgrade the repo
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	runCmd(t,
 		[]string{"repo", "upgrade", "--store", "local:" + path},
 		nil,
@@ -163,7 +197,9 @@ func (s *funcTestSuite) previousVersion_0_3(t *testing.T) {
 	s.previousVersionCheckInfoFile(t, path, 2)
 
 	// Try unlocking the repo again
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close = s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files
@@ -177,10 +213,13 @@ func (s *funcTestSuite) previousVersion_0_3(t *testing.T) {
 }
 
 // Tests for working with repositories created by version 0.4
-func (s *funcTestSuite) previousVersion_0_4(t *testing.T) {
+func (s *funcTestSuite) previousVersion_0_4(t *testing.T, isGPG bool) {
 	// Start the server
-	s.promptPwd.SetPasswords("hello world")
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.4")
+	path := filepath.Join(s.fixtures, "previous-versions", "v0.4-gpg")
+	if !isGPG {
+		path = filepath.Join(s.fixtures, "previous-versions", "v0.4")
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close := s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files
@@ -202,7 +241,9 @@ func (s *funcTestSuite) previousVersion_0_4(t *testing.T) {
 	close()
 
 	// Upgrade the repo
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	runCmd(t,
 		[]string{"repo", "upgrade", "--store", "local:" + path},
 		nil,
@@ -216,7 +257,9 @@ func (s *funcTestSuite) previousVersion_0_4(t *testing.T) {
 	s.previousVersionCheckInfoFile(t, path, 3)
 
 	// Try unlocking the repo again
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close = s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files
@@ -230,10 +273,13 @@ func (s *funcTestSuite) previousVersion_0_4(t *testing.T) {
 }
 
 // Tests for working with repositories created by version 0.5
-func (s *funcTestSuite) previousVersion_0_5(t *testing.T) {
+func (s *funcTestSuite) previousVersion_0_5(t *testing.T, isGPG bool) {
 	// Start the server
-	s.promptPwd.SetPasswords("hello world")
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.5")
+	path := filepath.Join(s.fixtures, "previous-versions", "v0.5-gpg")
+	if !isGPG {
+		path = filepath.Join(s.fixtures, "previous-versions", "v0.5")
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close := s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files
@@ -255,7 +301,9 @@ func (s *funcTestSuite) previousVersion_0_5(t *testing.T) {
 	close()
 
 	// Upgrade the repo
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	runCmd(t,
 		[]string{"repo", "upgrade", "--store", "local:" + path},
 		nil,
@@ -269,7 +317,9 @@ func (s *funcTestSuite) previousVersion_0_5(t *testing.T) {
 	s.previousVersionCheckInfoFile(t, path, 4)
 
 	// Try unlocking the repo again
-	s.promptPwd.SetPasswords("hello world")
+	if !isGPG {
+		s.promptPwd.SetPasswords("hello world")
+	}
 	close = s.startServer(t, "--store", "local:"+path)
 
 	// Should be able to list files

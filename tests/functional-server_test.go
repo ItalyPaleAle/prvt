@@ -1227,8 +1227,8 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 		}
 	}()
 
-	// Wait a couple of seconds to ensure the server has started
-	time.Sleep(2 * time.Second)
+	// Wait a few seconds to ensure the server has started
+	time.Sleep(3 * time.Second)
 
 	// The caller can stop the server
 	return func() {
