@@ -887,7 +887,7 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
 	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
-		Version: 4,
+		Version: 5,
 	}, info))
 
 	// Error: cannot request an API list the file list one without unlocking the repo
@@ -932,7 +932,7 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
 	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
-		Version:   4,
+		Version:   5,
 		FileCount: 0,
 	}, info))
 }
