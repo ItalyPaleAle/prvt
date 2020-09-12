@@ -37,6 +37,7 @@ func (s *funcTestSuite) RunCLI(t *testing.T) {
 	t.Run("key management", s.cmdRepoKey)
 	t.Run("add files", s.cmdAdd)
 	t.Run("list and remove files", s.cmdLsAndRm)
+	t.Run("repo info", s.cmdRepoInfo)
 }
 
 func (s *funcTestSuite) cmdRepoInit(t *testing.T) {
@@ -590,6 +591,35 @@ func (s *funcTestSuite) cmdLsAndRm(t *testing.T) {
 			}
 		},
 		nil,
+		nil,
+	)
+}
+
+func (s *funcTestSuite) cmdRepoInfo(t *testing.T) {
+	// Test repo info on a locked repo
+	runCmd(t,
+		[]string{"repo", "info", "--store", "local:" + s.dirs[0], "--no-unlock"},
+		nil,
+		func(stdout string) {
+			expected := "Repository version:  4\n"
+			if stdout != expected {
+				t.Fatal("output does not match", stdout)
+			}
+		},
+		nil,
+	)
+
+	// Test repo info on an unlocked repo
+	s.promptPwd.SetPasswords("hello world")
+	runCmd(t,
+		[]string{"repo", "info", "--store", "local:" + s.dirs[0]},
+		nil,
+		func(stdout string) {
+			expected := "Repository version:  4\nTotal files stored:  1\n"
+			if stdout != expected {
+				t.Fatal("output does not match", stdout)
+			}
+		},
 		nil,
 	)
 }

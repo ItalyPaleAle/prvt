@@ -877,9 +877,18 @@ func (s *funcTestSuite) serverWebUI(t *testing.T) {
 // Unlock a repo using the APIs
 func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	var (
-		res *server.RepoKeyListItem
-		err error
+		res  *server.RepoKeyListItem
+		info *server.RepoInfoResponse
+		err  error
 	)
+
+	// Test repo info endpoint, on a locked repo first
+	info, err = s.repoInfoRequest()
+	assert.NoError(t, err)
+	assert.NotNil(t, info)
+	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
+		Version: 4,
+	}, info))
 
 	// Error: cannot request an API list the file list one without unlocking the repo
 	_, err = s.listRequest("/")
@@ -917,6 +926,15 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	// Request the file list again, this time without errors
 	_, err = s.listRequest("/")
 	assert.NoError(t, err)
+
+	// Test repo info endpoint, on the unlocked repo
+	info, err = s.repoInfoRequest()
+	assert.NoError(t, err)
+	assert.NotNil(t, info)
+	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
+		Version:   4,
+		FileCount: 0,
+	}, info))
 }
 
 // Test read-only mode
@@ -1358,6 +1376,31 @@ func (s *funcTestSuite) unlockRequest(args *server.UnlockKeyRequest, keyTest boo
 		return nil, err
 	}
 	data := &server.RepoKeyListItem{}
+	err = json.Unmarshal(read, data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// Internal function that performs a request to the repo info endpoint
+func (s *funcTestSuite) repoInfoRequest() (*server.RepoInfoResponse, error) {
+	// Send the request
+	res, err := s.client.Get(s.serverAddr + "/api/repo/info")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
+	}
+
+	// Read the response and parse the JSON content
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	data := &server.RepoInfoResponse{}
 	err = json.Unmarshal(read, data)
 	if err != nil {
 		return nil, err

@@ -99,13 +99,12 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 			store.SetMasterKey(keyId, masterKey)
 
-			// Set up the index
-			index.Instance.SetStore(store)
-
-			// Set up the repository
+			// Set up the repository and index
 			repo := repository.Repository{
 				Store: store,
+				Index: &index.Index{},
 			}
+			repo.Index.SetStore(store)
 
 			// Iterate through the args and add them all
 			ctx := context.Background()

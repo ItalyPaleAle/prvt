@@ -21,14 +21,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
-	"github.com/ItalyPaleAle/prvt/index"
 )
 
 // RemovePath removes a path by its prefix, and reports each element removed in the res channel
 func (repo *Repository) RemovePath(ctx context.Context, path string, res chan<- PathResultMessage) {
 	// Remove from the index and get the list of objects to delete
-	objects, paths, err := index.Instance.DeleteFile(path)
+	objects, paths, err := repo.Index.DeleteFile(path)
 	if err != nil {
 		status := RepositoryStatusInternalError
 		errStr := err.Error()

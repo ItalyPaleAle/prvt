@@ -15,11 +15,29 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package index
+package server
 
-// Singleton
-var Instance *Index
+import (
+	"net/http"
 
-func init() {
-	Instance = &Index{}
+	"github.com/gin-gonic/gin"
+)
+
+// GetInfoHandler is the handler for GET /api/repo/info, which returns info about the repository
+func (s *Server) GetRepoInfoHandler(c *gin.Context) {
+	response := RepoInfoResponse{
+		Version: s.Infofile.Version,
+	}
+
+	// Count files if we have an index
+	if s.Repo != nil && s.Repo.Index != nil {
+		stat, err := s.Repo.Index.Stat()
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		response.FileCount = stat.FileCount
+	}
+
+	c.JSON(http.StatusOK, response)
 }

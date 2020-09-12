@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	"github.com/ItalyPaleAle/prvt/fs"
-	"github.com/ItalyPaleAle/prvt/index"
 
 	"github.com/gin-gonic/gin"
 )
@@ -69,7 +68,6 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	s.Store = store
 	s.Infofile = info
 	s.Repo = nil
-	index.Instance.SetStore(store)
 
 	// Response
 	repoId := s.Infofile.RepoId

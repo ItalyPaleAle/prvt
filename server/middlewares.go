@@ -32,7 +32,7 @@ func (s *Server) MiddlewareRequireRepo(c *gin.Context) {
 
 // MiddlewareRequireUnlock requires the repository to be unlocked before processing
 func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
-	if s.Repo == nil {
+	if s.Repo == nil || s.Repo.Index == nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"The repository has not been unlocked."})
 	}
 }

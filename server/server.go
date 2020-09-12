@@ -108,6 +108,7 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 		// Other APIs that don't require the repository to be unlocked
 		{
 			apis := requireRepo.Group("/api")
+			apis.GET("/repo/info", s.GetRepoInfoHandler)
 			apis.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
 
 			// These APIs accept requests to unlock the repo

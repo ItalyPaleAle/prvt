@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
-	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	mime "github.com/cubewise-code/go-mime"
@@ -48,7 +47,7 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	mimeType = utils.SanitizeMimeType(mimeType)
 
 	// Check if the file exists in the index already
-	exists, err := index.Instance.GetFileByPath(sanitizedPath)
+	exists, err := repo.Index.GetFileByPath(sanitizedPath)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}
@@ -69,7 +68,7 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	}
 
 	// Add to the index
-	err = index.Instance.AddFile(sanitizedPath, fileId.Bytes(), mimeType)
+	err = repo.Index.AddFile(sanitizedPath, fileId.Bytes(), mimeType)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}
