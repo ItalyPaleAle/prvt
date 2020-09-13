@@ -83,7 +83,10 @@ func WrapKey(wrappingKey []byte, key []byte) ([]byte, error) {
 // UnwrapKey unwraps a key wrapped with a 32-byte key
 func UnwrapKey(wrappingKey []byte, wrappedKey []byte) ([]byte, error) {
 	if len(wrappingKey) != 32 {
-		return nil, errors.New("keys must be 32-byte long")
+		return nil, errors.New("wrapping key must be 32-byte long")
+	}
+	if len(wrappedKey) != 40 {
+		return nil, errors.New("wrapped key must be 40-byte long")
 	}
 
 	// Get the key wrapper
