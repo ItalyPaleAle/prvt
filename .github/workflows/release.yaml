@@ -52,13 +52,9 @@ jobs:
 
               echo -e "\n###\nBuilding UI\n"
               APP_VERSION="${{env.BUILD_VERSION}}" npm run build
-
-              echo -e "\n###\nPackaging UI\n"
-              tar -czvf prvt-v${{env.BUILD_VERSION}}-ui.tar.gz dist
               '
         echo -e "\n###\nCompilation done\n"
         ls -al ui/dist
-        ls -al ui/prvt-v*
 
     # Build for all platforms
     - name: Build for all archs
@@ -272,13 +268,3 @@ jobs:
         asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-win32.zip
         asset_name: prvt-v${{env.BUILD_VERSION}}-win32.zip
         asset_content_type: application/zip
-
-    - name: Upload release asset prvt-ui
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ui/prvt-v${{env.BUILD_VERSION}}-ui.tar.gz
-        asset_name: prvt-v${{env.BUILD_VERSION}}-ui.tar.gz
-        asset_content_type: application/gzip
