@@ -122,6 +122,9 @@ func KeyFromPassphrase(passphrase string, salt []byte, kd *Argon2Options) (key [
 		return nil, nil, errors.New("invalid salt")
 	}
 	// Ensure the options are valid
+	if kd == nil {
+		kd = &Argon2Options{}
+	}
 	err = kd.Validate()
 	if err != nil {
 		return nil, nil, err

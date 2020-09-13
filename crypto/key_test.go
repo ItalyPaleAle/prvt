@@ -20,6 +20,7 @@ package crypto
 import (
 	"bytes"
 	"encoding/hex"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -61,46 +62,108 @@ func TestKeyFromPassphrase(t *testing.T) {
 		confHash []byte
 		err      error
 	)
+
+	// Legacy Argon2 options (for prvt 0.5 and earlier)
+	legacyOpts := LegacyArgon2Options()
+
+	// Custom Argon2 options passed via env vars
+	assert.NoError(t, os.Setenv("PRVT_ARGON2_ITERATIONS", "10"))
+	assert.NoError(t, os.Setenv("PRVT_ARGON2_MEMORY", "4096"))
+	assert.NoError(t, os.Setenv("PRVT_ARGON2_PARALLELISM", "2"))
+	customOpts := &Argon2Options{}
+	customOpts.Setup()
+
 	// Test from a table
 	table := []struct {
 		Salt       []byte
 		Passphrase string
+		Opts       *Argon2Options
 		Key        []byte
 		ConfHash   []byte
 	}{
+		// Default Argon2 options
 		{
 			Salt:       []byte("aaaaaaaaaaaaaaaa"),
 			Passphrase: "hello world",
+			Opts:       nil,
+			Key:        decodeHex("b4f4290172f52c3193353d2542f230ed16a76100c20068024da40741dca9779d"),
+			ConfHash:   decodeHex("032231f40b52dba8dc43776514795ea00a0bf386082aafee69957c5c0fc2f53b"),
+		},
+		{
+			Salt:       []byte("aaaaaaaaaaaaaaaa"),
+			Passphrase: "m'illumino d'immenso",
+			Opts:       nil,
+			Key:        decodeHex("ecce7062eeb79aa94cfe96a8ca20d70ac49f9b4ce04cd0adf9f6c3b6fab5fa28"),
+			ConfHash:   decodeHex("07ced8a7e95a4973bd95c2f7d24731f0a26f84b5c1bfe96af7938937f19e69aa"),
+		},
+		{
+			Salt:       []byte("abababababababab"),
+			Passphrase: "m'illumino d'immenso",
+			Opts:       nil,
+			Key:        decodeHex("f62b5e3890bf32583c02d75ed813613ef60f03399ef988fc69cc7e65b13a6234"),
+			ConfHash:   decodeHex("d90e51a645c98682f1f0eedb9323a22676b7cc5b0a9f5b001d165f6af8b43e6c"),
+		},
+
+		// Legacy Argon2 options
+		{
+			Salt:       []byte("aaaaaaaaaaaaaaaa"),
+			Passphrase: "hello world",
+			Opts:       legacyOpts,
 			Key:        decodeHex("0d8e68828d5242395fbee0cde9ab2e9c26907293c0a32a37f8282c8e6c06b3fc"),
 			ConfHash:   decodeHex("e6493a58c2ca55d3911a4fa99a35339dae949dd69de265020f7443c91d3b3162"),
 		},
 		{
 			Salt:       []byte("aaaaaaaaaaaaaaaa"),
 			Passphrase: "m'illumino d'immenso",
+			Opts:       legacyOpts,
 			Key:        decodeHex("2efb520aa19ced975217c3b177d746575837822a3078422df49152c34882e261"),
 			ConfHash:   decodeHex("edf8833939295d0dfc4a276cf2c147d7ba9bbd6e6e072304ef600ef6c7af1bb6"),
 		},
 		{
 			Salt:       []byte("abababababababab"),
 			Passphrase: "m'illumino d'immenso",
+			Opts:       legacyOpts,
 			Key:        decodeHex("9ce59682265c8f4e49cfb255ca8aad51f691a3399b0693ab64ddafddd41af34f"),
 			ConfHash:   decodeHex("d68a5fc851d775c11a563530d0ef6846701a0bcda80d5e5b73463ea1f4ac01a7"),
+		},
+
+		// Custom Argon2 options
+		{
+			Salt:       []byte("aaaaaaaaaaaaaaaa"),
+			Passphrase: "hello world",
+			Opts:       customOpts,
+			Key:        decodeHex("5fe8b52915c9d3196d51b736af09f3a7469936f99db6b404d99551a81bb93144"),
+			ConfHash:   decodeHex("6ca34cea6a90395ee6202809f4fb03ab8027dae2cabede992780a885a6cefd08"),
+		},
+		{
+			Salt:       []byte("aaaaaaaaaaaaaaaa"),
+			Passphrase: "m'illumino d'immenso",
+			Opts:       customOpts,
+			Key:        decodeHex("ffc6f57532f2d21b6e9c2e76cf231cbde3f73927368ccd73d16dc80886af6b39"),
+			ConfHash:   decodeHex("9b59f22008ff308f6742f16ac43f7a71314783651ee7c8439d4e707192712238"),
+		},
+		{
+			Salt:       []byte("abababababababab"),
+			Passphrase: "m'illumino d'immenso",
+			Opts:       customOpts,
+			Key:        decodeHex("4ca8a1716a6bcadd8fe29326ba72e1ee40d354eea123e1c31f0ec29560a90499"),
+			ConfHash:   decodeHex("3149de2c57d7b5576505762ce0aebf18783dd6ca5828928ccb79b68aa272775c"),
 		},
 	}
 
 	for _, el := range table {
-		key, confHash, err = KeyFromPassphrase(el.Passphrase, el.Salt)
+		key, confHash, err = KeyFromPassphrase(el.Passphrase, el.Salt, el.Opts)
 		assert.NoError(t, err)
 		assert.Equal(t, el.Key, key)
 		assert.Equal(t, el.ConfHash, confHash)
 	}
 
 	// Test errors
-	key, confHash, err = KeyFromPassphrase("", []byte("abababababababab"))
+	key, confHash, err = KeyFromPassphrase("", []byte("abababababababab"), nil)
 	assert.EqualError(t, err, "empty passphrase")
 	assert.Nil(t, key)
 	assert.Nil(t, confHash)
-	key, confHash, err = KeyFromPassphrase("foo", []byte("123"))
+	key, confHash, err = KeyFromPassphrase("foo", []byte("123"), nil)
 	assert.EqualError(t, err, "invalid salt")
 	assert.Nil(t, key)
 	assert.Nil(t, confHash)
