@@ -35,9 +35,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// How long to cache files for, in seconds
-const cacheDuration = 300
-
 // FolderList contains the result of the ListFolder method
 type FolderList struct {
 	Path      string     `json:"path"`
@@ -94,8 +91,8 @@ func (i *Index) Refresh(force bool) error {
 		i.semaphore.Unlock()
 	}()
 
-	// Check if we already have the index in cache and its age (unless we're forcing a refresh)
-	if !force && i.cache != nil && time.Now().Add(-cacheDuration*time.Second).Before(i.cacheTime) {
+	// Check if we already have the index in cache (unless we're forcing a refresh)
+	if !force && i.cache != nil {
 		// Cache exists and it's fresh
 		return nil
 	}

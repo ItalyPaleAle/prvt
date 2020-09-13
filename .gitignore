@@ -6,6 +6,9 @@ bin
 packrd/
 *-packr.go
 
+# Test results
+coverage.txt
+
 # Development
 old/
 test/
