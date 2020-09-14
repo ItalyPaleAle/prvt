@@ -60,14 +60,16 @@ type UnlockKeyRequest struct {
 }
 
 type InfoResponse struct {
-	Name       string `json:"name"`
-	AppVersion string `json:"version,omitempty"`
-	BuildID    string `json:"buildId,omitempty"`
-	BuildTime  string `json:"buildTime,omitempty"`
-	CommitHash string `json:"commitHash,omitempty"`
-	Runtime    string `json:"runtime,omitempty"`
-	Info       string `json:"info,omitempty"`
-	ReadOnly   bool   `json:"readOnly,omitempty"`
+	Name         string `json:"name"`
+	AppVersion   string `json:"version,omitempty"`
+	BuildID      string `json:"buildId,omitempty"`
+	BuildTime    string `json:"buildTime,omitempty"`
+	CommitHash   string `json:"commitHash,omitempty"`
+	Runtime      string `json:"runtime,omitempty"`
+	Info         string `json:"info,omitempty"`
+	ReadOnly     bool   `json:"readOnly,omitempty"`
+	RepoSelected bool   `json:"repoSelected"`
+	RepoUnlocked bool   `json:"repoUnlocked"`
 }
 
 type RepoInfoResponse struct {

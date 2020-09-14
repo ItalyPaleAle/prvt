@@ -30,7 +30,7 @@ func (s *Server) GetRepoInfoHandler(c *gin.Context) {
 	}
 
 	// Count files if we have an index
-	if s.Repo != nil && s.Repo.Index != nil {
+	if c.GetBool("RepoUnlocked") {
 		stat, err := s.Repo.Index.Stat()
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)

@@ -120,6 +120,8 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 	assert.Empty(t, data.CommitHash)
 	assert.NotEmpty(t, data.Runtime)
 	assert.Empty(t, data.ReadOnly)
+	assert.True(t, data.RepoSelected)
+	assert.True(t, data.RepoUnlocked)
 
 	// Set buildinfo then check again
 	reset := setBuildInfo()
@@ -136,6 +138,8 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 	assert.NotEmpty(t, data.CommitHash)
 	assert.NotEmpty(t, data.Runtime)
 	assert.Empty(t, data.ReadOnly)
+	assert.True(t, data.RepoSelected)
+	assert.True(t, data.RepoUnlocked)
 	reset()
 }
 

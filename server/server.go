@@ -73,13 +73,16 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 	}
 	router.Use(gin.Recovery())
 
+	// Middlewares for all APIs
+	apis := router.Group("", s.MiddlewareRepoStatus)
+
 	// Add routes
-	router.GET("/api/info", s.GetInfoHandler)
-	router.POST("/api/repo/select", s.PostRepoSelectHandler)
+	apis.GET("/api/info", s.GetInfoHandler)
+	apis.POST("/api/repo/select", s.PostRepoSelectHandler)
 
 	// Routes that require an open repository
 	{
-		requireRepo := router.Group("", s.MiddlewareRequireRepo)
+		requireRepo := apis.Group("", s.MiddlewareRequireRepo)
 
 		// Routes that require the repository to be unlocked
 		{
@@ -90,26 +93,26 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 			requireUnlock.HEAD("/file/:fileId", s.FileHandler)
 
 			// APIs
-			apis := requireUnlock.Group("/api")
-			apis.GET("/tree", s.GetTreeHandler)
-			apis.GET("/tree/*path", s.GetTreeHandler)
-			apis.POST("/tree/*path",
+			group := requireUnlock.Group("/api")
+			group.GET("/tree", s.GetTreeHandler)
+			group.GET("/tree/*path", s.GetTreeHandler)
+			group.POST("/tree/*path",
 				s.MiddlewareRequireReadWrite,
 				s.MiddlewareRequireInfoFileVersion(3),
 				s.PostTreeHandler,
 			)
-			apis.DELETE("/tree/*path",
+			group.DELETE("/tree/*path",
 				s.MiddlewareRequireReadWrite,
 				s.MiddlewareRequireInfoFileVersion(3),
 				s.DeleteTreeHandler,
 			)
-			apis.GET("/metadata/*file", s.GetMetadataHandler)
-			apis.POST("/repo/key",
+			group.GET("/metadata/*file", s.GetMetadataHandler)
+			group.POST("/repo/key",
 				s.MiddlewareRequireReadWrite,
 				s.MiddlewareRequireInfoFileVersion(5),
 				s.PostRepoKeyHandler,
 			)
-			apis.DELETE("/repo/key/:keyId",
+			group.DELETE("/repo/key/:keyId",
 				s.MiddlewareRequireReadWrite,
 				s.MiddlewareRequireInfoFileVersion(2),
 				s.DeleteRepoKeyHandler,
@@ -118,13 +121,13 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 
 		// Other APIs that don't require the repository to be unlocked
 		{
-			apis := requireRepo.Group("/api")
-			apis.GET("/repo/info", s.GetRepoInfoHandler)
-			apis.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
+			group := requireRepo.Group("/api")
+			group.GET("/repo/info", s.GetRepoInfoHandler)
+			group.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
 
 			// These APIs accept requests to unlock the repo
-			apis.POST("/repo/unlock", s.PostRepoUnlockHandler(false))
-			apis.POST("/repo/keytest", s.PostRepoUnlockHandler(true))
+			group.POST("/repo/unlock", s.PostRepoUnlockHandler(false))
+			group.POST("/repo/keytest", s.PostRepoUnlockHandler(true))
 		}
 	}
 

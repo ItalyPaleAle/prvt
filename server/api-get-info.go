@@ -30,21 +30,25 @@ import (
 func (s *Server) GetInfoHandler(c *gin.Context) {
 	if buildinfo.BuildID == "" || buildinfo.CommitHash == "" {
 		c.JSON(http.StatusOK, InfoResponse{
-			Name:       "prvt",
-			AppVersion: "canary",
-			Info:       "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source",
-			Runtime:    runtime.Version(),
-			ReadOnly:   s.ReadOnly,
+			Name:         "prvt",
+			AppVersion:   "canary",
+			Info:         "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source",
+			Runtime:      runtime.Version(),
+			ReadOnly:     s.ReadOnly,
+			RepoSelected: c.GetBool("RepoSelected"),
+			RepoUnlocked: c.GetBool("RepoUnlocked"),
 		})
 	} else {
 		c.JSON(http.StatusOK, InfoResponse{
-			Name:       "prvt",
-			AppVersion: buildinfo.AppVersion,
-			BuildID:    buildinfo.BuildID,
-			BuildTime:  buildinfo.BuildTime,
-			CommitHash: buildinfo.CommitHash,
-			Runtime:    runtime.Version(),
-			ReadOnly:   s.ReadOnly,
+			Name:         "prvt",
+			AppVersion:   buildinfo.AppVersion,
+			BuildID:      buildinfo.BuildID,
+			BuildTime:    buildinfo.BuildTime,
+			CommitHash:   buildinfo.CommitHash,
+			Runtime:      runtime.Version(),
+			ReadOnly:     s.ReadOnly,
+			RepoSelected: c.GetBool("RepoSelected"),
+			RepoUnlocked: c.GetBool("RepoUnlocked"),
 		})
 	}
 }

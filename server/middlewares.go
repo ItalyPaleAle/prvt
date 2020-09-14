@@ -23,16 +23,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// MiddlewareRepoStatus adds the status of the repository to the context
+// This is required by MiddlewareRequireRepo and MiddlewareRequireUnlock
+func (s *Server) MiddlewareRepoStatus(c *gin.Context) {
+	repoSelected := s.Store != nil && s.Infofile != nil
+	repoUnlocked := repoSelected && s.Repo != nil && s.Repo.Index != nil
+
+	// Set in the context
+	c.Set("RepoSelected", repoSelected)
+	c.Set("RepoUnlocked", repoUnlocked)
+}
+
 // MiddlewareRequireRepo requires a repository to be selected (even if not unlocked)
 func (s *Server) MiddlewareRequireRepo(c *gin.Context) {
-	if s.Store == nil || s.Infofile == nil {
+	if !c.GetBool("RepoSelected") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"No repository has been selected yet."})
 	}
 }
 
 // MiddlewareRequireUnlock requires the repository to be unlocked before processing
 func (s *Server) MiddlewareRequireUnlock(c *gin.Context) {
-	if s.Repo == nil || s.Repo.Index == nil {
+	if !c.GetBool("RepoUnlocked") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{"The repository has not been unlocked."})
 	}
 }
