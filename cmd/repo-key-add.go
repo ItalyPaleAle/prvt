@@ -64,8 +64,8 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 				return NewExecError(ErrorUser, "Repository is not initialized", err)
 			}
 
-			// Require info files version 2 or higher
-			err = requireInfoFileVersion(info, 2, flagStoreConnectionString)
+			// Require info files version 5 or higher
+			err = requireInfoFileVersion(info, 5, flagStoreConnectionString)
 			if err != nil {
 				return err
 			}

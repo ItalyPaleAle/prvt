@@ -95,7 +95,7 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 			apis.GET("/metadata/*file", s.GetMetadataHandler)
 			apis.POST("/repo/key",
 				s.MiddlewareRequireReadWrite,
-				s.MiddlewareRequireInfoFileVersion(2),
+				s.MiddlewareRequireInfoFileVersion(5),
 				s.PostRepoKeyHandler,
 			)
 			apis.DELETE("/repo/key/:keyId",
