@@ -22,10 +22,40 @@ const htmlMinifyOptions = {
     removeEmptyAttributes: true
 }
 
-// Entry points
-const entry = {
-    prvt: [path.resolve(__dirname, 'src/main.js')],
+// List of pages
+const pageList = {
+    index: {
+        dist: 'index.html',
+        chunks: ['index'],
+        html: path.resolve(__dirname, 'src/index/index.html'),
+        entry: [path.resolve(__dirname, 'src/index/main.js')]
+    },
+    app: {
+        dist: 'app.html',
+        chunks: ['shared', 'vendor', 'app'],
+        html: path.resolve(__dirname, 'src/app/index.html'),
+        entry: [path.resolve(__dirname, 'src/app/main.js')]
+    }
 }
+
+// Entry points
+const entry = {}
+Object.keys(pageList).map((key) => {
+    entry[key] = pageList[key].entry
+})
+
+// Plugins: html-webpack-plugin
+const addPlugins = Object.keys(pageList).map((key) => {
+    if (!pageList[key].html) {
+        return null
+    }
+    return new HtmlWebpackPlugin({
+        chunks: pageList[key].chunks,
+        filename: pageList[key].dist,
+        template: pageList[key].html,
+        minify: prod ? htmlMinifyOptions : false,
+    })
+}).filter((val) => val !== null)
 
 module.exports = {
     entry,
@@ -35,9 +65,34 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: '[name].[hash].js',
-        chunkFilename: '[name].[id].[hash].js',
+        filename: prod ? '[name].[hash:8].js' : '[name].js',
+        chunkFilename: prod ? '[name].[contenthash:8].js' : '[name].js',
         crossOriginLoading: 'anonymous'
+    },
+    optimization: {
+        usedExports: true,
+        moduleIds: 'hashed',
+        runtimeChunk: false,
+        splitChunks: {
+            cacheGroups: {
+                // Contains all CSS (for all pages) and the shared code
+                shared: {
+                    name: 'shared',
+                    test: /\.css$|src[\\/]shared[\\/]/,
+                    chunks: 'all',
+                    enforce: true,
+                    priority: 30
+                },
+                // Contains all libraries, which are less likely to change as frequently as the rest of the code
+                vendor: {
+                    test: /[\\/]node_modules[\\/]/,
+                    name: 'vendor',
+                    chunks: 'all',
+                    enforce: true,
+                    priority: 20
+                }
+            }
+        }
     },
     module: {
         // Do not parse wasm files
@@ -87,7 +142,7 @@ module.exports = {
 
         // Extract CSS
         new MiniCssExtractPlugin({
-            filename: '[name].[hash].css'
+            filename: '[name].[contenthash:8].css'
         }),
 
         // Definitions
@@ -95,14 +150,6 @@ module.exports = {
             PRODUCTION: prod,
             APP_VERSION: process.env.APP_VERSION ? JSON.stringify(process.env.APP_VERSION) : false, 
             URL_PREFIX: process.env.URL_PREFIX ? JSON.stringify(process.env.URL_PREFIX) : false,
-        }),
-
-        // Generate the index.html file
-        new HtmlWebpackPlugin({
-            filename: 'index.html',
-            template: path.resolve(__dirname, 'src/main.html'),
-            chunks: ['prvt'],
-            minify: prod ? htmlMinifyOptions : false
         }),
 
         // Enable subresource integrity check
@@ -115,7 +162,7 @@ module.exports = {
         ...(analyze ? [
             new BundleAnalyzerPlugin()
         ] : []),
-    ],
+    ].concat(addPlugins), // Add other plugins
     mode,
     devServer: {
         contentBase: path.join(__dirname, 'dist'),

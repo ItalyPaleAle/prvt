@@ -62,7 +62,7 @@
 <script>
 // Utils
 import {fileType} from '../utils'
-import {Request} from '../request'
+import {Request} from '../../shared/lib/request'
 
 // Stores
 import {fileList} from '../stores'
@@ -88,7 +88,7 @@ reset()
 
 $: {
     if (params && params.fileId) {
-        url = '/file/' + params.fileId
+        url = (URL_PREFIX || '') + '/file/' + params.fileId
         requestMetadata(params.fileId)
     }
     else {

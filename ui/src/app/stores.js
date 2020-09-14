@@ -1,5 +1,5 @@
 import {writable, readable, derived} from 'svelte/store'
-import {Request} from './request'
+import {Request} from '../shared/lib/request'
 
 // This store is a flag used to display a modal
 export const modal = writable(null)

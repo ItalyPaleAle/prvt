@@ -46,7 +46,7 @@
 // Utils
 import {encodePath, fileTypeIcon, cloneObject} from '../utils'
 import {readOnly} from '../stores'
-import {Request} from '../request'
+import {Request} from '../../shared/lib/request'
 
 // Components
 import ErrorBox from './ErrorBox.svelte'

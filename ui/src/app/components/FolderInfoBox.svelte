@@ -20,7 +20,7 @@
 <script>
 // Utils
 import {fileTypeIcon, formatSize} from '../utils'
-import {Request} from '../request'
+import {Request} from '../../shared/lib/request'
 
 // Props
 export let element = null

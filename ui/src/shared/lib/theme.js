@@ -28,7 +28,7 @@ export function setTheme(theme) {
 
 // Object that implements the svelte/store contract
 const subscriptions = []
-export default {
+const theme = {
     subscribe: (sub) => {
         subscriptions.push(sub)
         if (sub) {
@@ -53,3 +53,19 @@ export default {
         }
     }
 }
+
+// Set up the theme at runtime
+theme.subscribe((theme) => {
+    // Remove existing theme tags
+    document.body.classList.forEach((val) => {
+        if (val && val.indexOf('theme-') === 0) {
+            document.body.classList.remove(val)
+        }
+    })
+
+    // Add the new theme
+    document.body.classList.add(theme)
+})
+
+// Export the theme store as default
+export default theme
