@@ -1,6 +1,8 @@
 import {timeoutPromise, TimeoutError} from './utils'
 
-const requestTimeout = 5000 // 15s
+const requestTimeout = 5000 // 5s
+
+/* global URL_PREFIX */
 
 /**
  * Performs API requests.
@@ -8,6 +10,11 @@ const requestTimeout = 5000 // 15s
 export function Request(url, options) {
     if (!options) {
         options = {}
+    }
+
+    // URL prefix
+    if (URL_PREFIX) {
+        url = URL_PREFIX + url
     }
 
     // Set the options

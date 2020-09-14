@@ -39,4 +39,5 @@ module.exports = {
         removeDeprecatedGapUtilities: true,
         purgeLayersByDefault: true
     },
+    purge: false
 }

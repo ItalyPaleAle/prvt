@@ -84,3 +84,13 @@ func IsIgnoredFile(file string) bool {
 
 	return false
 }
+
+// IsTruthy returns true if a string represent a "true" value, such as "true", "1", etc
+func IsTruthy(str string) bool {
+	str = strings.ToLower(str)
+	return str == "1" ||
+		str == "true" ||
+		str == "t" ||
+		str == "y" ||
+		str == "yes"
+}

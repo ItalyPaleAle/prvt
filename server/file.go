@@ -56,7 +56,7 @@ func (s *Server) FileHandler(c *gin.Context) {
 	// Check if we have the dl=1 option, which forces a download
 	forceDownload := false
 	dlQs := c.Query("dl")
-	if dlQs == "1" || dlQs == "true" || dlQs == "t" || dlQs == "y" || dlQs == "yes" {
+	if utils.IsTruthy(dlQs) {
 		forceDownload = true
 	}
 

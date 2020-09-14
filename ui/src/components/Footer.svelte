@@ -10,5 +10,5 @@
 /* global env */
 import {readOnly} from '../stores'
 import ThemePicker from './ThemePicker.svelte'
-const appVersion = env.APP_VERSION
+const appVersion = APP_VERSION
 </script>

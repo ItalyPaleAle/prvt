@@ -27,10 +27,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ItalyPaleAle/prvt/buildinfo"
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/repository"
+	"github.com/ItalyPaleAle/prvt/utils"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gobuffalo/packr/v2"
 )
@@ -55,6 +58,14 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 
 	// Start gin server
 	router := gin.New()
+
+	// Enable CORS when in development
+	if !utils.IsTruthy(buildinfo.Production) {
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AddExposeHeaders("Date")
+		corsConfig.AllowAllOrigins = true
+		router.Use(cors.New(corsConfig))
+	}
 
 	// Add middlewares: logger (if desired) and recovery
 	if s.Verbose {
