@@ -77,6 +77,13 @@ type RepoInfoResponse struct {
 	FileCount int    `json:"files"`
 }
 
+type ConnectionListItem struct {
+	Type    string `json:"type"`
+	Account string `json:"account"`
+}
+
+type ConnectionList map[string]ConnectionListItem
+
 // FromBody adds data to the object from a request
 func (p *UnlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the information to unlock the repository from the body

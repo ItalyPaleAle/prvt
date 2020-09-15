@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -36,8 +37,10 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gobuffalo/packr/v2"
+	"github.com/spf13/viper"
 )
 
+// Server is the main class for the prvt server
 type Server struct {
 	Store     fs.Fs
 	Verbose   bool
@@ -47,16 +50,23 @@ type Server struct {
 	ReadOnly  bool
 }
 
+// Start the server
 func (s *Server) Start(ctx context.Context, address, port string) error {
 	// Log writer
 	if s.LogWriter == nil {
 		s.LogWriter = os.Stdout
 	}
 
+	// Load config
+	err := s.loadConfig()
+	if err != nil {
+		return err
+	}
+
 	// Set gin to production mode
 	gin.SetMode(gin.ReleaseMode)
 
-	// Start gin server
+	// Create a router
 	router := gin.New()
 
 	// Enable CORS when in development
@@ -73,63 +83,8 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 	}
 	router.Use(gin.Recovery())
 
-	// Middlewares for all APIs
-	apis := router.Group("", s.MiddlewareRepoStatus)
-
-	// Add routes
-	apis.GET("/api/info", s.GetInfoHandler)
-	apis.POST("/api/repo/select", s.PostRepoSelectHandler)
-
-	// Routes that require an open repository
-	{
-		requireRepo := apis.Group("", s.MiddlewareRequireRepo)
-
-		// Routes that require the repository to be unlocked
-		{
-			requireUnlock := requireRepo.Group("", s.MiddlewareRequireUnlock)
-
-			// Request a file
-			requireUnlock.GET("/file/:fileId", s.FileHandler)
-			requireUnlock.HEAD("/file/:fileId", s.FileHandler)
-
-			// APIs
-			group := requireUnlock.Group("/api")
-			group.GET("/tree", s.GetTreeHandler)
-			group.GET("/tree/*path", s.GetTreeHandler)
-			group.POST("/tree/*path",
-				s.MiddlewareRequireReadWrite,
-				s.MiddlewareRequireInfoFileVersion(3),
-				s.PostTreeHandler,
-			)
-			group.DELETE("/tree/*path",
-				s.MiddlewareRequireReadWrite,
-				s.MiddlewareRequireInfoFileVersion(3),
-				s.DeleteTreeHandler,
-			)
-			group.GET("/metadata/*file", s.GetMetadataHandler)
-			group.POST("/repo/key",
-				s.MiddlewareRequireReadWrite,
-				s.MiddlewareRequireInfoFileVersion(5),
-				s.PostRepoKeyHandler,
-			)
-			group.DELETE("/repo/key/:keyId",
-				s.MiddlewareRequireReadWrite,
-				s.MiddlewareRequireInfoFileVersion(2),
-				s.DeleteRepoKeyHandler,
-			)
-		}
-
-		// Other APIs that don't require the repository to be unlocked
-		{
-			group := requireRepo.Group("/api")
-			group.GET("/repo/info", s.GetRepoInfoHandler)
-			group.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
-
-			// These APIs accept requests to unlock the repo
-			group.POST("/repo/unlock", s.PostRepoUnlockHandler(false))
-			group.POST("/repo/keytest", s.PostRepoUnlockHandler(true))
-		}
-	}
+	// Register all API routes
+	s.registerAPIRoutes(router)
 
 	// UI
 	uiBox := packr.New("ui", "../ui/dist")
@@ -140,6 +95,119 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 		c.Redirect(http.StatusFound, "/ui")
 	})
 
+	// Start the server
+	err = s.launchServer(ctx, address, port, router)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// loadConfig loads the config file
+func (s *Server) loadConfig() error {
+	// Look for config in both $HOME/.config/.prvt (and equivalent on other OS's) and in the cwd
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("cannot determine config folder location: %s", err.Error())
+	}
+	configDir = filepath.Join(configDir, "prvt")
+
+	// Set the config file name for viper
+	viper.SetConfigType("yaml")
+	viper.SetConfigName("config")
+	viper.AddConfigPath(configDir)
+	if !utils.IsTruthy(buildinfo.Production) {
+		viper.AddConfigPath(".")
+	}
+
+	// Create the directory if it doesn't exist
+	err = utils.EnsureFolder(configDir)
+	if err != nil {
+		return err
+	}
+
+	// Read config
+	err = viper.ReadInConfig()
+	if err != nil {
+		// If the file doesn't exist, create it
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			err = utils.TouchFile(filepath.Join(configDir, "config.yaml"))
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// registerAPIRoutes registers the routes for the APIs
+func (s *Server) registerAPIRoutes(router *gin.Engine) {
+	// Middlewares for all APIs
+	apis := router.Group("", s.MiddlewareRepoStatus)
+
+	// Add routes
+	apis.GET("/api/info", s.GetInfoHandler)
+	apis.POST("/api/repo/select", s.PostRepoSelectHandler)
+	apis.GET("/api/connection", s.GetConnectionHandler)
+	apis.POST("/api/connection", s.PostConnectionHandler)
+	apis.DELETE("/api/connection/:name", s.DeleteConnectionHandler)
+
+	// Routes that require an open repository
+	requireRepo := apis.Group("", s.MiddlewareRequireRepo)
+
+	// Routes that require the repository to be unlocked
+	{
+		requireUnlock := requireRepo.Group("", s.MiddlewareRequireUnlock)
+
+		// Request a file
+		requireUnlock.GET("/file/:fileId", s.FileHandler)
+		requireUnlock.HEAD("/file/:fileId", s.FileHandler)
+
+		// APIs
+		group := requireUnlock.Group("/api")
+		group.GET("/tree", s.GetTreeHandler)
+		group.GET("/tree/*path", s.GetTreeHandler)
+		group.POST("/tree/*path",
+			s.MiddlewareRequireReadWrite,
+			s.MiddlewareRequireInfoFileVersion(3),
+			s.PostTreeHandler,
+		)
+		group.DELETE("/tree/*path",
+			s.MiddlewareRequireReadWrite,
+			s.MiddlewareRequireInfoFileVersion(3),
+			s.DeleteTreeHandler,
+		)
+		group.GET("/metadata/*file", s.GetMetadataHandler)
+		group.POST("/repo/key",
+			s.MiddlewareRequireReadWrite,
+			s.MiddlewareRequireInfoFileVersion(5),
+			s.PostRepoKeyHandler,
+		)
+		group.DELETE("/repo/key/:keyId",
+			s.MiddlewareRequireReadWrite,
+			s.MiddlewareRequireInfoFileVersion(2),
+			s.DeleteRepoKeyHandler,
+		)
+	}
+
+	// Other APIs that don't require the repository to be unlocked
+	{
+		group := requireRepo.Group("/api")
+		group.GET("/repo/info", s.GetRepoInfoHandler)
+		group.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
+
+		// These APIs accept requests to unlock the repo
+		group.POST("/repo/unlock", s.PostRepoUnlockHandler(false))
+		group.POST("/repo/keytest", s.PostRepoUnlockHandler(true))
+	}
+}
+
+// launchServer launches the HTTP server
+func (s *Server) launchServer(ctx context.Context, address, port string, router *gin.Engine) error {
 	// HTTP Server
 	server := &http.Server{
 		Addr:    address + ":" + port,

@@ -158,6 +158,10 @@ func (f *AzureStorage) InitWithConnectionString(connection string, cache *Metada
 	return f.InitWithOptionsMap(opts, cache)
 }
 
+func (f *AzureStorage) AccountName() string {
+	return f.storageAccountName + "/" + f.storageContainer
+}
+
 func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Create the blob URL
 	u, err := url.Parse(f.storageURL + "/_info.json")

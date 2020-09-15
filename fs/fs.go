@@ -93,6 +93,9 @@ type Fs interface {
 	// InitWithConnectionString inits the object by passing a connection string and the cache object
 	InitWithConnectionString(connection string, cache *MetadataCache) error
 
+	// AccountName returns a string that can be used to identify this account
+	AccountName() string
+
 	// SetMasterKey sets the master key (used to encrypt/decrypt files) in the object
 	SetMasterKey(keyId string, key []byte)
 

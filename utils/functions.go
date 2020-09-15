@@ -51,7 +51,7 @@ var mimeTypeRegex = regexp.MustCompile("^(application|audio|font|image|model|tex
 // SanitizeMimeType sanitizes a mime type
 func SanitizeMimeType(mime string) string {
 	// Lowercase the string and trim whitespaces to start
-	mime = strings.TrimSpace(strings.ToLower(mime))
+	mime = strings.ToLower(strings.TrimSpace(mime))
 
 	// Ensure the format is correct
 	// Base reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
@@ -93,4 +93,16 @@ func IsTruthy(str string) bool {
 		str == "t" ||
 		str == "y" ||
 		str == "yes"
+}
+
+var connectionNameRegex = regexp.MustCompile("^[a-z][a-z0-9-_]{1,39}$")
+
+// SanitizeConnectionName returns a sanitized name for a connection or an empty string
+func SanitizeConnectionName(conn string) string {
+	conn = strings.ToLower(strings.TrimSpace(conn))
+
+	// Ensure the format is correct
+	conn = connectionNameRegex.FindString(conn)
+
+	return conn
 }

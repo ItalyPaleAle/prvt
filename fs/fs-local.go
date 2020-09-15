@@ -102,6 +102,10 @@ func (f *Local) init(path string, cache *MetadataCache) error {
 	return nil
 }
 
+func (f *Local) AccountName() string {
+	return f.basePath
+}
+
 func (f *Local) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Read the file
 	data, err := ioutil.ReadFile(f.basePath + "_info.json")

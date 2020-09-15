@@ -158,6 +158,10 @@ func (f *S3) loadEnvVars(opts map[string]string) {
 	}
 }
 
+func (f *S3) AccountName() string {
+	return f.bucketName
+}
+
 func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Request the file from S3
 	obj, _, _, err := f.client.GetObject(context.Background(), f.bucketName, "_info.json", minio.GetObjectOptions{})
