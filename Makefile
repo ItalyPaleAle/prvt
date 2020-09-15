@@ -1,4 +1,6 @@
 APP_VERSION ?= canary
+BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%S')
+COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
 # Performs a builld
 all: build
@@ -7,7 +9,7 @@ all: build
 get-tools:
 	mkdir -p .bin
 	curl -sf https://gobinaries.com/github.com/ory/go-acc@v0.2.6 | PREFIX=.bin/ sh
-	curl -sf https://gobinaries.com/github.com/gobuffalo/packr/packr2@v2.7.1 | PREFIX=.bin/ sh
+	curl -sf https://gobinaries.com/github.com/markbates/pkger/cmd/pkger@v0.17.1 | PREFIX=.bin/ sh
 
 # Clean all compiled files
 clean:
@@ -20,9 +22,11 @@ build: build-ui build-app
 
 # Build the Go code
 build-app:
-	pkger list
-	pkger
-	go build -o bin
+	.bin/pkger list
+	.bin/pkger
+	go build \
+	  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=$(APP_VERSION) -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=$(APP_VERSION) -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=$(BUILD_TIME) -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=$(COMMIT_HASH)" \
+	  -o bin
 
 # Buold the web UI
 build-ui:
