@@ -61,6 +61,9 @@ func (s *Server) PostConnectionHandler(c *gin.Context) {
 		return
 	}
 
+	// Normalize the type
+	args["type"] = store.FSName()
+
 	// Save the connection
 	viper.Set("connections."+name, args)
 	err = viper.WriteConfig()
