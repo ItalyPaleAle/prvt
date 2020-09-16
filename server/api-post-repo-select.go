@@ -33,8 +33,10 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	// Get a set of key-values from the body
 	args := make(map[string]string)
 	if err := c.Bind(&args); err != nil || len(args) == 0 {
-		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
+		if err != nil {
+			c.Error(err)
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse request body"})
 		return
 	}
 

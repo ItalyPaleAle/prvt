@@ -89,7 +89,7 @@ func (p *UnlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the information to unlock the repository from the body
 	if err := c.Bind(p); err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse request body"})
 		return false
 	}
 
@@ -116,7 +116,7 @@ func (p *AddKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the content from the body
 	if err := c.Bind(p); err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse request body"})
 		return false
 	}
 
