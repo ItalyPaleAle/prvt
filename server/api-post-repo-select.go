@@ -22,8 +22,10 @@ import (
 	"net/http"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // PostRepoSelectHandler is the handler for POST /api/repo/select, which selects a repository
@@ -36,10 +38,28 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 		return
 	}
 
-	// Get the storage type
-	if args["type"] == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Key 'type' is required"})
-		return
+	// Check if we have a name key, which would be the name of a saved connection
+	name, ok := args["name"]
+	if ok {
+		// Sanitize the name
+		name = utils.SanitizeConnectionName(name)
+		if name == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Value of 'name' is invalid"})
+			return
+		}
+
+		// Load the connection and check if it exists
+		args = viper.GetStringMapString("connections." + name)
+		if args == nil || len(args) == 0 || args["type"] == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{fmt.Sprintf("Connection not found: %s", name)})
+			return
+		}
+	} else {
+		// Get the storage type
+		if args["type"] == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Key 'type' is required"})
+			return
+		}
 	}
 
 	// Create the store object

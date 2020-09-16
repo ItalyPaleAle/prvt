@@ -200,7 +200,6 @@ func (s *Server) registerAPIRoutes(router *gin.Engine) {
 	// Other APIs that don't require the repository to be unlocked
 	{
 		group := requireRepo.Group("/api")
-		group.GET("/repo/info", s.GetRepoInfoHandler)
 		group.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
 
 		// These APIs accept requests to unlock the repo

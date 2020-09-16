@@ -70,11 +70,9 @@ type InfoResponse struct {
 	ReadOnly     bool   `json:"readOnly,omitempty"`
 	RepoSelected bool   `json:"repoSelected"`
 	RepoUnlocked bool   `json:"repoUnlocked"`
-}
-
-type RepoInfoResponse struct {
-	Version   uint16 `json:"version"`
-	FileCount int    `json:"files"`
+	RepoID       string `json:"repoId,omitempty"`
+	RepoVersion  uint16 `json:"repoVersion,omitempty"`
+	FileCount    int    `json:"files,omitempty"`
 }
 
 type ConnectionListItem struct {

@@ -82,7 +82,10 @@ func NewRepoInfoCmd() *cobra.Command {
 				}
 			}
 
-			// Show the version
+			// Show the id and version
+			if info.RepoId != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "Repository ID:       %s\n", info.RepoId)
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Repository version:  %d\n", info.Version)
 
 			// Show the stats, if any
