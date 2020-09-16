@@ -1,5 +1,5 @@
-<p on:click={themesMenuClick} class="text-text-300">
-    <span class="cursor-pointer">
+<p class="text-text-300">
+    <span class="cursor-pointer" on:click={themesMenuClick} >
         <i class="fa fa-paint-brush text-sm" aria-hidden="true"></i>
         Theme
     </span>

@@ -1,16 +1,22 @@
-<footer class="block p-3 mt-8 mb-2 leading-normal text-xs text-text-200">
-    <p>
-      Powered by <a href="https://github.com/ItalyPaleAle/prvt" class="text-text-300">prvt</a> {appVersion}
-      {#if $readOnly} – <b class="text-accent-300">Read-only mode</b>{/if}
-    </p>
-    <p class="ml-2 mt-1">
+<footer class="block p-3 mt-8 mb-2 leading-normal text-xs text-text-200 space-y-2">
+    <p>Powered by <a href="https://github.com/ItalyPaleAle/prvt" class="text-text-300">prvt</a> {appVersion}</p>
+    {#if $appInfo && $appInfo.repoId}
+      <p>
+        Using store {$appInfo.storeType} :: {$appInfo.storeAccount} <br/>
+        Repository ID: {$appInfo.repoId}
+      </p>
+    {/if}
+    {#if $readOnly}
+      <p class="text-accent-300">Read-only mode enabled</p>
+    {/if}
+    <p class="ml-2 pt-3">
       <ThemePicker />
     </p>
   </footer>
   
   <script>
   /* global env */
-  import {readOnly} from '../stores'
+  import {readOnly, appInfo} from '../stores'
   import ThemePicker from './ThemePicker.svelte'
   const appVersion = APP_VERSION
   </script>
