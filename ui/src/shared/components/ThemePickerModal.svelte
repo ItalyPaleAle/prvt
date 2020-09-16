@@ -28,8 +28,8 @@
 
 <script>
 // Theme data
-import {themes} from '../../shared/lib/theme'
-import theme from '../../shared/lib/theme'
+import {themes} from '../lib/theme'
+import theme from '../lib/theme'
 
 // Stores
 import {modal} from '../stores'

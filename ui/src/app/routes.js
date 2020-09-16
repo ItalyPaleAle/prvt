@@ -1,5 +1,5 @@
 import {wrap} from 'svelte-spa-router'
-import {readOnly} from './stores'
+import {readOnly} from '../shared/stores'
 
 // Components
 import Tree from './routes/Tree.svelte'

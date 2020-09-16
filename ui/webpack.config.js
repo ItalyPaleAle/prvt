@@ -35,6 +35,12 @@ const pageList = {
         chunks: ['shared', 'vendor', 'app'],
         html: path.resolve(__dirname, 'src/app/index.html'),
         entry: [path.resolve(__dirname, 'src/app/main.js')]
+    },
+    repo: {
+        dist: 'repo.html',
+        chunks: ['shared', 'vendor', 'repo'],
+        html: path.resolve(__dirname, 'src/repo/index.html'),
+        entry: [path.resolve(__dirname, 'src/repo/main.js')]
     }
 }
 

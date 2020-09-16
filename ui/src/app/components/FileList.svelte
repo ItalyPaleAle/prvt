@@ -45,7 +45,6 @@
 <script>
 // Utils
 import {encodePath, fileTypeIcon, cloneObject} from '../utils'
-import {readOnly} from '../stores'
 import {Request} from '../../shared/lib/request'
 
 // Components
@@ -56,7 +55,8 @@ import ActionsModal from './ActionsModal.svelte'
 import Spinner from '../components/Spinner.svelte'
 
 // Stores
-import {operationResult, fileList, modal} from '../stores'
+import {readOnly, modal} from '../../shared/stores'
+import {operationResult, fileList} from '../stores'
 
 // Props for the view
 // Path is the path to list

@@ -3,7 +3,11 @@
 {/if}
 
 <div class="container w-full lg:w-3/5 px-2 pt-6 lg:pt-10">
-    <Router {routes} on:routeLoaded={routeLoaded} />
+    <div class="flex justify-between items-center w-full mb-10 lg:mb-12">
+        <h1 class="font-bold break-normal text-text-300 px-2 text-2xl md:text-3xl truncate">
+            prvt repository
+        </h1>
+    </div>
 
     <Footer />
 </div>
@@ -11,11 +15,6 @@
 <svelte:body on:click={bodyClick} />
 
 <script>
-import Router from 'svelte-spa-router'
-
-// Routes
-import routes from './routes'
-
 // Components
 import Modal from '../shared/components/Modal.svelte'
 import Footer from '../shared/components/Footer.svelte'
@@ -29,10 +28,5 @@ function bodyClick(event) {
     if (event && event.target == document.body && !event.defaultPrevented) {
         $modal = null
     }
-}
-
-// When the page is changed, hide the modal
-function routeLoaded(event) {
-    $modal = null
 }
 </script>
