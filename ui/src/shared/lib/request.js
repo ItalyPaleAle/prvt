@@ -30,6 +30,15 @@ export function Request(url, options) {
         reqOptions.method = options.method
     }
 
+    // Headers
+    if (options.headers && typeof options.headers == 'object') {
+        for (const key in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, key)) {
+                reqOptions.headers.set(key, options.headers[key])
+            }
+        }
+    }
+
     // Request body
     // Disallow for GET and HEAD requests
     if (options.body && reqOptions.method != 'GET' && reqOptions.method != 'HEAD') {
@@ -40,25 +49,8 @@ export function Request(url, options) {
     if (options.postData) {
         // Ensure method is POST
         reqOptions.method = 'POST'
-
-        const body = new FormData()
-        for (const key in options.postData) {
-            if (!Object.prototype.hasOwnProperty.call(options.postData, key)) {
-                continue
-            }
-            body.append(key, options.postData[key])
-        }
-
-        reqOptions.body = body
-    }
-
-    // Headers
-    if (options.headers && typeof options.headers == 'object') {
-        for (const key in options.headers) {
-            if (Object.prototype.hasOwnProperty.call(options.headers, key)) {
-                reqOptions.headers.set(key, options.headers[key])
-            }
-        }
+        reqOptions.headers.set('Content-Type', 'application/json')
+        reqOptions.body = JSON.stringify(options.postData)
     }
 
     // Make the request

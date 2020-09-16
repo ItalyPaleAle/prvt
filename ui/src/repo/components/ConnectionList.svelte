@@ -43,7 +43,12 @@ function getList() {
 }
 
 function selectItem(name) {
-    alert('select ' + name)
+    return Request('/api/repo/select', {
+        method: 'POST',
+        postData: {
+            name
+        }
+    })
 }
 
 function expandItem(name) {
