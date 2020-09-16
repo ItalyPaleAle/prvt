@@ -31,7 +31,7 @@ func (s *Server) GetInfoHandler(c *gin.Context) {
 	if buildinfo.BuildID == "" || buildinfo.CommitHash == "" {
 		c.JSON(http.StatusOK, InfoResponse{
 			Name:         "prvt",
-			AppVersion:   "canary",
+			AppVersion:   "dev",
 			Info:         "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source",
 			Runtime:      runtime.Version(),
 			ReadOnly:     s.ReadOnly,

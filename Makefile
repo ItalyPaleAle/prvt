@@ -1,4 +1,4 @@
-APP_VERSION ?= canary
+APP_VERSION ?= dev
 BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%S')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 

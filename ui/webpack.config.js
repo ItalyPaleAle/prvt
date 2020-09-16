@@ -9,6 +9,7 @@ const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPl
 const mode = process.env.NODE_ENV || 'development'
 const prod = mode == 'production'
 const analyze = process.env.ANALYZE == '1'
+const appVersion = process.env.APP_VERSION || 'dev'
 
 const htmlMinifyOptions = {
     collapseWhitespace: true,
@@ -154,8 +155,8 @@ module.exports = {
         // Definitions
         new webpack.DefinePlugin({
             PRODUCTION: prod,
-            APP_VERSION: process.env.APP_VERSION ? JSON.stringify(process.env.APP_VERSION) : false, 
-            URL_PREFIX: process.env.URL_PREFIX ? JSON.stringify(process.env.URL_PREFIX) : false,
+            APP_VERSION: JSON.stringify(appVersion), 
+            URL_PREFIX: process.env.URL_PREFIX ? JSON.stringify(process.env.URL_PREFIX) : null,
         }),
 
         // Enable subresource integrity check

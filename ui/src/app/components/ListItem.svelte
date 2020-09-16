@@ -17,7 +17,8 @@
     </a>
     {#if actions}
         <span class="extra flex-grow-0 p-3 cursor-pointer" on:click={() => dispatch('actions')}>
-            <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true"></i>
+            <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true" title="Details"></i>
+            <span class="sr-only">Expand details</span>
         </span>
     {/if}
 </li>

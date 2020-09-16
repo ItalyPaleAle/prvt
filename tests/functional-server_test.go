@@ -113,7 +113,7 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 		return
 	}
 	assert.Equal(t, "prvt", data.Name)
-	assert.Equal(t, "canary", data.AppVersion)
+	assert.Equal(t, "dev", data.AppVersion)
 	assert.NotEmpty(t, data.Info)
 	assert.Empty(t, data.BuildID)
 	assert.Empty(t, data.BuildTime)

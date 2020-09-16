@@ -9,6 +9,8 @@
         </h1>
     </div>
 
+    <ConnectionList />
+
     <Footer />
 </div>
 
@@ -18,6 +20,7 @@
 // Components
 import Modal from '../shared/components/Modal.svelte'
 import Footer from '../shared/components/Footer.svelte'
+import ConnectionList from './components/ConnectionList.svelte';
 
 // Stores
 import {modal} from '../shared/stores'
