@@ -70,6 +70,8 @@ type InfoResponse struct {
 	ReadOnly     bool   `json:"readOnly,omitempty"`
 	RepoSelected bool   `json:"repoSelected"`
 	RepoUnlocked bool   `json:"repoUnlocked"`
+	StoreType    string `json:"storeType,omitempty"`
+	StoreAccount string `json:"storeAccount,omitempty"`
 	RepoID       string `json:"repoId,omitempty"`
 	RepoVersion  uint16 `json:"repoVersion,omitempty"`
 	FileCount    int    `json:"files,omitempty"`

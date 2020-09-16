@@ -158,6 +158,10 @@ func (f *S3) loadEnvVars(opts map[string]string) {
 	}
 }
 
+func (f *S3) FSName() string {
+	return "s3"
+}
+
 func (f *S3) AccountName() string {
 	return f.bucketName
 }

@@ -102,6 +102,10 @@ func (f *Local) init(path string, cache *MetadataCache) error {
 	return nil
 }
 
+func (f *Local) FSName() string {
+	return "local"
+}
+
 func (f *Local) AccountName() string {
 	return f.basePath
 }

@@ -158,6 +158,10 @@ func (f *AzureStorage) InitWithConnectionString(connection string, cache *Metada
 	return f.InitWithOptionsMap(opts, cache)
 }
 
+func (f *AzureStorage) FSName() string {
+	return "azure"
+}
+
 func (f *AzureStorage) AccountName() string {
 	return f.storageAccountName + "/" + f.storageContainer
 }

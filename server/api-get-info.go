@@ -43,6 +43,10 @@ func (s *Server) GetInfoHandler(c *gin.Context) {
 		res.RepoID = s.Infofile.RepoId
 		res.RepoVersion = s.Infofile.Version
 
+		// Store type and account
+		res.StoreType = s.Store.FSName()
+		res.StoreAccount = s.Store.AccountName()
+
 		// If the repo is unlocked, add stats too
 		if res.RepoUnlocked {
 			stat, err := s.Repo.Index.Stat()
