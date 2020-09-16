@@ -112,6 +112,7 @@ func (s *funcTestSuite) cmdRepoInit(t *testing.T) {
 		assert.Len(t, info.Keys[0].MasterKey, 40)
 		assert.Len(t, info.Keys[0].Salt, 16)
 		assert.Len(t, info.Keys[0].GPGKey, 0)
+		s.repoIds[0] = info.RepoId
 	}
 
 	// Check the info file for the second repo
@@ -134,6 +135,7 @@ func (s *funcTestSuite) cmdRepoInit(t *testing.T) {
 		assert.True(t, len(info.Keys[0].MasterKey) > 100)
 		assert.Len(t, info.Keys[0].Salt, 0)
 		assert.True(t, len(info.Keys[0].GPGKey) > 0)
+		s.repoIds[1] = info.RepoId
 	}
 }
 
@@ -596,14 +598,24 @@ func (s *funcTestSuite) cmdLsAndRm(t *testing.T) {
 }
 
 func (s *funcTestSuite) cmdRepoInfo(t *testing.T) {
+	storePath, err := filepath.Abs(s.dirs[0])
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
 	// Test repo info on a locked repo
 	runCmd(t,
 		[]string{"repo", "info", "--store", "local:" + s.dirs[0], "--no-unlock"},
 		nil,
 		func(stdout string) {
-			expected := "Repository version:  5\n"
+			expected := `Repository ID:       ` + s.repoIds[0] + `
+Repository version:  5
+Store type:          local
+Store account:       ` + storePath + `/
+`
 			if stdout != expected {
-				t.Fatal("output does not match", stdout)
+				t.Fatal("output does not match", stdout, expected)
 			}
 		},
 		nil,
@@ -615,7 +627,12 @@ func (s *funcTestSuite) cmdRepoInfo(t *testing.T) {
 		[]string{"repo", "info", "--store", "local:" + s.dirs[0]},
 		nil,
 		func(stdout string) {
-			expected := "Repository version:  5\nTotal files stored:  1\n"
+			expected := `Repository ID:       ` + s.repoIds[0] + `
+Repository version:  5
+Store type:          local
+Store account:       ` + storePath + `/
+Total files stored:  1
+`
 			if stdout != expected {
 				t.Fatal("output does not match", stdout)
 			}

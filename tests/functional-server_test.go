@@ -85,6 +85,12 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 
 // Test the API info endpoint
 func (s *funcTestSuite) serverInfo(t *testing.T) {
+	storePath, err := filepath.Abs(s.dirs[0])
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
 	// Check the response
 	data, err := s.infoRequest()
 	if err != nil {
@@ -103,6 +109,8 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 	assert.True(t, data.RepoUnlocked)
 	assert.NotEmpty(t, data.RepoID)
 	assert.Equal(t, uint16(5), data.RepoVersion)
+	assert.Equal(t, "local", data.StoreType)
+	assert.Equal(t, storePath+"/", data.StoreAccount)
 
 	// Set buildinfo then check again
 	reset := setBuildInfo()
@@ -123,6 +131,8 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 	assert.True(t, data.RepoUnlocked)
 	assert.NotEmpty(t, data.RepoID)
 	assert.Equal(t, uint16(5), data.RepoVersion)
+	assert.Equal(t, "local", data.StoreType)
+	assert.Equal(t, storePath+"/", data.StoreAccount)
 	reset()
 }
 
@@ -232,7 +242,7 @@ func (s *funcTestSuite) serverAddUploadMultiFiles(t *testing.T) {
 	info, err := s.infoRequest()
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
-	assert.Equal(t, len(paths), info.FileCount)
+	assert.Equal(t, len(paths)+2, info.FileCount)
 }
 
 // Add multiple files from the local file system, to the /added folder
