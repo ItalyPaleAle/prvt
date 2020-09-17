@@ -35,13 +35,21 @@
 </style>
 
 <script>
+// Libraries
 import {Request} from "../../shared/lib/request"
+
+// Components
+import ConnectionDetailModal from './ConnectionDetailModal.svelte'
+
+// Stores
+import {modal} from '../../shared/stores'
 
 let requesting = getList()
 function getList() {
     return Request('/api/connection')
 }
 
+// Select the item on click
 function selectItem(name) {
     return Request('/api/repo/select', {
         method: 'POST',
@@ -51,7 +59,38 @@ function selectItem(name) {
     })
 }
 
+// Open the modal on click on the dots
 function expandItem(name) {
-    alert('expand ' + name)
+    $modal = {
+        component: ConnectionDetailModal,
+        props: {
+            name,
+            remove: removeItem
+        }
+    }
+}
+
+// Remove an item from the list - this is fired by an event
+function removeItem(name) {
+    // First, ask for confirmation
+    if (!confirm('Are you sure you want to remove this connection?\nThis will only remove the bookmark and will not delete the repository or any file in it.')) {
+        return
+    }
+
+    // Close the modal
+    $modal = null
+
+    // Sets "requesting" to a promise that does a sequence of operations
+    requesting = Promise.resolve()
+        // Submit the request
+        .then(() => Request('/api/connection/' + name, {
+            method: 'DELETE'
+        }))
+        // Catch errors
+        .catch((err) => {
+            alert('Could not remove the connection: ' + err)
+        })
+        // Refresh the list of connections regardless of errors
+        .then(() => getList())
 }
 </script>

@@ -1,6 +1,6 @@
 <footer class="block p-3 mt-8 mb-2 leading-normal text-xs text-text-200 space-y-2">
     <p>Powered by <a href="https://github.com/ItalyPaleAle/prvt" class="text-text-300">prvt</a> {appVersion}</p>
-    {#if $appInfo && $appInfo.repoId}
+    {#if $currentApp != "repo" && $appInfo && $appInfo.repoId}
       <p>
         Using store {$appInfo.storeType} :: {$appInfo.storeAccount} <br/>
         Repository ID: {$appInfo.repoId}
@@ -16,7 +16,7 @@
   
   <script>
   /* global env */
-  import {readOnly, appInfo} from '../stores'
+  import {currentApp, readOnly, appInfo} from '../stores'
   import ThemePicker from './ThemePicker.svelte'
   const appVersion = APP_VERSION
   </script>

@@ -1,6 +1,9 @@
 import {writable, readable, derived} from 'svelte/store'
 import {Request} from './lib/request'
 
+// This stores the name of the app being used (e.g. "app", "repo", etc)
+export const currentApp = writable(null)
+
 // This store is a flag used to display a modal
 export const modal = writable(null)
 
