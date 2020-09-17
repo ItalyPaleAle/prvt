@@ -159,6 +159,8 @@ func (s *Server) registerAPIRoutes(router *gin.Engine) {
 	apis.POST("/api/connection", s.PostConnectionHandler)
 	apis.GET("/api/connection/:name", s.GetConnectionInfoHandler)
 	apis.DELETE("/api/connection/:name", s.DeleteConnectionHandler)
+	apis.GET("/api/fsoptions", s.GetFsOptionsHandler)
+	apis.GET("/api/fsoptions/:fs", s.GetFsOptionsHandler)
 
 	// Routes that require an open repository
 	requireRepo := apis.Group("", s.MiddlewareRequireRepo)

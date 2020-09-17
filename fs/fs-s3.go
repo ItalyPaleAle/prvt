@@ -55,6 +55,20 @@ type S3 struct {
 	mux        sync.Mutex
 }
 
+func (f *S3) OptionsList() *FsOptionsList {
+	return &FsOptionsList{
+		Required: []FsOption{
+			{Name: "bucket", Label: "Bucket name", Type: "string"},
+			{Name: "accessKey", Label: "Access key", Type: "string"},
+			{Name: "secretKey", Label: "Secret key", Type: "string"},
+		},
+		Optional: []FsOption{
+			{Name: "endpoint", Label: "Endpoint", Type: "string"},
+			{Name: "tls", Label: "TLS", Type: "bool"},
+		},
+	}
+}
+
 func (f *S3) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "bucket", "accessKey", "secretKey"
 	// Optional keys: "endpoint", "tls"

@@ -54,6 +54,14 @@ type Local struct {
 	mux      sync.Mutex
 }
 
+func (f *Local) OptionsList() *FsOptionsList {
+	return &FsOptionsList{
+		Required: []FsOption{
+			{Name: "path", Label: "Path", Type: "path"},
+		},
+	}
+}
+
 func (f *Local) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "path"
 	path := opts["path"]

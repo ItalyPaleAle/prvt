@@ -58,6 +58,21 @@ type AzureStorage struct {
 	mux                sync.Mutex
 }
 
+func (f *AzureStorage) OptionsList() *FsOptionsList {
+	return &FsOptionsList{
+		Required: []FsOption{
+			{Name: "storageAccount", Label: "Storage account name", Type: "string"},
+			{Name: "accessKey", Label: "Storage account key", Type: "string"},
+			{Name: "container", Label: "Container name", Type: "string"},
+		},
+		Optional: []FsOption{
+			{Name: "endpointSuffix", Label: "Azure Storage endpoint suffix", Type: "string"},
+			{Name: "customEndpoint", Label: "Custom endpoint", Type: "string"},
+			{Name: "tls", Label: "TLS", Type: "bool"},
+		},
+	}
+}
+
 func (f *AzureStorage) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "container", "storageAccount", "accessKey"
 	// Optional keys: "tls", "endpointSuffix", "customEndpoint"
