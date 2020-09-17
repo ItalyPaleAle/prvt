@@ -60,6 +60,8 @@ type UnlockKeyRequest struct {
 }
 
 type InfoResponse struct {
+	RepoInfoResponse
+
 	Name         string `json:"name"`
 	AppVersion   string `json:"version,omitempty"`
 	BuildID      string `json:"buildId,omitempty"`
@@ -70,6 +72,9 @@ type InfoResponse struct {
 	ReadOnly     bool   `json:"readOnly,omitempty"`
 	RepoSelected bool   `json:"repoSelected"`
 	RepoUnlocked bool   `json:"repoUnlocked"`
+}
+
+type RepoInfoResponse struct {
 	StoreType    string `json:"storeType,omitempty"`
 	StoreAccount string `json:"storeAccount,omitempty"`
 	RepoID       string `json:"repoId,omitempty"`
