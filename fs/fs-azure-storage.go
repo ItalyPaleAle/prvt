@@ -60,15 +60,16 @@ type AzureStorage struct {
 
 func (f *AzureStorage) OptionsList() *FsOptionsList {
 	return &FsOptionsList{
+		Label: "Azure Storage",
 		Required: []FsOption{
-			{Name: "storageAccount", Label: "Storage account name", Type: "string"},
-			{Name: "accessKey", Label: "Storage account key", Type: "string"},
-			{Name: "container", Label: "Container name", Type: "string"},
+			{Name: "storageAccount", Type: "string", Label: "Storage account name"},
+			{Name: "accessKey", Type: "string", Label: "Storage account key"},
+			{Name: "container", Type: "string", Label: "Container name"},
 		},
 		Optional: []FsOption{
-			{Name: "endpointSuffix", Label: "Azure Storage endpoint suffix", Type: "string"},
-			{Name: "customEndpoint", Label: "Custom endpoint", Type: "string"},
-			{Name: "tls", Label: "TLS", Type: "bool"},
+			{Name: "endpointSuffix", Type: "string", Label: "Azure Storage endpoint suffix", Description: `Default: "core.windows.net" (Azure Cloud); use "core.chinacloudapi.cn" for Azure China, "core.cloudapi.de" for Azure Germany, "core.usgovcloudapi.net" for Azure Government`},
+			{Name: "customEndpoint", Type: "string", Label: "Custom endpoint", Description: "For Azure Stack and other custom endpoints (overrides endpoint suffix)"},
+			{Name: "tls", Type: "bool-yes", Label: "TLS", Description: "Enable TLS"},
 		},
 	}
 }

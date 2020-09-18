@@ -20,7 +20,7 @@
 // Components
 import Modal from '../shared/components/Modal.svelte'
 import Footer from '../shared/components/Footer.svelte'
-import ConnectionList from './components/ConnectionList.svelte';
+import ConnectionList from './routes/ConnectionList.svelte';
 
 // Stores
 import {modal} from '../shared/stores'

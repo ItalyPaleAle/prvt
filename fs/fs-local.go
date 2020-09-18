@@ -56,8 +56,9 @@ type Local struct {
 
 func (f *Local) OptionsList() *FsOptionsList {
 	return &FsOptionsList{
+		Label: "Local path",
 		Required: []FsOption{
-			{Name: "path", Label: "Path", Type: "path"},
+			{Name: "path", Type: "path", Label: "Path", Description: "Path in the local filesystem"},
 		},
 	}
 }

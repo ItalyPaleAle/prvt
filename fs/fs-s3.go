@@ -57,14 +57,15 @@ type S3 struct {
 
 func (f *S3) OptionsList() *FsOptionsList {
 	return &FsOptionsList{
+		Label: "S3",
 		Required: []FsOption{
-			{Name: "bucket", Label: "Bucket name", Type: "string"},
-			{Name: "accessKey", Label: "Access key", Type: "string"},
-			{Name: "secretKey", Label: "Secret key", Type: "string"},
+			{Name: "bucket", Type: "string", Label: "Bucket name"},
+			{Name: "accessKey", Type: "string", Label: "Access key"},
+			{Name: "secretKey", Type: "string", Label: "Secret key"},
 		},
 		Optional: []FsOption{
-			{Name: "endpoint", Label: "Endpoint", Type: "string"},
-			{Name: "tls", Label: "TLS", Type: "bool"},
+			{Name: "endpoint", Type: "string", Label: "Endpoint", Description: "For S3-compatible servers; leave empty for AWS S3"},
+			{Name: "tls", Type: "bool-yes", Label: "TLS", Description: "Enable TLS"},
 		},
 	}
 }

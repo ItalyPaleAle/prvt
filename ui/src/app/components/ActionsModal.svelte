@@ -9,7 +9,7 @@
       <div class="mt-8 flex items-center justify-around flex-wrap">
         {#each actions as {label, icon, action, isAlert}}
           <button type="button"
-            class="w-11/12 sm:w-2/5 p-2 my-2 flex-grow-0 bg-shade-neutral shadow {isAlert ? 'text-alert' : 'text-accent-200'} hover:bg-shade-100"
+            class="w-11/12 sm:w-2/5 p-2 my-2 flex-grow-0 bg-shade-neutral rounded shadow {isAlert ? 'text-alert' : 'text-accent-200'} hover:bg-shade-100"
             on:click={() => action(element)}>
               <i class="fa {icon || ''} fa-fw" aria-hidden="true"></i>
               {label}

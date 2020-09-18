@@ -188,13 +188,15 @@ func (f *fsBase) GetKeyId() string {
 
 // Individual for the filesystem
 type FsOption struct {
-	Name  string `json:"name"`
-	Label string `json:"label"`
-	Type  string `json:"type"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
 }
 
 // List of options for each filesystem
 type FsOptionsList struct {
+	Label    string     `json:"label"`
 	Required []FsOption `json:"required"`
 	Optional []FsOption `json:"optional"`
 }

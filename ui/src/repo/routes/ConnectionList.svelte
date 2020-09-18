@@ -17,9 +17,17 @@
                 <span class="sr-only">Expand details</span>
             </div>
         </div>
-    {:else}
-        Nothing here
     {/each}
+    <div
+        on:click={showAddItem}
+        class="mb-6 px-4 py-2 flex flex-row items-center cursor-pointer rounded shadow bg-shade-neutral hover:bg-shade-100 list-item">
+        <div class="flex-grow-0 pr-4">
+            <i class="fa fa-plus-circle" aria-hidden="true"></i>
+        </div>
+        <div class="flex-grow">
+            <p class="font-bold text-lg md:text-xl text-accent-300">New connection</p>
+        </div>
+    </div>
 {:catch err}
     {err}
 {/await}
@@ -39,7 +47,8 @@
 import {Request} from "../../shared/lib/request"
 
 // Components
-import ConnectionDetailModal from './ConnectionDetailModal.svelte'
+import ConnectionAddModal from '../components/ConnectionAddModal.svelte'
+import ConnectionDetailModal from '../components/ConnectionDetailModal.svelte'
 
 // Stores
 import {modal} from '../../shared/stores'
@@ -66,6 +75,16 @@ function expandItem(name) {
         props: {
             name,
             remove: removeItem
+        }
+    }
+}
+
+// Open the modal to add new items
+function showAddItem() {
+    $modal = {
+        component: ConnectionAddModal,
+        props: {
+            add: () => {}
         }
     }
 }
