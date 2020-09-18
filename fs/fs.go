@@ -192,6 +192,7 @@ type FsOption struct {
 	Type        string `json:"type"`
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
+	Default     string `json:"default,omitempty"`
 }
 
 // List of options for each filesystem

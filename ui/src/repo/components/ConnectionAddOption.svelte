@@ -1,0 +1,27 @@
+{#if opt.type == 'string' || opt.type == 'path'}
+  <!-- Eventually, path should be changed to a file picker -->
+  <label class="mb-4 block">
+    <b class="mb-1 inline-block">{opt.label}:</b>
+    <input
+      class="bg-shade-neutral appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-100 focus:border-accent-200"
+      name="{opt.name}"
+      type="text"
+      value={opt.default || ''}
+      placeholder={opt.default || ''}
+    />
+    {#if opt.description}
+      <span class="text-xs leading-snug mt-1 mx-1 inline-block">{opt.description}</span>
+    {/if}
+  </label>
+{:else if opt.type == 'bool'}
+  <label class="mb-4 block">
+    <input type="checkbox" name="{opt.name}" checked={opt.default == '1'} />
+    <b>{opt.label}</b>
+  </label>
+{/if}
+
+<script>
+// Props
+export let opt
+</script>
+    

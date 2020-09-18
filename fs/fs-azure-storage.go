@@ -67,9 +67,9 @@ func (f *AzureStorage) OptionsList() *FsOptionsList {
 			{Name: "container", Type: "string", Label: "Container name"},
 		},
 		Optional: []FsOption{
-			{Name: "endpointSuffix", Type: "string", Label: "Azure Storage endpoint suffix", Description: `Default: "core.windows.net" (Azure Cloud); use "core.chinacloudapi.cn" for Azure China, "core.cloudapi.de" for Azure Germany, "core.usgovcloudapi.net" for Azure Government`},
-			{Name: "customEndpoint", Type: "string", Label: "Custom endpoint", Description: "For Azure Stack and other custom endpoints (overrides endpoint suffix)"},
-			{Name: "tls", Type: "bool-yes", Label: "TLS", Description: "Enable TLS"},
+			{Name: "endpointSuffix", Type: "string", Label: "Azure Storage endpoint suffix", Description: `Default: "core.windows.net" (Azure Cloud); use "core.chinacloudapi.cn" for Azure China, "core.cloudapi.de" for Azure Germany, "core.usgovcloudapi.net" for Azure Government`, Default: "core.windows.net"},
+			{Name: "customEndpoint", Type: "string", Label: "Custom endpoint", Description: "For Azure Stack and other custom endpoints; endpoint suffix is ignored when this is set"},
+			{Name: "tls", Type: "bool", Label: "Enable TLS", Default: "1"},
 		},
 	}
 }

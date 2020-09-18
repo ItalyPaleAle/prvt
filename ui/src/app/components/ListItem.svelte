@@ -1,4 +1,4 @@
-<li class="list-item flex flex-row my-1 leading-normal rounded shadow bg-shade-neutral w-full max-w-full hover:bg-shade-100">
+<li class="list-item flex flex-row my-1s rounded shadow bg-shade-neutral w-full max-w-full hover:bg-shade-100">
     <a class="flex-grow p-3" href="{link}">
         <span class="flex flex-row">
             <span class="flex-grow-0">

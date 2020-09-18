@@ -64,8 +64,8 @@ func (f *S3) OptionsList() *FsOptionsList {
 			{Name: "secretKey", Type: "string", Label: "Secret key"},
 		},
 		Optional: []FsOption{
-			{Name: "endpoint", Type: "string", Label: "Endpoint", Description: "For S3-compatible servers; leave empty for AWS S3"},
-			{Name: "tls", Type: "bool-yes", Label: "TLS", Description: "Enable TLS"},
+			{Name: "endpoint", Type: "string", Label: "Endpoint", Description: "For S3-compatible servers; leave empty for AWS S3", Default: "s3.amazonaws.com"},
+			{Name: "tls", Type: "bool", Label: "Enable TLS", Default: "1"},
 		},
 	}
 }

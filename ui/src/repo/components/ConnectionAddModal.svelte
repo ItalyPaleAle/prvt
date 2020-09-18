@@ -19,9 +19,7 @@
     <div class="flex flex-col justify-between h-full">
       <div>
         <h1 class="flex text-2xl break-all mb-4 text-accent-300">New {options[fs].label} connection</h1>
-        <pre>
-          {JSON.stringify(options[fs], null, 2)}
-        </pre>
+        <ConnectionAddOptsForm options={options[fs]} />
       </div>
       <div class="mt-8 flex items-center justify-around flex-wrap">
         <button type="button"
@@ -38,6 +36,9 @@
 {/await}
 
 <script>
+// Components
+import ConnectionAddOptsForm from "./ConnectionAddOptsForm.svelte"
+
 // Utils
 import {Request} from '../../shared/lib/request'
 
