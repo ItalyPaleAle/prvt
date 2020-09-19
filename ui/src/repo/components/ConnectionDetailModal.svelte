@@ -4,7 +4,9 @@
       <span class="flex-grow-0"><i class="fa fa-chevron-right fa-fw" aria-hidden="true"></i></span>
       <span class="pl-2 flex-grow-1">{name}</span>
     </div>
-    {#if info}
+    {#await requesting}
+      <p class="ml-4">Requesting</p>
+    {:then info}
       <div class="ml-4">
         <div class="mb-3 ml-4 flex flex-row items-start">
           <i class="fa fa-link fa-fw flex-grow-0 mt-1" aria-hidden="true"></i>
@@ -28,7 +30,9 @@
           </span>
         </div>
       </div>
-    {/if}
+    {:catch err}
+      <p class="ml-4">{err}</p>
+    {/await}
   </div>
   <div class="mt-8 flex items-center justify-around flex-wrap">
       <button type="button"

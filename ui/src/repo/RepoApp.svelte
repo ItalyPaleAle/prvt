@@ -9,7 +9,7 @@
         </h1>
     </div>
 
-    <ConnectionList />
+    <Router {routes} />
 
     <Footer />
 </div>
@@ -17,10 +17,15 @@
 <svelte:body on:click={bodyClick} />
 
 <script>
+// Libraries
+import Router from 'svelte-spa-router'
+
 // Components
 import Modal from '../shared/components/Modal.svelte'
 import Footer from '../shared/components/Footer.svelte'
-import ConnectionList from './routes/ConnectionList.svelte';
+
+// Routes
+import routes from './routes'
 
 // Stores
 import {modal} from '../shared/stores'

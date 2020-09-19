@@ -80,7 +80,6 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 		return
 	}
 	if info == nil {
-		c.Error(err)
 		c.AbortWithStatusJSON(http.StatusForbidden, ErrorResponse{"Repository is not initialized"})
 		return
 	}

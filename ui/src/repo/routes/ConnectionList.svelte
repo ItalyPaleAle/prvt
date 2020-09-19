@@ -44,7 +44,8 @@
 
 <script>
 // Libraries
-import {Request} from "../../shared/lib/request"
+import {Request} from '../../shared/lib/request'
+import {push} from 'svelte-spa-router'
 
 // Components
 import ConnectionAddModal from '../components/ConnectionAddModal.svelte'
@@ -53,19 +54,19 @@ import ConnectionDetailModal from '../components/ConnectionDetailModal.svelte'
 // Stores
 import {modal} from '../../shared/stores'
 
-let requesting = getList()
+let requesting = null
+getList()
 function getList() {
-    return Request('/api/connection')
+    requesting = Request('/api/connection')
 }
 
 // Select the item on click
 function selectItem(name) {
-    return Request('/api/repo/select', {
-        method: 'POST',
-        postData: {
-            name
-        }
-    })
+    const postData = {name}
+    requesting = Request('/api/repo/select', {postData})
+        .then(() => {
+            push('/unlock')
+        })
 }
 
 // Open the modal to add new items
