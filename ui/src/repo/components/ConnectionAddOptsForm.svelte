@@ -1,6 +1,7 @@
 <div class="mx-3">
+  <ConnectionAddOption opt={nameOpt} required={true} />
   {#each options.required as opt}
-    <ConnectionAddOption {opt} />
+    <ConnectionAddOption {opt} required={true} />
   {:else}
     <p>This storage doesn't have any required option</p>
   {/each}
@@ -14,7 +15,7 @@
     </div>
     <div class:hidden={!showOptional}>
       {#each options.optional as opt}
-        <ConnectionAddOption {opt} />
+        <ConnectionAddOption {opt} required={false} />
       {/each}
     </div>
   {/if}
@@ -26,6 +27,15 @@ import ConnectionAddOption from "./ConnectionAddOption.svelte"
 
 // Props
 export let options = {}
+
+// Option for the name
+const nameOpt = {
+    name: 'name',
+    type: 'string',
+    label: 'Connection name',
+    validate: '^[a-z][a-z0-9-_]{1,39}$',
+    validateMessage: 'Name must only include lowercase letters, numbers, dashes and underscores; additionally, it must start with a letter and be within 2 and 40 characters'
+}
 
 let showOptional = false
 </script>

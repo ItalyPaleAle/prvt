@@ -68,6 +68,16 @@ function selectItem(name) {
     })
 }
 
+// Open the modal to add new items
+function showAddItem() {
+    $modal = {
+        component: ConnectionAddModal,
+        props: {
+            add: addItem
+        }
+    }
+}
+
 // Open the modal on click on the dots
 function expandItem(name) {
     $modal = {
@@ -79,14 +89,21 @@ function expandItem(name) {
     }
 }
 
-// Open the modal to add new items
-function showAddItem() {
-    $modal = {
-        component: ConnectionAddModal,
-        props: {
-            add: () => {}
-        }
-    }
+// Adds an item to the list
+function addItem(data) {
+    // Close the modal
+    $modal = null
+
+    // Sets "requesting" to a promise that does a sequence of operations
+    requesting = Promise.resolve()
+        // Submit the request
+        .then(() => Request('/api/connection', {postData: data}))
+        // Catch errors
+        .catch((err) => {
+            alert('Could not save the connection: ' + err)
+        })
+        // Refresh the list of connections regardless of errors
+        .then(() => getList())
 }
 
 // Remove an item from the list - this is fired by an event
