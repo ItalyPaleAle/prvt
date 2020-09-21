@@ -36,6 +36,7 @@ services:
       - 'AZURE_STORAGE_TLS=false'
       - 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE'
       - 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+      - 'PRVT_STORE=local:/home/vscode/prvt-data'
   minio:
     image: minio/minio
     container_name: minio
