@@ -113,7 +113,7 @@ jobs:
       - name: Fetch tools
         run: |
           # Install goveralls and go-acc
-          curl -sf https://gobinaries.com/github.com/mattn/goveralls@v0.0.6 | PREFIX=. sh
+          curl -sf https://gobinaries.com/github.com/mattn/goveralls@v0.0.7 | PREFIX=. sh
           curl -sf https://gobinaries.com/github.com/ory/go-acc@v0.2.6 | PREFIX=. sh
 
       - name: Get dependencies

@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  development:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: '1.15'
+        INSTALL_NODE: 'true'
+        NODE_VERSION: '12'
+    volumes:
+      # Update this to wherever you want VS Code to mount the folder of your project
+      - ..:/workspace:cached
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity 
+    # Use a non-root user for all processes.
+    user: node
+    environment:
+      - 'GPGKEY_ID=0x4C6D7DB1D92F58EE'
+      - 'GPGKEY_ID_FULL=26426A3E380F1D1B67031D3C4C6D7DB1D92F58EE'
+      - 'GPGKEY_USER=prvt CI <ci@prvt>'
+      - 'S3_ENDPOINT=minio:9000'
+      - 'S3_TLS=false'
+      - 'AZURE_STORAGE_ACCOUNT=devstoreaccount1'
+      - 'AZURE_STORAGE_ACCESS_KEY=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=='
+      - 'AZURE_STORAGE_CUSTOM_ENDPOINT=azurite:10000'
+      - 'AZURE_STORAGE_TLS=false'
+      - 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE'
+      - 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+  minio:
+    image: minio/minio
+    container_name: minio
+    command: 'server /data'
+    volumes:
+      - /data
+    ports:
+      - 9000:9000
+    environment:
+      - 'MINIO_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'
+      - 'MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: azurite
+    command: 'azurite-blob -l /data --blobHost 0.0.0.0 --blobPort 10000'
+    volumes:
+      - /data
+    ports:
+      - 10000:10000
