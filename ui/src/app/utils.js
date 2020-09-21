@@ -9,8 +9,7 @@ export function cleanPath(path) {
     if (path.charAt(path.length - 1) == '/') {
         path = path.slice(0, -1)
     }
-    // Decode URI-encoded characters
-    return decodeURIComponent(path)
+    return path
 }
 
 // Encodes the path so it can put in a URL for requests to the server

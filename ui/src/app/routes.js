@@ -1,4 +1,4 @@
-import {wrap} from 'svelte-spa-router'
+import {wrap} from 'svelte-spa-router/wrap'
 import {readOnly} from '../shared/stores'
 
 // Components
@@ -15,7 +15,12 @@ export default {
     '/tree/*': Tree,
 
     // Add
-    '/add/*': wrap(Add, noReadOnly),
+    '/add/*': wrap({
+        route: Add,
+        conditions: [
+            noReadOnly
+        ]
+    }),
 
     // View
     '/view/:fileId': View,
