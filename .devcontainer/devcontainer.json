@@ -1,19 +1,13 @@
 {
-	"name": "Go",
-	"build": {
-		"dockerfile": "Dockerfile",
-		"args": {
-			// Update the VARIANT arg to pick a version of Go: 1, 1.15, 1.14
-			"VARIANT": "1",
-			// Options
-			"INSTALL_NODE": "false",
-			"NODE_VERSION": "lts/*"
-		}
-	},
-	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+	"name": "prvt",
 
-	// Set *default* container specific settings.json values on container create.
-	"settings": { 
+	// Use a docker-compose manifest
+	"dockerComposeFile": "docker-compose.yaml",
+	"service": "development",
+	"workspaceFolder": "/workspace",
+
+	// Set *default* container-specific settings.json values on container create
+	"settings": {
 		"terminal.integrated.shell.linux": "/usr/bin/zsh",
 		"go.useGoProxyToCheckForToolUpdates": false,
 		"go.useLanguageServer": true,
@@ -21,27 +15,30 @@
 		"go.goroot": "/usr/local/go",
 		"go.toolsGopath": "/go/bin"
 	},
-	
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-        "bierner.github-markdown-preview",
-        "bierner.markdown-checkbox",
-        "bierner.markdown-preview-github-styles",
-        "bradlc.vscode-tailwindcss",
-        "dbaeumer.vscode-eslint",
-        "eg2.vscode-npm-script",
-        "golang.go",
-        "ms-vscode.hexeditor",
-        "redhat.vscode-yaml",
-        "svelte.svelte-vscode",
-	],
-    
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
 
-	// Use 'postCreateCommand' to run commands after the container is created.
+	// Install VS Code extensions when the container is created
+	"extensions": [
+		"bierner.github-markdown-preview",
+		"bierner.markdown-checkbox",
+		"bierner.markdown-preview-github-styles",
+		"bradlc.vscode-tailwindcss",
+		"dbaeumer.vscode-eslint",
+		"eg2.vscode-npm-script",
+		"golang.go",
+		"ms-vscode.hexeditor",
+		"redhat.vscode-yaml",
+		"svelte.svelte-vscode",
+	],
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally
+	"forwardPorts": [
+		3129,
+		3000
+	],
+
+	// Use 'postCreateCommand' to run commands after the container is created
 	"postCreateCommand": "sh .devcontainer/post-create.sh",
 
-	// Connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
+	// Connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root
 	"remoteUser": "vscode"
 }
