@@ -61,6 +61,10 @@ func (s *testFs) Run() {
 	s.testSetInfoFile()
 	s.testGetInfoFile()
 
+	// Set and get raw files
+	s.testRawSetFile()
+	s.testRawGetFile()
+
 	// Derive and set master key
 	masterKey, keyId, _, err := keys.GetMasterKeyWithPassphrase(s.info, "hello world")
 	if !assert.NoError(s.t, err) {
@@ -125,6 +129,51 @@ func (s *testFs) testGetInfoFile() {
 	}
 	assert.NotNil(s.t, info)
 	assert.True(s.t, reflect.DeepEqual(info, s.info))
+}
+
+// Set raw files
+func (s *testFs) testRawSetFile() {
+	in := bytes.NewBufferString("hello world!")
+	_, err := s.store.RawSet(context.Background(), "_raw", in, nil)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+}
+
+// Get raw files
+func (s *testFs) testRawGetFile() {
+	var (
+		found bool
+		out   *bytes.Buffer
+		err   error
+	)
+
+	// Entire file
+	out = &bytes.Buffer{}
+	found, _, err = s.store.RawGet(context.Background(), "_raw", out, 0, 0)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+	assert.True(s.t, found)
+	assert.Equal(s.t, "hello world!", out.String())
+
+	// Partial request - till the end
+	out = &bytes.Buffer{}
+	found, _, err = s.store.RawGet(context.Background(), "_raw", out, 6, 0)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+	assert.True(s.t, found)
+	assert.Equal(s.t, "world!", out.String())
+
+	// Partial request
+	out = &bytes.Buffer{}
+	found, _, err = s.store.RawGet(context.Background(), "_raw", out, 6, 2)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+	assert.True(s.t, found)
+	assert.Equal(s.t, "wo", out.String())
 }
 
 // Store encrypted files

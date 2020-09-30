@@ -182,13 +182,98 @@ func (f *AzureStorage) AccountName() string {
 	return f.storageAccountName + "/" + f.storageContainer
 }
 
-func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {
+func (f *AzureStorage) RawGet(ctx context.Context, name string, out io.Writer, start int64, count int64) (found bool, tag interface{}, err error) {
 	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/_info.json")
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl(name)
 	if err != nil {
 		return
 	}
-	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
+
+	// Download the file or chunk
+	if count < 1 {
+		count = azblob.CountToEnd
+	}
+	resp, err := blockBlobURL.Download(ctx, start, count, azblob.BlobAccessConditions{}, false)
+	if err != nil {
+		if stgErr, ok := err.(azblob.StorageError); !ok {
+			err = fmt.Errorf("network error while downloading the file: %s", err.Error())
+		} else {
+			// Blob not found
+			if stgErr.Response().StatusCode == http.StatusNotFound {
+				found = false
+				err = nil
+				return
+			}
+			err = fmt.Errorf("Azure Storage error while downloading the file: %s", stgErr.Response().Status)
+		}
+		return
+	}
+	body := resp.Body(azblob.RetryReaderOptions{
+		MaxRetryRequests: 3,
+	})
+	defer body.Close()
+
+	found = true
+
+	// Check if the file exists but it's empty
+	if resp.ContentLength() == 0 {
+		found = false
+		return
+	}
+
+	// Copy the response to the out stream
+	_, err = io.Copy(out, body)
+	if err != nil {
+		return
+	}
+
+	// Get the ETag
+	tagObj := resp.ETag()
+	tag = &tagObj
+
+	return
+}
+
+func (f *AzureStorage) RawSet(ctx context.Context, name string, in io.Reader, tag interface{}) (tagOut interface{}, err error) {
+	// Create the blob URL
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl(name)
+	if err != nil {
+		return
+	}
+
+	// Get the blob access conditions
+	accessConditions := f.blobAccessConditions(tag)
+
+	// Upload the blob
+	resp, err := azblob.UploadStreamToBlockBlob(ctx, in, blockBlobURL, azblob.UploadStreamToBlockBlobOptions{
+		BufferSize:       3 * 1024 * 1024,
+		MaxBuffers:       2,
+		AccessConditions: accessConditions,
+	})
+	if err != nil {
+		if stgErr, ok := err.(azblob.StorageError); !ok {
+			return nil, fmt.Errorf("network error while uploading the file: %s", err.Error())
+		} else {
+			return nil, fmt.Errorf("Azure Storage error failed while uploading the file: %s", stgErr.Response().Status)
+		}
+	}
+
+	// Get the ETag
+	tagObj := resp.ETag()
+	tagOut = &tagObj
+
+	return tagOut, nil
+}
+
+func (f *AzureStorage) GetInfoFile() (info *infofile.InfoFile, err error) {
+	// Create the blob URL
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl("_info.json")
+	if err != nil {
+		return
+	}
 
 	// Download the file
 	resp, err := blockBlobURL.Download(context.Background(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
@@ -243,11 +328,11 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 	}
 
 	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/_info.json")
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl("_info.json")
 	if err != nil {
 		return
 	}
-	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
 	// Upload
 	_, err = azblob.UploadBufferToBlockBlob(context.Background(), data, blockBlobURL, azblob.UploadToBlockBlobOptions{})
@@ -263,25 +348,12 @@ func (f *AzureStorage) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
-		return
-	}
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if name[0] != '_' {
-		folder = f.dataPath + "/"
-	}
-
-	found = true
-
 	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/" + folder + name)
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl(name)
 	if err != nil {
 		return
 	}
-	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
 	// Download the file
 	resp, err := blockBlobURL.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
@@ -309,6 +381,8 @@ func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, meta
 		found = false
 		return
 	}
+
+	found = true
 
 	// Decrypt the data
 	var metadataLength int32
@@ -340,25 +414,13 @@ func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, meta
 }
 
 func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
-		return
-	}
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if name[0] != '_' {
-		folder = f.dataPath + "/"
-	}
-
-	found = true
-
 	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/" + folder + name)
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl(name)
 	if err != nil {
 		return
 	}
-	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
+
 	var resp *azblob.DownloadResponse
 
 	// Look up the file's metadata in the cache
@@ -448,6 +510,8 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 	})
 	defer body.Close()
 
+	found = true
+
 	// Check if the file exists but it's empty
 	if resp.ContentLength() == 0 {
 		found = false
@@ -468,23 +532,12 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 }
 
 func (f *AzureStorage) Set(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
+	// Create the blob URL
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl(name)
+	if err != nil {
 		return
 	}
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if name[0] != '_' {
-		folder = f.dataPath + "/"
-	}
-
-	// Create the blob URL
-	u, err := url.Parse(f.storageURL + "/" + folder + name)
-	if err != nil {
-		return nil, err
-	}
-	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
 	// Encrypt the data and upload it
 	pr, pw := io.Pipe()
@@ -495,28 +548,10 @@ func (f *AzureStorage) Set(ctx context.Context, name string, in io.Reader, tag i
 		innerErr = crypto.EncryptFile(pw, r, f.masterKey, metadata)
 	}()
 
-	// If we have a tag (ETag), we will allow the upload to succeed only if the tag matches
-	// If there's no ETag, then the upload can succeed only if there's no file already
+	// Get the blob access conditions
+	accessConditions := f.blobAccessConditions(tag)
 
-	// Access conditions for blob uploads: disallow the operation if the blob already exists
-	// See: https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-conditional-headers-for-blob-service-operations#Subheading1
-	var accessConditions azblob.BlobAccessConditions
-	if tag == nil {
-		// Uploads can succeed only if there's no blob at that path yet
-		accessConditions = azblob.BlobAccessConditions{
-			ModifiedAccessConditions: azblob.ModifiedAccessConditions{
-				IfNoneMatch: "*",
-			},
-		}
-	} else {
-		// Uploads can succeed only if the file hasn't been modified since we downloaded it
-		accessConditions = azblob.BlobAccessConditions{
-			ModifiedAccessConditions: azblob.ModifiedAccessConditions{
-				IfMatch: *tag.(*azblob.ETag),
-			},
-		}
-	}
-
+	// Upload the blob
 	resp, err := azblob.UploadStreamToBlockBlob(ctx, pr, blockBlobURL, azblob.UploadStreamToBlockBlobOptions{
 		BufferSize:       3 * 1024 * 1024,
 		MaxBuffers:       2,
@@ -541,6 +576,32 @@ func (f *AzureStorage) Set(ctx context.Context, name string, in io.Reader, tag i
 }
 
 func (f *AzureStorage) Delete(ctx context.Context, name string, tag interface{}) (err error) {
+	// Create the blob URL
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl(name)
+	if err != nil {
+		return
+	}
+
+	// If we have a tag (ETag), we will allow the operation to succeed only if the tag matches
+	// If there's no ETag, then it will always be allowed
+	var accessConditions azblob.BlobAccessConditions
+	if tag != nil {
+		// Operation can succeed only if the file hasn't been modified since we downloaded it
+		accessConditions = azblob.BlobAccessConditions{
+			ModifiedAccessConditions: azblob.ModifiedAccessConditions{
+				IfMatch: *tag.(*azblob.ETag),
+			},
+		}
+	}
+
+	// Delete the blob
+	_, err = blockBlobURL.Delete(ctx, azblob.DeleteSnapshotsOptionInclude, accessConditions)
+	return
+}
+
+// Internal function that returns the URL object for a blob
+func (f *AzureStorage) blobUrl(name string) (blockBlobURL azblob.BlockBlobURL, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -557,13 +618,27 @@ func (f *AzureStorage) Delete(ctx context.Context, name string, tag interface{})
 	if err != nil {
 		return
 	}
-	blockBlobURL := azblob.NewBlockBlobURL(*u, f.storagePipeline)
+	blockBlobURL = azblob.NewBlockBlobURL(*u, f.storagePipeline)
 
-	// If we have a tag (ETag), we will allow the operation to succeed only if the tag matches
-	// If there's no ETag, then it will always be allowed
-	var accessConditions azblob.BlobAccessConditions
-	if tag != nil {
-		// Operation can succeed only if the file hasn't been modified since we downloaded it
+	return
+}
+
+// Internal function that returns the BlobAccessConditions object for upload operations, given a tag
+func (f *AzureStorage) blobAccessConditions(tag interface{}) (accessConditions azblob.BlobAccessConditions) {
+	// If we have a tag (ETag), we will allow the upload to succeed only if the tag matches
+	// If there's no ETag, then the upload can succeed only if there's no file already
+
+	// Access conditions for blob uploads: disallow the operation if the blob already exists
+	// See: https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-conditional-headers-for-blob-service-operations#Subheading1
+	if tag == nil {
+		// Uploads can succeed only if there's no blob at that path yet
+		accessConditions = azblob.BlobAccessConditions{
+			ModifiedAccessConditions: azblob.ModifiedAccessConditions{
+				IfNoneMatch: "*",
+			},
+		}
+	} else {
+		// Uploads can succeed only if the file hasn't been modified since we downloaded it
 		accessConditions = azblob.BlobAccessConditions{
 			ModifiedAccessConditions: azblob.ModifiedAccessConditions{
 				IfMatch: *tag.(*azblob.ETag),
@@ -571,7 +646,5 @@ func (f *AzureStorage) Delete(ctx context.Context, name string, tag interface{})
 		}
 	}
 
-	// Delete the blob
-	_, err = blockBlobURL.Delete(ctx, azblob.DeleteSnapshotsOptionInclude, accessConditions)
 	return
 }

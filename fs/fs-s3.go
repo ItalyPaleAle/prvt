@@ -181,6 +181,69 @@ func (f *S3) AccountName() string {
 	return f.bucketName
 }
 
+func (f *S3) RawGet(ctx context.Context, name string, out io.Writer, start int64, count int64) (found bool, tag interface{}, err error) {
+	// Get the path to the file
+	var path string
+	path, err = f.filePath(name)
+	if err != nil {
+		return
+	}
+
+	found = true
+
+	// Request the file from S3
+	opts := minio.GetObjectOptions{}
+	if start > 0 || count > 0 {
+		var end int64 = 0
+		if count > 0 {
+			end = start + count - 1
+		}
+		opts.SetRange(start, end)
+	}
+	obj, stat, _, err := f.client.GetObject(ctx, f.bucketName, path, opts)
+	if err != nil {
+		// Check if it's a minio error and it's a not found one
+		e, ok := err.(minio.ErrorResponse)
+		if ok && e.Code == "NoSuchKey" {
+			err = nil
+			found = false
+		}
+		return
+	}
+	defer obj.Close()
+
+	// Check if the file exists but it's empty
+	if stat.Size == 0 {
+		found = false
+		return
+	}
+
+	// Copy the response to the out stream
+	_, err = io.Copy(out, obj)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (f *S3) RawSet(ctx context.Context, name string, in io.Reader, tag interface{}) (tagOut interface{}, err error) {
+	// Get the path to the file
+	var path string
+	path, err = f.filePath(name)
+	if err != nil {
+		return
+	}
+
+	// Upload the file
+	_, err = f.client.Client.PutObject(ctx, f.bucketName, path, in, -1, minio.PutObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func (f *S3) GetInfoFile() (info *infofile.InfoFile, err error) {
 	// Request the file from S3
 	obj, _, _, err := f.client.GetObject(context.Background(), f.bucketName, "_info.json", minio.GetObjectOptions{})
@@ -239,21 +302,17 @@ func (f *S3) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *S3) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
+	// Get the path to the file
+	var path string
+	path, err = f.filePath(name)
+	if err != nil {
 		return
-	}
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if name[0] != '_' {
-		folder = f.dataPath + "/"
 	}
 
 	found = true
 
 	// Request the file from S3
-	obj, stat, _, err := f.client.GetObject(ctx, f.bucketName, folder+name, minio.GetObjectOptions{})
+	obj, stat, _, err := f.client.GetObject(ctx, f.bucketName, path, minio.GetObjectOptions{})
 	if err != nil {
 		// Check if it's a minio error and it's a not found one
 		e, ok := err.(minio.ErrorResponse)
@@ -297,15 +356,11 @@ func (f *S3) Get(ctx context.Context, name string, out io.Writer, metadataCb cry
 }
 
 func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
+	// Get the path to the file
+	var path string
+	path, err = f.filePath(name)
+	if err != nil {
 		return
-	}
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if name[0] != '_' {
-		folder = f.dataPath + "/"
 	}
 
 	found = true
@@ -325,7 +380,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 		// Request the file from S3
 		opts = minio.GetObjectOptions{}
 		opts.SetRange(0, length)
-		obj, stat, _, err = f.client.GetObject(innerCtx, f.bucketName, folder+name, opts)
+		obj, stat, _, err = f.client.GetObject(innerCtx, f.bucketName, path, opts)
 		if err != nil {
 			// Check if it's a minio error and it's a not found one
 			e, ok := err.(minio.ErrorResponse)
@@ -378,7 +433,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 	// Request the actual ranges that we need
 	opts = minio.GetObjectOptions{}
 	opts.SetRange(rng.StartBytes(), rng.EndBytes()-1)
-	obj, stat, _, err = f.client.GetObject(ctx, f.bucketName, folder+name, opts)
+	obj, stat, _, err = f.client.GetObject(ctx, f.bucketName, path, opts)
 	if err != nil {
 		return
 	}
@@ -400,15 +455,11 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 }
 
 func (f *S3) Set(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
-		return nil, err
-	}
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if name[0] != '_' {
-		folder = f.dataPath + "/"
+	// Get the path to the file
+	var path string
+	path, err = f.filePath(name)
+	if err != nil {
+		return
 	}
 
 	// Encrypt the data and upload it
@@ -419,7 +470,7 @@ func (f *S3) Set(ctx context.Context, name string, in io.Reader, tag interface{}
 		r := utils.ReaderFuncWithContext(ctx, in)
 		innerErr = crypto.EncryptFile(pw, r, f.masterKey, metadata)
 	}()
-	_, err = f.client.Client.PutObject(ctx, f.bucketName, folder+name, pr, -1, minio.PutObjectOptions{})
+	_, err = f.client.Client.PutObject(ctx, f.bucketName, path, pr, -1, minio.PutObjectOptions{})
 	if innerErr != nil {
 		return nil, innerErr
 	}
@@ -431,6 +482,21 @@ func (f *S3) Set(ctx context.Context, name string, in io.Reader, tag interface{}
 }
 
 func (f *S3) Delete(ctx context.Context, name string, tag interface{}) (err error) {
+	// Get the path to the file
+	var path string
+	path, err = f.filePath(name)
+	if err != nil {
+		return
+	}
+
+	// Delete the file
+	err = f.client.Client.RemoveObject(ctx, f.bucketName, path, minio.RemoveObjectOptions{})
+
+	return
+}
+
+// Internal function that returns the path to the file on storage
+func (f *S3) filePath(name string) (path string, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -442,7 +508,6 @@ func (f *S3) Delete(ctx context.Context, name string, tag interface{}) (err erro
 		folder = f.dataPath + "/"
 	}
 
-	err = f.client.Client.RemoveObject(ctx, f.bucketName, folder+name, minio.RemoveObjectOptions{})
-
+	path = folder + name
 	return
 }
