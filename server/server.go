@@ -173,6 +173,9 @@ func (s *Server) registerAPIRoutes(router *gin.Engine) {
 		requireUnlock.GET("/file/:fileId", s.FileHandler)
 		requireUnlock.HEAD("/file/:fileId", s.FileHandler)
 
+		// Request a raw file
+		requireUnlock.GET("/rawfile/:path", s.RawFileGetHandler)
+
 		// APIs
 		group := requireUnlock.Group("/api")
 		group.GET("/tree", s.GetTreeHandler)
