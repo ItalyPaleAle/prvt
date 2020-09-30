@@ -36,7 +36,7 @@
   </div>
   <div class="mt-8 flex items-center justify-around flex-wrap">
       <button type="button"
-        class="w-11/12 sm:w-2/5 p-2 my-2 flex-grow-0 bg-shade-neutral rounded shadow text-alert hover:bg-shade-100"
+        class="w-11/12 sm:w-3/5 p-2 my-2 flex-grow-0 bg-shade-neutral rounded shadow text-alert hover:bg-shade-100"
         on:click={() => remove(name)}>
           <i class="fa fa-trash fa-fw" aria-hidden="true"></i>
           Remove connection
@@ -54,15 +54,11 @@ export let remove = null
 
 // Repository info, which is requested from the server
 let requesting = null
-let info = null
 $: requestInfo(name)
 
 // Request the info
 function requestInfo(name) {
     requesting = Request('/api/connection/' + name)
-        .then((response) => {
-            info = response
-        })
 }
 </script>
   

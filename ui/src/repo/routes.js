@@ -8,7 +8,7 @@ import UnlockRepo from './routes/UnlockRepo.svelte'
 // Route definition object
 export default {
     '/': wrap({
-        route: ConnectionList,
+        component: ConnectionList,
         conditions: [() => {
             replace('/repo')
             return false

@@ -16,7 +16,7 @@ export default {
 
     // Add
     '/add/*': wrap({
-        route: Add,
+        component: Add,
         conditions: [
             noReadOnly
         ]
