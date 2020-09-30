@@ -90,15 +90,26 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	s.Infofile = info
 	s.Repo = nil
 
+	// Check if we the repo can be unlocked with a GPG key
+	gpgUnlock := false
+	for _, k := range s.Infofile.Keys {
+		if k.GPGKey != "" {
+			gpgUnlock = true
+			break
+		}
+	}
+
 	// Response
 	repoId := s.Infofile.RepoId
 	if repoId == "" {
 		repoId = "(Repository ID missing)"
 	}
 	fmt.Fprintln(s.LogWriter, "Selected repository:", repoId)
-	c.JSON(http.StatusOK, struct {
-		Repo string `json:"id"`
-	}{
-		Repo: repoId,
+	c.JSON(http.StatusOK, RepoInfoResponse{
+		StoreType:    s.Store.FSName(),
+		StoreAccount: s.Store.AccountName(),
+		RepoID:       repoId,
+		RepoVersion:  s.Infofile.Version,
+		GPGUnlock:    gpgUnlock,
 	})
 }

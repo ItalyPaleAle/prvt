@@ -80,6 +80,7 @@ type RepoInfoResponse struct {
 	RepoID       string `json:"repoId,omitempty"`
 	RepoVersion  uint16 `json:"repoVersion,omitempty"`
 	FileCount    int    `json:"files,omitempty"`
+	GPGUnlock    bool   `json:"gpgUnlock,omitempty"`
 }
 
 type ConnectionListItem struct {

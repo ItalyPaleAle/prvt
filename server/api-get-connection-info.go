@@ -65,6 +65,15 @@ func (s *Server) GetConnectionInfoHandler(c *gin.Context) {
 		return
 	}
 
+	// Check if we the repo can be unlocked with a GPG key
+	gpgUnlock := false
+	for _, k := range info.Keys {
+		if k.GPGKey != "" {
+			gpgUnlock = true
+			break
+		}
+	}
+
 	// Response is RepoInfoResponse (a subset of InfoResponse)
 	repoId := info.RepoId
 	if repoId == "" {
@@ -75,6 +84,7 @@ func (s *Server) GetConnectionInfoHandler(c *gin.Context) {
 		StoreAccount: store.AccountName(),
 		RepoID:       repoId,
 		RepoVersion:  info.Version,
+		GPGUnlock:    gpgUnlock,
 	}
 
 	c.JSON(http.StatusOK, res)

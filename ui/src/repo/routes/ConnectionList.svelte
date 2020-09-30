@@ -64,8 +64,13 @@ function getList() {
 function selectItem(name) {
     const postData = {name}
     requesting = Request('/api/repo/select', {postData})
-        .then(() => {
-            push('/unlock')
+        .then((data) => {
+            if (data && data.gpgUnlock) {
+                push('/unlock?gpg=1')
+            }
+            else {
+                push('/unlock')
+            }
         })
 }
 
