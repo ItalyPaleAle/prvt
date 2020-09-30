@@ -3,6 +3,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const {CleanWebpackPlugin} = require('clean-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const SriPlugin = require('webpack-subresource-integrity')
+const {InjectManifest} = require('workbox-webpack-plugin')
 const path = require('path')
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
 
@@ -42,7 +43,13 @@ const pageList = {
         chunks: ['shared', 'vendor', 'repo'],
         html: path.resolve(__dirname, 'src/repo/index.html'),
         entry: [path.resolve(__dirname, 'src/repo/main.js')]
-    }
+    },
+    wasm: {
+        dist: 'wasm.html',
+        chunks: ['wasm'],
+        html: path.resolve(__dirname, 'src/wasm/index.html'),
+        entry: [path.resolve(__dirname, 'src/wasm/main.js')]
+    },
 }
 
 // Entry points
@@ -102,8 +109,8 @@ module.exports = {
         }
     },
     module: {
-        // Do not parse wasm files
-        noParse: /\.wasm$/,
+        // Do not parse wasm files and two other files which contain "require" calls for Node.js compatibility (Go WebAssembly runtime)
+        noParse: /\.wasm$|wasm_exec\.js$/,
         rules: [
             {
                 test: /\.(svelte)$/,
@@ -169,6 +176,14 @@ module.exports = {
         ...(analyze ? [
             new BundleAnalyzerPlugin()
         ] : []),
+
+        // Service worker
+        new InjectManifest({
+            swSrc: './src/wasm/sw.js',
+            // In dev mode, include fonts only
+            //include: prod ? undefined : [/^fonts/],
+            include: [/^fonts/],
+        }),
     ].concat(addPlugins), // Add other plugins
     mode,
     devServer: {

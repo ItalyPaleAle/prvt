@@ -72,6 +72,7 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 	// Enable CORS when in development
 	if !utils.IsTruthy(buildinfo.Production) {
 		corsConfig := cors.DefaultConfig()
+		corsConfig.AddAllowHeaders("Range")
 		corsConfig.AddExposeHeaders("Date")
 		corsConfig.AllowAllOrigins = true
 		router.Use(cors.New(corsConfig))
