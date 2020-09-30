@@ -102,6 +102,12 @@ type Fs interface {
 	// GetKeyId returns the ID of the key used
 	GetKeyId() string
 
+	// RawGet gets a file from the store as-is, without processing or decrypting its content
+	RawGet(ctx context.Context, name string, out io.Writer, start int64, count int64) (found bool, tag interface{}, err error)
+
+	// RawSet sets a file in the store as-is, without encrypting its content
+	RawSet(ctx context.Context, name string, in io.Reader, tag interface{}) (tagOut interface{}, err error)
+
 	// GetInfoFile returns the contents of the info file
 	GetInfoFile() (info *infofile.InfoFile, err error)
 
