@@ -12,7 +12,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/tink/go v1.4.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/manifoldco/promptui v0.7.0
+	github.com/manifoldco/promptui v0.8.0
 	github.com/minio/minio-go/v7 v7.0.5
 	github.com/minio/sio v0.2.0
 	github.com/mitchellh/go-homedir v1.1.0
