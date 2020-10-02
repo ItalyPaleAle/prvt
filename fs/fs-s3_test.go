@@ -22,6 +22,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	minio "github.com/minio/minio-go/v7"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,7 +35,7 @@ func TestFsS3(t *testing.T) {
 	}
 
 	// Init the caches
-	cache := &MetadataCache{}
+	cache := &fsutils.MetadataCache{}
 	err := cache.Init()
 	if !assert.NoError(t, err) {
 		return

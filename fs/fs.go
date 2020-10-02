@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 )
 
@@ -65,7 +66,7 @@ func GetAllFsOptions() map[string]*FsOptionsList {
 // The dictionary must have a key "type" for the type of fs to use
 func GetWithOptionsMap(opts map[string]string) (store Fs, err error) {
 	// Init the cache
-	cache := &MetadataCache{}
+	cache := &fsutils.MetadataCache{}
 	err = cache.Init()
 	if err != nil {
 		return
@@ -90,7 +91,7 @@ func GetWithOptionsMap(opts map[string]string) (store Fs, err error) {
 // GetWithConnectionString returns a store for the given connection string
 func GetWithConnectionString(connection string) (store Fs, err error) {
 	// Init the cache
-	cache := &MetadataCache{}
+	cache := &fsutils.MetadataCache{}
 	err = cache.Init()
 	if err != nil {
 		return
@@ -121,10 +122,10 @@ type Fs interface {
 	OptionsList() *FsOptionsList
 
 	// InitWithOptionsMap inits the object by passing an options map
-	InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error
+	InitWithOptionsMap(opts map[string]string, cache *fsutils.MetadataCache) error
 
 	// InitWithConnectionString inits the object by passing a connection string and the cache object
-	InitWithConnectionString(connection string, cache *MetadataCache) error
+	InitWithConnectionString(connection string, cache *fsutils.MetadataCache) error
 
 	// FSName returns the identifier of this fs
 	FSName() string
@@ -158,7 +159,7 @@ type Fs interface {
 	Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
 	// GetWithRange is like Get, but accepts a custom range
-	GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
+	GetWithRange(ctx context.Context, name string, out io.Writer, rng *fsutils.RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error)
 
 	// Set writes a stream to the file in the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)

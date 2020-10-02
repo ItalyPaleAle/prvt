@@ -30,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
 
@@ -51,7 +52,7 @@ type S3 struct {
 
 	client     *minio.Core
 	bucketName string
-	cache      *MetadataCache
+	cache      *fsutils.MetadataCache
 	mux        sync.Mutex
 }
 
@@ -70,7 +71,7 @@ func (f *S3) OptionsList() *FsOptionsList {
 	}
 }
 
-func (f *S3) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
+func (f *S3) InitWithOptionsMap(opts map[string]string, cache *fsutils.MetadataCache) error {
 	// Required keys: "bucket", "accessKey", "secretKey"
 	// Optional keys: "endpoint", "tls"
 
@@ -122,7 +123,7 @@ func (f *S3) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) er
 	return nil
 }
 
-func (f *S3) InitWithConnectionString(connection string, cache *MetadataCache) error {
+func (f *S3) InitWithConnectionString(connection string, cache *fsutils.MetadataCache) error {
 	opts := make(map[string]string)
 
 	// Ensure the connection string is valid and extract the parts
@@ -355,7 +356,7 @@ func (f *S3) Get(ctx context.Context, name string, out io.Writer, metadataCb cry
 	return
 }
 
-func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *fsutils.RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	// Get the path to the file
 	var path string
 	path, err = f.filePath(name)

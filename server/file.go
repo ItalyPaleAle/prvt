@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
-	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/gin-gonic/gin"
@@ -66,9 +66,9 @@ func (s *Server) FileHandler(c *gin.Context) {
 		c.AbortWithError(http.StatusRequestedRangeNotSatisfiable, err)
 		return
 	}
-	var rng *fs.RequestRange
+	var rng *fsutils.RequestRange
 	if rngHeader != nil {
-		rng = fs.NewRequestRange(rngHeader)
+		rng = fsutils.NewRequestRange(rngHeader)
 	}
 
 	// Context

@@ -32,6 +32,7 @@ import (
 	"sync"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
 
@@ -54,7 +55,7 @@ type AzureStorage struct {
 	storageContainer   string
 	storagePipeline    pipeline.Pipeline
 	storageURL         string
-	cache              *MetadataCache
+	cache              *fsutils.MetadataCache
 	mux                sync.Mutex
 }
 
@@ -74,7 +75,7 @@ func (f *AzureStorage) OptionsList() *FsOptionsList {
 	}
 }
 
-func (f *AzureStorage) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
+func (f *AzureStorage) InitWithOptionsMap(opts map[string]string, cache *fsutils.MetadataCache) error {
 	// Required keys: "container", "storageAccount", "accessKey"
 	// Optional keys: "tls", "endpointSuffix", "customEndpoint"
 
@@ -152,7 +153,7 @@ func (f *AzureStorage) loadEnvVars(opts map[string]string) {
 	}
 }
 
-func (f *AzureStorage) InitWithConnectionString(connection string, cache *MetadataCache) error {
+func (f *AzureStorage) InitWithConnectionString(connection string, cache *fsutils.MetadataCache) error {
 	opts := make(map[string]string)
 
 	// Ensure the connection string is valid and extract the parts
@@ -413,7 +414,7 @@ func (f *AzureStorage) Get(ctx context.Context, name string, out io.Writer, meta
 	return
 }
 
-func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Writer, rng *fsutils.RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	// Create the blob URL
 	var blockBlobURL azblob.BlockBlobURL
 	blockBlobURL, err = f.blobUrl(name)
