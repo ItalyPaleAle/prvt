@@ -955,44 +955,40 @@ func (s *funcTestSuite) serverReadOnly(t *testing.T) {
 
 // Select a repo using the APIs
 func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
-	selectRequest := func(args interface{}) (string, error) {
+	selectRequest := func(args interface{}) (*server.RepoInfoResponse, error) {
 		// Build the request body
 		reqBody, err := json.Marshal(args)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		// Send the request
 		buf := bytes.NewBuffer(reqBody)
 		res, err := s.client.Post(s.serverAddr+"/api/repo/select/", "application/json", buf)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		defer res.Body.Close()
 		if res.StatusCode < 200 || res.StatusCode > 299 {
-			return "", fmt.Errorf("invalid response status code: %d", res.StatusCode)
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
 		}
 
 		// Read the response and parse the JSON content
 		read, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		data := map[string]string{}
-		err = json.Unmarshal(read, &data)
+		data := &server.RepoInfoResponse{}
+		err = json.Unmarshal(read, data)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		repoId, ok := data["id"]
-		if !ok {
-			return "", errors.New("missing key 'id' in response")
-		}
-		return repoId, nil
+		return data, nil
 	}
 
 	var (
-		repoId string
-		err    error
+		response *server.RepoInfoResponse
+		err      error
 	)
 
 	// Error: cannot request an API list the file list one without selecting
@@ -1024,12 +1020,14 @@ func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
 	assert.EqualError(t, err, "invalid response status code: 400")
 
 	// Select the repo
-	repoId, err = selectRequest(map[string]string{
+	response, err = selectRequest(map[string]string{
 		"type": "local",
 		"path": s.dirs[1],
 	})
 	assert.NoError(t, err)
-	assert.NotEmpty(t, repoId)
+	assert.NotNil(t, response)
+	assert.NotEmpty(t, response.RepoID)
+	assert.Equal(t, 5, response.RepoVersion)
 }
 
 // Add, list, test, and remove keys
