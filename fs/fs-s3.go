@@ -55,6 +55,21 @@ type S3 struct {
 	mux        sync.Mutex
 }
 
+func (f *S3) OptionsList() *FsOptionsList {
+	return &FsOptionsList{
+		Label: "S3",
+		Required: []FsOption{
+			{Name: "bucket", Type: "string", Label: "Bucket name"},
+			{Name: "accessKey", Type: "string", Label: "Access key"},
+			{Name: "secretKey", Type: "string", Label: "Secret key"},
+		},
+		Optional: []FsOption{
+			{Name: "endpoint", Type: "string", Label: "Endpoint", Description: "For S3-compatible servers; leave empty for AWS S3", Default: "s3.amazonaws.com"},
+			{Name: "tls", Type: "bool", Label: "Enable TLS", Default: "1"},
+		},
+	}
+}
+
 func (f *S3) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "bucket", "accessKey", "secretKey"
 	// Optional keys: "endpoint", "tls"
@@ -156,6 +171,14 @@ func (f *S3) loadEnvVars(opts map[string]string) {
 	if opts["tls"] == "" {
 		opts["tls"] = os.Getenv("S3_TLS")
 	}
+}
+
+func (f *S3) FSName() string {
+	return "s3"
+}
+
+func (f *S3) AccountName() string {
+	return f.bucketName
 }
 
 func (f *S3) RawGet(ctx context.Context, name string, out io.Writer, start int64, count int64) (found bool, tag interface{}, err error) {

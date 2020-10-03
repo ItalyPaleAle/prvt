@@ -33,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -84,48 +85,36 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 
 // Test the API info endpoint
 func (s *funcTestSuite) serverInfo(t *testing.T) {
-	sendRequest := func() (data *server.InfoResponse, err error) {
-		// Send the request, then read the response and parse the JSON response into a map
-		res, err := s.client.Get(s.serverAddr + "/api/info")
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		if res.StatusCode < 200 || res.StatusCode > 299 {
-			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
-		}
-		read, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		data = &server.InfoResponse{}
-		err = json.Unmarshal(read, data)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
+	storePath, err := filepath.Abs(s.dirs[0])
+	if err != nil {
+		t.Fatal(err)
+		return
 	}
 
 	// Check the response
-	data, err := sendRequest()
+	data, err := s.infoRequest()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	assert.Equal(t, "prvt", data.Name)
-	assert.Equal(t, "canary", data.AppVersion)
+	assert.Equal(t, "dev", data.AppVersion)
 	assert.NotEmpty(t, data.Info)
 	assert.Empty(t, data.BuildID)
 	assert.Empty(t, data.BuildTime)
 	assert.Empty(t, data.CommitHash)
-	assert.NotEmpty(t, data.Runtime)
+	assert.Equal(t, runtime.Version(), data.Runtime)
 	assert.Empty(t, data.ReadOnly)
 	assert.True(t, data.RepoSelected)
 	assert.True(t, data.RepoUnlocked)
+	assert.NotEmpty(t, data.RepoID)
+	assert.Equal(t, uint16(5), data.RepoVersion)
+	assert.Equal(t, "local", data.StoreType)
+	assert.Equal(t, storePath+"/", data.StoreAccount)
 
 	// Set buildinfo then check again
 	reset := setBuildInfo()
-	data, err = sendRequest()
+	data, err = s.infoRequest()
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -136,10 +125,14 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 	assert.NotEmpty(t, data.BuildID)
 	assert.NotEmpty(t, data.BuildTime)
 	assert.NotEmpty(t, data.CommitHash)
-	assert.NotEmpty(t, data.Runtime)
+	assert.Equal(t, runtime.Version(), data.Runtime)
 	assert.Empty(t, data.ReadOnly)
 	assert.True(t, data.RepoSelected)
 	assert.True(t, data.RepoUnlocked)
+	assert.NotEmpty(t, data.RepoID)
+	assert.Equal(t, uint16(5), data.RepoVersion)
+	assert.Equal(t, "local", data.StoreType)
+	assert.Equal(t, storePath+"/", data.StoreAccount)
 	reset()
 }
 
@@ -244,6 +237,12 @@ func (s *funcTestSuite) serverAddUploadMultiFiles(t *testing.T) {
 		assert.Equal(t, "/upload/"+p, data[i].Path)
 		assert.True(t, data[i].FileId != "")
 	}
+
+	// Check the info file's stats
+	info, err := s.infoRequest()
+	assert.NoError(t, err)
+	assert.NotNil(t, info)
+	assert.Equal(t, len(paths)+2, info.FileCount)
 }
 
 // Add multiple files from the local file system, to the /added folder
@@ -883,17 +882,16 @@ func (s *funcTestSuite) serverWebUI(t *testing.T) {
 func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	var (
 		res  *server.RepoKeyListItem
-		info *server.RepoInfoResponse
+		info *server.InfoResponse
 		err  error
 	)
 
 	// Test repo info endpoint, on a locked repo first
-	info, err = s.repoInfoRequest()
+	info, err = s.infoRequest()
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
-	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
-		Version: 5,
-	}, info))
+	assert.True(t, info.RepoSelected)
+	assert.False(t, info.RepoUnlocked)
 
 	// Error: cannot request an API list the file list one without unlocking the repo
 	_, err = s.listRequest("/")
@@ -933,13 +931,11 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test repo info endpoint, on the unlocked repo
-	info, err = s.repoInfoRequest()
+	info, err = s.infoRequest()
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
-	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
-		Version:   5,
-		FileCount: 0,
-	}, info))
+	assert.True(t, info.RepoSelected)
+	assert.True(t, info.RepoUnlocked)
 }
 
 // Test read-only mode
@@ -1394,10 +1390,10 @@ func (s *funcTestSuite) unlockRequest(args *server.UnlockKeyRequest, keyTest boo
 	return data, nil
 }
 
-// Internal function that performs a request to the repo info endpoint
-func (s *funcTestSuite) repoInfoRequest() (*server.RepoInfoResponse, error) {
-	// Send the request
-	res, err := s.client.Get(s.serverAddr + "/api/repo/info")
+// Internal function that performs a request to the info endpoint
+func (s *funcTestSuite) infoRequest() (data *server.InfoResponse, err error) {
+	// Send the request, then read the response and parse the JSON response into a map
+	res, err := s.client.Get(s.serverAddr + "/api/info")
 	if err != nil {
 		return nil, err
 	}
@@ -1405,13 +1401,11 @@ func (s *funcTestSuite) repoInfoRequest() (*server.RepoInfoResponse, error) {
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
 	}
-
-	// Read the response and parse the JSON content
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
-	data := &server.RepoInfoResponse{}
+	data = &server.InfoResponse{}
 	err = json.Unmarshal(read, data)
 	if err != nil {
 		return nil, err

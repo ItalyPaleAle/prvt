@@ -28,27 +28,46 @@ import (
 
 // GetInfoHandler is the handler for GET /api/info, which returns the info for the app
 func (s *Server) GetInfoHandler(c *gin.Context) {
-	if buildinfo.BuildID == "" || buildinfo.CommitHash == "" {
-		c.JSON(http.StatusOK, InfoResponse{
-			Name:         "prvt",
-			AppVersion:   "canary",
-			Info:         "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source",
-			Runtime:      runtime.Version(),
-			ReadOnly:     s.ReadOnly,
-			RepoSelected: c.GetBool("RepoSelected"),
-			RepoUnlocked: c.GetBool("RepoUnlocked"),
-		})
-	} else {
-		c.JSON(http.StatusOK, InfoResponse{
-			Name:         "prvt",
-			AppVersion:   buildinfo.AppVersion,
-			BuildID:      buildinfo.BuildID,
-			BuildTime:    buildinfo.BuildTime,
-			CommitHash:   buildinfo.CommitHash,
-			Runtime:      runtime.Version(),
-			ReadOnly:     s.ReadOnly,
-			RepoSelected: c.GetBool("RepoSelected"),
-			RepoUnlocked: c.GetBool("RepoUnlocked"),
-		})
+	// Response object
+	res := InfoResponse{
+		Name:         "prvt",
+		Runtime:      runtime.Version(),
+		ReadOnly:     s.ReadOnly,
+		RepoSelected: c.GetBool("RepoSelected"),
+		RepoUnlocked: c.GetBool("RepoUnlocked"),
 	}
+
+	// If repo is selected, add repository ID and version
+	if res.RepoSelected {
+		// RepoId might be empty, so the value will be ignored in the resulting JSON
+		res.RepoID = s.Infofile.RepoId
+		res.RepoVersion = s.Infofile.Version
+
+		// Store type and account
+		res.StoreType = s.Store.FSName()
+		res.StoreAccount = s.Store.AccountName()
+
+		// If the repo is unlocked, add stats too
+		if res.RepoUnlocked {
+			stat, err := s.Repo.Index.Stat()
+			if err != nil {
+				c.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+			res.FileCount = stat.FileCount
+		}
+	}
+
+	// Add version and build info if present
+	if buildinfo.BuildID == "" || buildinfo.CommitHash == "" {
+		res.AppVersion = "dev"
+		res.Info = "This prvt build does not contain a build identifier, and it was probably fetched from the repository as source"
+	} else {
+		res.AppVersion = buildinfo.AppVersion
+		res.BuildID = buildinfo.BuildID
+		res.BuildTime = buildinfo.BuildTime
+		res.CommitHash = buildinfo.CommitHash
+	}
+
+	c.JSON(http.StatusOK, res)
 }

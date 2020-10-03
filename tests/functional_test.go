@@ -41,6 +41,7 @@ type funcTestSuite struct {
 	gpgKeyUser string
 	promptPwd  *passwordPrompter
 	dirs       []string
+	repoIds    []string
 	fixtures   string
 	client     *http.Client
 	serverAddr string
@@ -89,6 +90,7 @@ func (s *funcTestSuite) Setup(t *testing.T) func() {
 		t.TempDir(),
 		t.TempDir(),
 	}
+	s.repoIds = make([]string, len(s.dirs))
 
 	// HTTP client
 	s.client = &http.Client{

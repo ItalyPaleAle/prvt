@@ -54,6 +54,15 @@ type Local struct {
 	mux      sync.Mutex
 }
 
+func (f *Local) OptionsList() *FsOptionsList {
+	return &FsOptionsList{
+		Label: "Local path",
+		Required: []FsOption{
+			{Name: "path", Type: "path", Label: "Path", Description: "Path in the local filesystem"},
+		},
+	}
+}
+
 func (f *Local) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "path"
 	path := opts["path"]
@@ -100,6 +109,14 @@ func (f *Local) init(path string, cache *MetadataCache) error {
 	f.basePath = path
 
 	return nil
+}
+
+func (f *Local) FSName() string {
+	return "local"
+}
+
+func (f *Local) AccountName() string {
+	return f.basePath
 }
 
 func (f *Local) RawGet(ctx context.Context, name string, out io.Writer, start int64, count int64) (found bool, tag interface{}, err error) {

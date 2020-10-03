@@ -49,7 +49,7 @@ jobs:
                 npm ci
 
                 echo -e "\n###\nBuilding UI\n"
-                APP_VERSION="canary" npm run build
+                APP_VERSION="dev" npm run build
                 '
           echo -e "\n###\nCompilation done\n"
           ls -al ui/dist

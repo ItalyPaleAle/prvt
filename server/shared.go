@@ -60,6 +60,8 @@ type UnlockKeyRequest struct {
 }
 
 type InfoResponse struct {
+	RepoInfoResponse
+
 	Name         string `json:"name"`
 	AppVersion   string `json:"version,omitempty"`
 	BuildID      string `json:"buildId,omitempty"`
@@ -73,16 +75,27 @@ type InfoResponse struct {
 }
 
 type RepoInfoResponse struct {
-	Version   uint16 `json:"version"`
-	FileCount int    `json:"files"`
+	StoreType    string `json:"storeType,omitempty"`
+	StoreAccount string `json:"storeAccount,omitempty"`
+	RepoID       string `json:"repoId,omitempty"`
+	RepoVersion  uint16 `json:"repoVersion,omitempty"`
+	FileCount    int    `json:"files,omitempty"`
+	GPGUnlock    bool   `json:"gpgUnlock,omitempty"`
 }
+
+type ConnectionListItem struct {
+	Type    string `json:"type"`
+	Account string `json:"account"`
+}
+
+type ConnectionList map[string]ConnectionListItem
 
 // FromBody adds data to the object from a request
 func (p *UnlockKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the information to unlock the repository from the body
 	if err := c.Bind(p); err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse request body"})
 		return false
 	}
 
@@ -109,7 +122,7 @@ func (p *AddKeyRequest) FromBody(c *gin.Context) (ok bool) {
 	// Get the content from the body
 	if err := c.Bind(p); err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse request body"})
 		return false
 	}
 

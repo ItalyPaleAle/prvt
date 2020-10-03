@@ -31,6 +31,36 @@ import (
 
 var fsTypes = map[string]reflect.Type{}
 
+// GetFsOptions returns the list of options for a specific fs
+func GetFsOptions(name string) *FsOptionsList {
+	// Get the store object using some reflection magic
+	fsTyp, ok := fsTypes[name]
+	if !ok || fsTyp == nil {
+		return nil
+	}
+	store := reflect.New(fsTyp).Interface().(Fs)
+
+	// Return options
+	return store.OptionsList()
+}
+
+// GetAllFsOptions returns the list of options for all fs
+func GetAllFsOptions() map[string]*FsOptionsList {
+	res := make(map[string]*FsOptionsList)
+	for k, fsTyp := range fsTypes {
+		// Get the store object using some reflection magic
+		store := reflect.New(fsTyp).Interface().(Fs)
+		// Add this only for the canonical name
+		k = store.FSName()
+		if res[k] == nil {
+			res[k] = store.OptionsList()
+		}
+	}
+
+	// Return options
+	return res
+}
+
 // GetWithOptionsMap returns a store given the options map
 // The dictionary must have a key "type" for the type of fs to use
 func GetWithOptionsMap(opts map[string]string) (store Fs, err error) {
@@ -87,11 +117,20 @@ func GetWithConnectionString(connection string) (store Fs, err error) {
 
 // Fs is the interface for the filesystem
 type Fs interface {
+	// OptionsList returns the list of options (dictionary keys)
+	OptionsList() *FsOptionsList
+
 	// InitWithOptionsMap inits the object by passing an options map
 	InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error
 
 	// InitWithConnectionString inits the object by passing a connection string and the cache object
 	InitWithConnectionString(connection string, cache *MetadataCache) error
+
+	// FSName returns the identifier of this fs
+	FSName() string
+
+	// AccountName returns a string that can be used to identify this account
+	AccountName() string
 
 	// SetMasterKey sets the master key (used to encrypt/decrypt files) in the object
 	SetMasterKey(keyId string, key []byte)
@@ -151,4 +190,20 @@ func (f *fsBase) GetMasterKey() []byte {
 // GetKeyId returns the ID of the key used
 func (f *fsBase) GetKeyId() string {
 	return f.keyId
+}
+
+// Individual for the filesystem
+type FsOption struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+	Default     string `json:"default,omitempty"`
+}
+
+// List of options for each filesystem
+type FsOptionsList struct {
+	Label    string     `json:"label"`
+	Required []FsOption `json:"required"`
+	Optional []FsOption `json:"optional"`
 }

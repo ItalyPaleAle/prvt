@@ -23,7 +23,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DeleteRepoKeyHandler is the handler for DELETE /api/repo/key/:keyId, which removes a key key
+// DeleteRepoKeyHandler is the handler for DELETE /api/repo/key/:keyId, which removes a key
 func (s *Server) DeleteRepoKeyHandler(c *gin.Context) {
 	// Get the key ID
 	keyId := c.Param("keyId")

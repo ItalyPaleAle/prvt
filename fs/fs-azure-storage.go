@@ -58,6 +58,22 @@ type AzureStorage struct {
 	mux                sync.Mutex
 }
 
+func (f *AzureStorage) OptionsList() *FsOptionsList {
+	return &FsOptionsList{
+		Label: "Azure Storage",
+		Required: []FsOption{
+			{Name: "storageAccount", Type: "string", Label: "Storage account name"},
+			{Name: "accessKey", Type: "string", Label: "Storage account key"},
+			{Name: "container", Type: "string", Label: "Container name"},
+		},
+		Optional: []FsOption{
+			{Name: "endpointSuffix", Type: "string", Label: "Azure Storage endpoint suffix", Description: `Default: "core.windows.net" (Azure Cloud); use "core.chinacloudapi.cn" for Azure China, "core.cloudapi.de" for Azure Germany, "core.usgovcloudapi.net" for Azure Government`, Default: "core.windows.net"},
+			{Name: "customEndpoint", Type: "string", Label: "Custom endpoint", Description: "For Azure Stack and other custom endpoints; endpoint suffix is ignored when this is set"},
+			{Name: "tls", Type: "bool", Label: "Enable TLS", Default: "1"},
+		},
+	}
+}
+
 func (f *AzureStorage) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
 	// Required keys: "container", "storageAccount", "accessKey"
 	// Optional keys: "tls", "endpointSuffix", "customEndpoint"
@@ -156,6 +172,14 @@ func (f *AzureStorage) InitWithConnectionString(connection string, cache *Metada
 
 	// Init the object from the opts dictionary
 	return f.InitWithOptionsMap(opts, cache)
+}
+
+func (f *AzureStorage) FSName() string {
+	return "azure"
+}
+
+func (f *AzureStorage) AccountName() string {
+	return f.storageAccountName + "/" + f.storageContainer
 }
 
 func (f *AzureStorage) RawGet(ctx context.Context, name string, out io.Writer, start int64, count int64) (found bool, tag interface{}, err error) {
