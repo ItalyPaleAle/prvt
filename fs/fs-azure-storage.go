@@ -438,7 +438,7 @@ func (f *AzureStorage) GetWithRange(ctx context.Context, name string, out io.Wri
 		}
 
 		// Decrypt the data
-		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(innerCtx, nil, body, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
 			cancel()

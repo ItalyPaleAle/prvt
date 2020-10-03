@@ -380,7 +380,7 @@ func (f *S3) GetWithRange(ctx context.Context, name string, out io.Writer, rng *
 		}
 
 		// Decrypt the data
-		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, obj, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(innerCtx, nil, obj, f.masterKey, func(md *crypto.Metadata, sz int32) bool {
 			metadata = md
 			metadataLength = sz
 			cancel()
