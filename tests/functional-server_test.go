@@ -1027,7 +1027,7 @@ func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 	assert.NotEmpty(t, response.RepoID)
-	assert.Equal(t, 5, response.RepoVersion)
+	assert.Equal(t, uint16(5), response.RepoVersion)
 }
 
 // Add, list, test, and remove keys
