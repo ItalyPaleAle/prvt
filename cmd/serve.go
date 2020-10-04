@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/repository"
@@ -115,7 +116,10 @@ You can use the optional "--address" and "--port" flags to control what address 
 						Store: store,
 						Index: &index.Index{},
 					}
-					repo.Index.SetStore(store)
+					indexProvider := &fsindex.IndexProviderFs{
+						Store: store,
+					}
+					repo.Index.SetStore(indexProvider)
 				}
 			}
 

@@ -21,12 +21,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ItalyPaleAle/prvt/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRanges(t *testing.T) {
 	var rng *RequestRange
-	var rngHeader *HttpRange
+	var rngHeader *utils.HttpRange
 
 	// Basic test
 	rng = &RequestRange{
@@ -53,7 +54,7 @@ func TestRanges(t *testing.T) {
 
 	// From header
 	// Still in one package
-	rngHeader = &HttpRange{
+	rngHeader = &utils.HttpRange{
 		Start:  60000,
 		Length: 10,
 	}
@@ -79,7 +80,7 @@ func TestRanges(t *testing.T) {
 	assert.Equal(t, "bytes 600107-600106/600107", rng.ResponseHeaderValue())
 
 	// Across packages 2
-	rngHeader = &HttpRange{
+	rngHeader = &utils.HttpRange{
 		Start:  65409,
 		Length: 77,
 	}
@@ -98,7 +99,7 @@ func TestRanges(t *testing.T) {
 	assert.Equal(t, "bytes 65409-65485/600107", rng.ResponseHeaderValue())
 
 	// No ending, last package only
-	rngHeader = &HttpRange{
+	rngHeader = &utils.HttpRange{
 		Start:  600010,
 		Length: 0,
 	}
@@ -117,7 +118,7 @@ func TestRanges(t *testing.T) {
 	assert.Equal(t, "bytes 600010-600106/600107", rng.ResponseHeaderValue())
 
 	// No ending, from first package
-	rngHeader = &HttpRange{
+	rngHeader = &utils.HttpRange{
 		Start:  60000,
 		Length: 0,
 	}
@@ -136,7 +137,7 @@ func TestRanges(t *testing.T) {
 	assert.Equal(t, "bytes 60000-600106/600107", rng.ResponseHeaderValue())
 
 	// No ending, from non-first package
-	rngHeader = &HttpRange{
+	rngHeader = &utils.HttpRange{
 		Start:  70000,
 		Length: 0,
 	}

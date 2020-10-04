@@ -18,16 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
-	"bytes"
-	"context"
 	"errors"
-	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ItalyPaleAle/prvt/crypto"
-	"github.com/ItalyPaleAle/prvt/fs"
 	pb "github.com/ItalyPaleAle/prvt/index/proto"
 
 	"github.com/gofrs/uuid"
@@ -51,18 +46,26 @@ type IndexStats struct {
 	FileCount int
 }
 
+// Interface for index providers, that interface with the back-end store
+type IndexProvider interface {
+	// Get the index file
+	Get() (data []byte, isJSON bool, tag interface{}, err error)
+	// Set the index file
+	Set(data []byte, cacheTag interface{}) (newTag interface{}, err error)
+}
+
 // Index manages the index for all files and folders
 type Index struct {
 	cache      *pb.IndexFile
 	cacheFiles map[string]*pb.IndexElement
 	cacheTree  *IndexTreeNode
 	cacheTag   interface{}
-	store      fs.Fs
+	store      IndexProvider
 	semaphore  sync.Mutex
 }
 
 // SetStore sets the store (filesystem) object to use
-func (i *Index) SetStore(store fs.Fs) {
+func (i *Index) SetStore(store IndexProvider) {
 	// Do not alter this if there's a refresh running
 	i.semaphore.Lock()
 
@@ -98,32 +101,13 @@ func (i *Index) Refresh(force bool) error {
 	}
 
 	// Need to request the index
-	var data []byte
-	buf := &bytes.Buffer{}
-	isJSON := false
-	found, tag, err := i.store.Get(context.Background(), "_index", buf, func(metadata *crypto.Metadata, metadataSize int32) {
-		// Check if we're decoding a legacy JSON file
-		if metadata.ContentType == "application/json" {
-			isJSON = true
-		}
-	})
-	if found {
-		// Check error here because otherwise we might have an error also if the index wasn't found
-		if err != nil {
-			return err
-		}
-
-		data, err = ioutil.ReadAll(buf)
-		if err != nil {
-			return err
-		}
-	} else {
-		// Ignore "not found" errors
-		err = nil
+	data, isJSON, tag, err := i.store.Get()
+	if err != nil {
+		return err
 	}
 
 	// Empty index
-	if len(data) == 0 {
+	if data == nil || len(data) == 0 {
 		i.cache = &pb.IndexFile{
 			Version:  2,
 			Elements: make([]*pb.IndexElement, 0),
@@ -175,13 +159,7 @@ func (i *Index) save(obj *pb.IndexFile) error {
 	}
 
 	// Encrypt and save the updated index, if the tag is the same
-	metadata := &crypto.Metadata{
-		Name:        "index",
-		ContentType: "application/protobuf",
-		Size:        int64(len(data)),
-	}
-	buf := bytes.NewBuffer(data)
-	tag, err := i.store.Set(context.Background(), "_index", buf, i.cacheTag, metadata)
+	tag, err := i.store.Set(data, i.cacheTag)
 	if err != nil {
 		return err
 	}

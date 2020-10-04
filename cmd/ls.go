@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 
 	"github.com/spf13/cobra"
@@ -74,8 +75,11 @@ Shows the list of all files and folders contained in the repository at a given p
 			store.SetMasterKey(keyId, masterKey)
 
 			// Set up the index
+			indexProvider := &fsindex.IndexProviderFs{
+				Store: store,
+			}
 			idx := &index.Index{}
-			idx.SetStore(store)
+			idx.SetStore(indexProvider)
 
 			// Get the path and ensure it starts with /
 			path := ""
