@@ -79,7 +79,7 @@ Shows the list of all files and folders contained in the repository at a given p
 				Store: store,
 			}
 			idx := &index.Index{}
-			idx.SetStore(indexProvider)
+			idx.SetProvider(indexProvider)
 
 			// Get the path and ensure it starts with /
 			path := ""

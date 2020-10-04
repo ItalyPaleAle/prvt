@@ -77,7 +77,7 @@ func NewRepoInfoCmd() *cobra.Command {
 					Store: store,
 				}
 				idx := &index.Index{}
-				idx.SetStore(indexProvider)
+				idx.SetProvider(indexProvider)
 
 				// Get stats
 				stat, err = idx.Stat()

@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
@@ -33,7 +32,7 @@ type IndexProviderFs struct {
 }
 
 // Get the index file
-func (i *IndexProviderFs) Get() (data []byte, isJSON bool, tag interface{}, err error) {
+func (i *IndexProviderFs) Get(ctx context.Context) (data []byte, isJSON bool, tag interface{}, err error) {
 	isJSON = false
 
 	// Abort if no store
@@ -45,7 +44,7 @@ func (i *IndexProviderFs) Get() (data []byte, isJSON bool, tag interface{}, err 
 	// Need to request the index
 	buf := &bytes.Buffer{}
 	var found bool
-	found, tag, err = i.Store.Get(context.Background(), "_index", buf, func(metadata *crypto.Metadata, metadataSize int32) {
+	found, tag, err = i.Store.Get(ctx, "_index", buf, func(metadata *crypto.Metadata, metadataSize int32) {
 		// Check if we're decoding a legacy JSON file
 		if metadata.ContentType == "application/json" {
 			isJSON = true
@@ -53,16 +52,13 @@ func (i *IndexProviderFs) Get() (data []byte, isJSON bool, tag interface{}, err 
 			err = errors.New("invalid Content-Type: " + metadata.ContentType)
 		}
 	})
-	if found {
+	if found && buf.Len() > 0 {
 		// Check error here because otherwise we might have an error also if the index wasn't found
 		if err != nil {
 			return
 		}
 
-		data, err = ioutil.ReadAll(buf)
-		if err != nil {
-			return
-		}
+		data = buf.Bytes()
 	} else {
 		// Ignore "not found" errors
 		err = nil
@@ -72,7 +68,7 @@ func (i *IndexProviderFs) Get() (data []byte, isJSON bool, tag interface{}, err 
 }
 
 // Set the index file
-func (i *IndexProviderFs) Set(data []byte, cacheTag interface{}) (newTag interface{}, err error) {
+func (i *IndexProviderFs) Set(ctx context.Context, data []byte, cacheTag interface{}) (newTag interface{}, err error) {
 	// Abort if no store
 	if i.Store == nil {
 		err = errors.New("store is not initialized")
@@ -91,5 +87,5 @@ func (i *IndexProviderFs) Set(data []byte, cacheTag interface{}) (newTag interfa
 		Size:        int64(len(data)),
 	}
 	buf := bytes.NewBuffer(data)
-	return i.Store.Set(context.Background(), "_index", buf, cacheTag, metadata)
+	return i.Store.Set(ctx, "_index", buf, cacheTag, metadata)
 }

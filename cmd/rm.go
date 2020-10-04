@@ -90,7 +90,7 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			indexProvider := &fsindex.IndexProviderFs{
 				Store: store,
 			}
-			repo.Index.SetStore(indexProvider)
+			repo.Index.SetProvider(indexProvider)
 
 			// Iterate through the args and remove all files
 			res := make(chan repository.PathResultMessage)

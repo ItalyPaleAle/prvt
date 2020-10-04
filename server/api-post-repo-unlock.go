@@ -70,7 +70,7 @@ func (s *Server) PostRepoUnlockHandler(dryRun bool) func(c *gin.Context) {
 			indexProvider := &fsindex.IndexProviderFs{
 				Store: s.Store,
 			}
-			s.Repo.Index.SetStore(indexProvider)
+			s.Repo.Index.SetProvider(indexProvider)
 
 			fmt.Fprintln(s.LogWriter, "Repository unlocked with key:", keyId)
 		}

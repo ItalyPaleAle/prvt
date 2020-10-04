@@ -119,7 +119,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 					indexProvider := &fsindex.IndexProviderFs{
 						Store: store,
 					}
-					repo.Index.SetStore(indexProvider)
+					repo.Index.SetProvider(indexProvider)
 				}
 			}
 

@@ -108,7 +108,7 @@ You must specify a destination, which is a folder inside the repository where yo
 			indexProvider := &fsindex.IndexProviderFs{
 				Store: store,
 			}
-			repo.Index.SetStore(indexProvider)
+			repo.Index.SetProvider(indexProvider)
 
 			// Iterate through the args and add them all
 			ctx := context.Background()

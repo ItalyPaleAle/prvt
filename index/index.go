@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"sync"
@@ -49,9 +50,9 @@ type IndexStats struct {
 // Interface for index providers, that interface with the back-end store
 type IndexProvider interface {
 	// Get the index file
-	Get() (data []byte, isJSON bool, tag interface{}, err error)
+	Get(ctx context.Context) (data []byte, isJSON bool, tag interface{}, err error)
 	// Set the index file
-	Set(data []byte, cacheTag interface{}) (newTag interface{}, err error)
+	Set(ctx context.Context, data []byte, cacheTag interface{}) (newTag interface{}, err error)
 }
 
 // Index manages the index for all files and folders
@@ -60,17 +61,17 @@ type Index struct {
 	cacheFiles map[string]*pb.IndexElement
 	cacheTree  *IndexTreeNode
 	cacheTag   interface{}
-	store      IndexProvider
+	provider   IndexProvider
 	semaphore  sync.Mutex
 }
 
-// SetStore sets the store (filesystem) object to use
-func (i *Index) SetStore(store IndexProvider) {
+// SetProvider sets the providerobject to use
+func (i *Index) SetProvider(provider IndexProvider) {
 	// Do not alter this if there's a refresh running
 	i.semaphore.Lock()
 
-	// Set the new store object
-	i.store = store
+	// Set the new provider object
+	i.provider = provider
 
 	// Reset the cache
 	i.cache = nil
@@ -83,9 +84,9 @@ func (i *Index) SetStore(store IndexProvider) {
 
 // Refresh an index if necessary
 func (i *Index) Refresh(force bool) error {
-	// Abort if no store
-	if i.store == nil {
-		return errors.New("store is not initialized")
+	// Abort if no provider
+	if i.provider == nil {
+		return errors.New("provider is not initialized")
 	}
 
 	// Semaphore
@@ -101,7 +102,7 @@ func (i *Index) Refresh(force bool) error {
 	}
 
 	// Need to request the index
-	data, isJSON, tag, err := i.store.Get()
+	data, isJSON, tag, err := i.provider.Get(context.Background())
 	if err != nil {
 		return err
 	}
@@ -159,7 +160,7 @@ func (i *Index) save(obj *pb.IndexFile) error {
 	}
 
 	// Encrypt and save the updated index, if the tag is the same
-	tag, err := i.store.Set(data, i.cacheTag)
+	tag, err := i.provider.Set(context.Background(), data, i.cacheTag)
 	if err != nil {
 		return err
 	}
