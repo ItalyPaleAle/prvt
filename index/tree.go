@@ -17,10 +17,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package index
 
+import (
+	pb "github.com/ItalyPaleAle/prvt/index/proto"
+)
+
 // IndexTreeNode is a node in the tree
 type IndexTreeNode struct {
 	Name     string
-	File     *IndexElement
+	File     *pb.IndexElement
 	Children []*IndexTreeNode
 }
 
@@ -41,7 +45,7 @@ func (n *IndexTreeNode) Find(name string) *IndexTreeNode {
 
 // Add a new child node
 // file can be empty if adding a folder
-func (n *IndexTreeNode) Add(name string, file *IndexElement) *IndexTreeNode {
+func (n *IndexTreeNode) Add(name string, file *pb.IndexElement) *IndexTreeNode {
 	add := &IndexTreeNode{
 		Children: make([]*IndexTreeNode, 0),
 		Name:     name,
