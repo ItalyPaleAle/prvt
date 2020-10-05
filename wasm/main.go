@@ -36,6 +36,7 @@ func main() {
 	// Export a "Prvt" global object that contains our functions
 	js.Global().Set("Prvt", map[string]interface{}{
 		"decryptRequest": DecryptRequest(),
+		"getIndex":       GetIndex(),
 	})
 
 	// Prevent the function from returning, which is required in a wasm module

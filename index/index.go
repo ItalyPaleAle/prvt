@@ -44,7 +44,7 @@ type FolderList struct {
 // IndexStats contains the result of the
 type IndexStats struct {
 	// Number of files in the repo
-	FileCount int
+	FileCount int `json:"fileCount"`
 }
 
 // Interface for index providers, that interface with the back-end store
