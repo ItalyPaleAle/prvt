@@ -156,6 +156,7 @@ func (s *Server) registerAPIRoutes(router *gin.Engine) {
 	// Add routes
 	apis.GET("/api/info", s.GetInfoHandler)
 	apis.POST("/api/repo/select", s.PostRepoSelectHandler)
+	apis.POST("/api/repo/close", s.PostRepoCloseHandler)
 	apis.GET("/api/connection", s.GetConnectionHandler)
 	apis.POST("/api/connection", s.PostConnectionHandler)
 	apis.GET("/api/connection/:name", s.GetConnectionInfoHandler)
