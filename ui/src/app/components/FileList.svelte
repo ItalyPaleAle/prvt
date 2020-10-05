@@ -46,6 +46,7 @@
 // Utils
 import {encodePath, fileTypeIcon, cloneObject} from '../lib/utils'
 import {Request} from '../lib/request'
+import AppInfo from '../lib/appinfo'
 
 // Components
 import ErrorBox from './ErrorBox.svelte'
@@ -55,8 +56,7 @@ import ActionsModal from './ActionsModal.svelte'
 import Spinner from '../components/Spinner.svelte'
 
 // Stores
-import {readOnly, modal} from '../stores'
-import {operationResult, fileList} from '../stores'
+import {operationResult, fileList, modal} from '../stores'
 
 // Props for the view
 // Path is the path to list
@@ -139,14 +139,14 @@ function requestTree(reqPath) {
 }
 
 // Displays the actions modal
-function showActions(element) {
+async function showActions(element) {
     // The ActionsModal expects "name" to be be the set
     const el = cloneObject(element)
     el.name = el.path
 
     // Display the modal
     let actions = (el.isDir ? actionsFolder : actionsFile)
-    if ($readOnly) {
+    if (await AppInfo.isReadOnly()) {
         actions = actions.filter((el) => el.allowReadOnly)
     }
     $modal = {

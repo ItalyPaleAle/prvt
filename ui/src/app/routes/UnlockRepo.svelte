@@ -22,7 +22,8 @@
 
 <script>
 import {Request} from '../lib/request'
-import {querystring} from 'svelte-spa-router'
+import AppInfo from '../lib/appinfo'
+import {querystring, push} from 'svelte-spa-router'
 
 // Components
 import PageTitle from '../components/PageTitle.svelte'
@@ -39,19 +40,20 @@ function unlockPassphrase() {
         return
     }
 
-    doUnlock({type: 'passphrase', passphrase})
+    requesting = doUnlock({type: 'passphrase', passphrase})
 }
 
 // Unlock with a GPG key
 function unlockGPG() {
-    doUnlock({type: 'gpg'})
+    requesting = doUnlock({type: 'gpg'})
 }
 
-function doUnlock(postData) {
-    requesting = Request('/api/repo/unlock', {postData})
-        .then((res) => {
-            // On success, redirect to the app
-            window.location = 'app.html'
-        })
+async function doUnlock(postData) {
+    // Make the unlock request
+    await Request('/api/repo/unlock', {postData})
+
+    // On success, refresh AppInfo and go back to the app
+    await AppInfo.update()
+    push('/')
 }
 </script>
