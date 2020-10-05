@@ -36,4 +36,5 @@ build-ui:
 test:
 	GPGKEY_ID="0x4C6D7DB1D92F58EE"
 	GPGKEY_USER="prvt CI <ci@prvt>"
-	.bin/go-acc ./... -- -v
+	# Exclude the wasm package because it requires a different compilation target
+	.bin/go-acc $(go list ./... | grep -v prvt/wasm) -- -v

@@ -126,7 +126,8 @@ jobs:
 
       - name: Test
         run: |
-          ./go-acc ./... -- -v
+          # Exclude the wasm package because it requires a different compilation target
+          ./go-acc $(go list ./... | grep -v prvt/wasm) -- -v
 
       - name: Send coverage
         env:
