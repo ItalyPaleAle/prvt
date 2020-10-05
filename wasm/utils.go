@@ -15,44 +15,28 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package fs
+package main
 
-import (
-	"testing"
+import "syscall/js"
 
-	"github.com/ItalyPaleAle/prvt/fs/fsutils"
-	"github.com/stretchr/testify/assert"
-)
+// Wraps a message into a JavaScript object of type error
+func jsError(message string) js.Value {
+	errConstructor := js.Global().Get("Error")
+	errVal := errConstructor.New(message)
+	return errVal
+}
 
-func TestFsLocal(t *testing.T) {
-	// Temp directory
-	tempDir := t.TempDir()
+// Returns a byte slice from a js.Value
+func bytesFromJs(arg js.Value) []byte {
+	out := make([]byte, arg.Length())
+	js.CopyBytesToGo(out, arg)
+	return out
+}
 
-	// Init the cache
-	cache := &fsutils.MetadataCache{}
-	err := cache.Init()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	// Init the object
-	store := &Local{}
-	opts := map[string]string{
-		"type": "local",
-		"path": tempDir,
-	}
-	err = store.InitWithOptionsMap(opts, cache)
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	// Run the tests
-	t.Run("common tests", func(t *testing.T) {
-		tester := &testFs{
-			t:     t,
-			store: store,
-			cache: cache,
-		}
-		tester.Run()
-	})
+// Returns a js.Value from a byte slice
+func jsFromBytes(data []byte) js.Value {
+	arrayConstructor := js.Global().Get("Uint8Array")
+	result := arrayConstructor.New(len(data))
+	js.CopyBytesToJS(result, data)
+	return result
 }

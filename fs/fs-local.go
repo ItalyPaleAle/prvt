@@ -31,6 +31,7 @@ import (
 	"sync"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
 
@@ -50,7 +51,7 @@ type Local struct {
 	fsBase
 
 	basePath string
-	cache    *MetadataCache
+	cache    *fsutils.MetadataCache
 	mux      sync.Mutex
 }
 
@@ -63,7 +64,7 @@ func (f *Local) OptionsList() *FsOptionsList {
 	}
 }
 
-func (f *Local) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
+func (f *Local) InitWithOptionsMap(opts map[string]string, cache *fsutils.MetadataCache) error {
 	// Required keys: "path"
 	path := opts["path"]
 	if path == "" {
@@ -73,7 +74,7 @@ func (f *Local) InitWithOptionsMap(opts map[string]string, cache *MetadataCache)
 	return f.init(path, cache)
 }
 
-func (f *Local) InitWithConnectionString(connection string, cache *MetadataCache) error {
+func (f *Local) InitWithConnectionString(connection string, cache *fsutils.MetadataCache) error {
 	// Connection string format: "local:<path>" or "file:<path>"
 	// Get the path
 	path := connection[strings.Index(connection, ":")+1:]
@@ -81,7 +82,7 @@ func (f *Local) InitWithConnectionString(connection string, cache *MetadataCache
 	return f.init(path, cache)
 }
 
-func (f *Local) init(path string, cache *MetadataCache) error {
+func (f *Local) init(path string, cache *fsutils.MetadataCache) error {
 	// Expand the tilde if needed
 	path, err := homedir.Expand(path)
 	if err != nil {
@@ -336,7 +337,7 @@ func (f *Local) Get(ctx context.Context, name string, out io.Writer, metadataCb 
 	return
 }
 
-func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rng *fsutils.RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
 	// Get the path to the file on disk
 	var path string
 	path, err = f.filePath(name, false)

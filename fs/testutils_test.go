@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/keys"
 
@@ -45,7 +46,7 @@ func init() {
 type testFs struct {
 	t     *testing.T
 	store Fs
-	cache *MetadataCache
+	cache *fsutils.MetadataCache
 
 	info  *infofile.InfoFile
 	files map[string][]byte
@@ -407,7 +408,7 @@ func (s *testFs) testGetWithRange() {
 
 	// Context canceled
 	{
-		rng := &RequestRange{
+		rng := &fsutils.RequestRange{
 			Start:  100000,
 			Length: 0,
 		}
@@ -477,7 +478,7 @@ func (s *testFs) checkCacheTextFile() {
 // Used by testGetWithRange
 func (s *testFs) getRange(name string, start, length int64) {
 	var out io.Writer = &bytes.Buffer{}
-	rng := &RequestRange{
+	rng := &fsutils.RequestRange{
 		Start:  start,
 		Length: length,
 	}

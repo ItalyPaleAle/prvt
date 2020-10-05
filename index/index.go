@@ -18,16 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ItalyPaleAle/prvt/crypto"
-	"github.com/ItalyPaleAle/prvt/fs"
+	pb "github.com/ItalyPaleAle/prvt/index/proto"
 
 	"github.com/gofrs/uuid"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -47,27 +44,34 @@ type FolderList struct {
 // IndexStats contains the result of the
 type IndexStats struct {
 	// Number of files in the repo
-	FileCount int
+	FileCount int `json:"fileCount"`
+}
+
+// Interface for index providers, that interface with the back-end store
+type IndexProvider interface {
+	// Get the index file
+	Get(ctx context.Context) (data []byte, isJSON bool, tag interface{}, err error)
+	// Set the index file
+	Set(ctx context.Context, data []byte, cacheTag interface{}) (newTag interface{}, err error)
 }
 
 // Index manages the index for all files and folders
 type Index struct {
-	cache      *IndexFile
-	cacheFiles map[string]*IndexElement
+	cache      *pb.IndexFile
+	cacheFiles map[string]*pb.IndexElement
 	cacheTree  *IndexTreeNode
-	cacheTime  time.Time
 	cacheTag   interface{}
-	store      fs.Fs
+	provider   IndexProvider
 	semaphore  sync.Mutex
 }
 
-// SetStore sets the store (filesystem) object to use
-func (i *Index) SetStore(store fs.Fs) {
+// SetProvider sets the providerobject to use
+func (i *Index) SetProvider(provider IndexProvider) {
 	// Do not alter this if there's a refresh running
 	i.semaphore.Lock()
 
-	// Set the new store object
-	i.store = store
+	// Set the new provider object
+	i.provider = provider
 
 	// Reset the cache
 	i.cache = nil
@@ -80,9 +84,9 @@ func (i *Index) SetStore(store fs.Fs) {
 
 // Refresh an index if necessary
 func (i *Index) Refresh(force bool) error {
-	// Abort if no store
-	if i.store == nil {
-		return errors.New("store is not initialized")
+	// Abort if no provider
+	if i.provider == nil {
+		return errors.New("provider is not initialized")
 	}
 
 	// Semaphore
@@ -98,43 +102,22 @@ func (i *Index) Refresh(force bool) error {
 	}
 
 	// Need to request the index
-	now := time.Now()
-	var data []byte
-	buf := &bytes.Buffer{}
-	isJSON := false
-	found, tag, err := i.store.Get(context.Background(), "_index", buf, func(metadata *crypto.Metadata, metadataSize int32) {
-		// Check if we're decoding a legacy JSON file
-		if metadata.ContentType == "application/json" {
-			isJSON = true
-		}
-	})
-	if found {
-		// Check error here because otherwise we might have an error also if the index wasn't found
-		if err != nil {
-			return err
-		}
-
-		data, err = ioutil.ReadAll(buf)
-		if err != nil {
-			return err
-		}
-	} else {
-		// Ignore "not found" errors
-		err = nil
+	data, isJSON, tag, err := i.provider.Get(context.Background())
+	if err != nil {
+		return err
 	}
 
 	// Empty index
-	if len(data) == 0 {
-		i.cache = &IndexFile{
+	if data == nil || len(data) == 0 {
+		i.cache = &pb.IndexFile{
 			Version:  2,
-			Elements: make([]*IndexElement, 0),
+			Elements: make([]*pb.IndexElement, 0),
 		}
-		i.cacheTime = now
 		// Build the tree
 		i.buildTree()
 		return nil
 	}
-	i.cache = &IndexFile{}
+	i.cache = &pb.IndexFile{}
 
 	// Parse a legacy JSON file or a new protobuf-encoded one
 	if isJSON {
@@ -160,7 +143,6 @@ func (i *Index) Refresh(force bool) error {
 			return err
 		}
 	}
-	i.cacheTime = now
 	i.cacheTag = tag
 
 	// Build the tree
@@ -170,9 +152,7 @@ func (i *Index) Refresh(force bool) error {
 }
 
 // Save an index object
-func (i *Index) save(obj *IndexFile) error {
-	now := time.Now()
-
+func (i *Index) save(obj *pb.IndexFile) error {
 	// Encode the data as a protocol buffer message
 	data, err := proto.Marshal(obj)
 	if err != nil {
@@ -180,20 +160,13 @@ func (i *Index) save(obj *IndexFile) error {
 	}
 
 	// Encrypt and save the updated index, if the tag is the same
-	metadata := &crypto.Metadata{
-		Name:        "index",
-		ContentType: "application/protobuf",
-		Size:        int64(len(data)),
-	}
-	buf := bytes.NewBuffer(data)
-	tag, err := i.store.Set(context.Background(), "_index", buf, i.cacheTag, metadata)
+	tag, err := i.provider.Set(context.Background(), data, i.cacheTag)
 	if err != nil {
 		return err
 	}
 
 	// Update the index in cache too
 	i.cache = obj
-	i.cacheTime = now
 	i.cacheTag = tag
 
 	return nil
@@ -230,7 +203,7 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	}
 
 	// Add the file to the index
-	fileEl := &IndexElement{
+	fileEl := &pb.IndexElement{
 		Path:   path,
 		FileId: fileId,
 		Date: &timestamppb.Timestamp{
@@ -241,7 +214,7 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	elements := append(i.cache.Elements, fileEl)
 
 	// Save the updated index
-	updated := &IndexFile{
+	updated := &pb.IndexFile{
 		Version:  2,
 		Elements: elements,
 	}
@@ -492,7 +465,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 // Builds the tree and the dictionary for easier searching
 func (i *Index) buildTree() {
 	// Init the objects
-	i.cacheFiles = make(map[string]*IndexElement, len(i.cache.Elements))
+	i.cacheFiles = make(map[string]*pb.IndexElement, len(i.cache.Elements))
 	i.cacheTree = &IndexTreeNode{
 		Name:     "/",
 		Children: make([]*IndexTreeNode, 0),
@@ -504,7 +477,7 @@ func (i *Index) buildTree() {
 	}
 }
 
-func (i *Index) addToTree(el *IndexElement) {
+func (i *Index) addToTree(el *pb.IndexElement) {
 	// Ensure we have a file ID and that the path begins with /
 	if el.FileId == nil || len(el.Path) < 2 || el.Path[0] != '/' {
 		return

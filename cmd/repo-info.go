@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 
 	"github.com/spf13/cobra"
@@ -72,8 +73,11 @@ func NewRepoInfoCmd() *cobra.Command {
 				store.SetMasterKey(keyId, masterKey)
 
 				// Set up the index
+				indexProvider := &fsindex.IndexProviderFs{
+					Store: store,
+				}
 				idx := &index.Index{}
-				idx.SetStore(store)
+				idx.SetProvider(indexProvider)
 
 				// Get stats
 				stat, err = idx.Stat()

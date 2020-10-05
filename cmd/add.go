@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/repository"
 
@@ -104,7 +105,10 @@ You must specify a destination, which is a folder inside the repository where yo
 				Store: store,
 				Index: &index.Index{},
 			}
-			repo.Index.SetStore(store)
+			indexProvider := &fsindex.IndexProviderFs{
+				Store: store,
+			}
+			repo.Index.SetProvider(indexProvider)
 
 			// Iterate through the args and add them all
 			ctx := context.Background()

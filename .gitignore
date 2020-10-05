@@ -2,7 +2,11 @@
 prvt
 bin
 .bin
-pkged.go
+.packr
+packrd/
+*-packr.go
+*.wasm
+*.wasm.br
 
 # Test results
 coverage.txt

@@ -15,44 +15,30 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package fs
+package main
+
+/*
+Build with:
+GOOS=js GOARCH=wasm go build -o  ../ui/dist/app.wasm
+brotli -9k ../ui/dist/app.wasm
+
+The Go WebAssembly runtime is at:
+$GOROOT/misc/wasm/wasm_exec.js
+*/
 
 import (
-	"testing"
-
-	"github.com/ItalyPaleAle/prvt/fs/fsutils"
-	"github.com/stretchr/testify/assert"
+	"syscall/js"
 )
 
-func TestFsLocal(t *testing.T) {
-	// Temp directory
-	tempDir := t.TempDir()
+const MaxSafeInteger = 9007199254740991
 
-	// Init the cache
-	cache := &fsutils.MetadataCache{}
-	err := cache.Init()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	// Init the object
-	store := &Local{}
-	opts := map[string]string{
-		"type": "local",
-		"path": tempDir,
-	}
-	err = store.InitWithOptionsMap(opts, cache)
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	// Run the tests
-	t.Run("common tests", func(t *testing.T) {
-		tester := &testFs{
-			t:     t,
-			store: store,
-			cache: cache,
-		}
-		tester.Run()
+func main() {
+	// Export a "Prvt" global object that contains our functions
+	js.Global().Set("Prvt", map[string]interface{}{
+		"decryptRequest": DecryptRequest(),
+		"getIndex":       GetIndex(),
 	})
+
+	// Prevent the function from returning, which is required in a wasm module
+	select {}
 }

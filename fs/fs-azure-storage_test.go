@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,7 +36,7 @@ func TestFsAzure(t *testing.T) {
 	}
 
 	// Init the caches
-	cache := &MetadataCache{}
+	cache := &fsutils.MetadataCache{}
 	err := cache.Init()
 	if !assert.NoError(t, err) {
 		return
