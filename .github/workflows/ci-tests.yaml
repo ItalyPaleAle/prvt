@@ -194,4 +194,4 @@ jobs:
 
       - name: Test
         run: |
-          go.exe test -v ./...
+          iex "go.exe test -v $(go.exe list ./... | grep -v prvt/wasm)"
