@@ -17,8 +17,8 @@ import FileList from '../components/FileList.svelte'
 import TitleBarButton from '../components/TitleBarButton.svelte'
 import Path from '../components/Path.svelte'
 
-import {cleanPath} from '../utils'
-import {readOnly} from '../../shared/stores'
+import {cleanPath} from '../lib/utils'
+import {readOnly} from '../stores'
 
 // Props for this view
 export let params = {}

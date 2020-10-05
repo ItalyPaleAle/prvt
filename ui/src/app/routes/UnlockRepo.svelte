@@ -1,3 +1,5 @@
+<PageTitle title="Unlock repository" backButton={"#/repo"} />
+
 {#await requesting}
   <p>Unlocking…</p>
 {:then _}
@@ -19,8 +21,11 @@
 {/await}
 
 <script>
-import {Request} from '../../shared/lib/request'
+import {Request} from '../lib/request'
 import {querystring} from 'svelte-spa-router'
+
+// Components
+import PageTitle from '../components/PageTitle.svelte'
 
 // Enable unlock with a GPG key if the repo supports it
 $: gpgUnlock = $querystring == 'gpg=1'

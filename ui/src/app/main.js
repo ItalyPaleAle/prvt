@@ -2,11 +2,7 @@
 import '../css/style.css'
 
 // Themes
-import '../shared/lib/theme'
-
-// Stores
-import {currentApp} from '../shared/stores'
-currentApp.set('app')
+import './lib/theme'
 
 // Initialize the Svelte app and inject it in the DOM
 import App from './App.svelte'

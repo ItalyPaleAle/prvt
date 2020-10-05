@@ -19,13 +19,11 @@
 
 <script>
 // Utils
-import {fileTypeIcon, formatSize} from '../utils'
-import {Request} from '../../shared/lib/request'
+import {Request} from '../lib/request'
 
 // Props
 export let element = null
 export let path = ''
-let requesting = null
 
 // File list, which is requested from the server
 let list = []
@@ -34,7 +32,7 @@ $: requestContents(element)
 // Request the full list
 function requestContents(el) {
     // Request the full list
-    requesting = Request('/api/tree/' + ((path && path != '/') ? path + '/' : '') + el.path)
+    Request('/api/tree/' + ((path && path != '/') ? path + '/' : '') + el.path)
         .then((response) => {
             list = response
         })

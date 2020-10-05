@@ -54,7 +54,7 @@
     }
 
     if (browserSupported) {
-        window.location.replace('repo.html')
+        window.location.replace('app.html')
     } else {
         document.body.innerText = 'Your browser is not supported'
     }

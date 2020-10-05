@@ -1,3 +1,5 @@
+<PageTitle title="Select prvt repository" />
+
 {#await requesting}
     Requesting…
 {:then list}
@@ -44,15 +46,16 @@
 
 <script>
 // Libraries
-import {Request} from '../../shared/lib/request'
+import {Request} from '../lib/request'
 import {push} from 'svelte-spa-router'
 
 // Components
+import PageTitle from '../components/PageTitle.svelte'
 import ConnectionAddModal from '../components/ConnectionAddModal.svelte'
 import ConnectionDetailModal from '../components/ConnectionDetailModal.svelte'
 
 // Stores
-import {modal} from '../../shared/stores'
+import {modal} from '../stores'
 
 let requesting = null
 getList()

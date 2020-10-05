@@ -17,11 +17,11 @@ import Router from 'svelte-spa-router'
 import routes from './routes'
 
 // Components
-import Modal from '../shared/components/Modal.svelte'
-import Footer from '../shared/components/Footer.svelte'
+import Modal from './components/Modal.svelte'
+import Footer from './components/Footer.svelte'
 
 // Stores
-import {modal} from '../shared/stores'
+import {modal} from './stores'
 
 // Clicking on the background anywhere will hide any modal currently open
 function bodyClick(event) {

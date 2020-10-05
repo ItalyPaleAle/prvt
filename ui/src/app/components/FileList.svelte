@@ -44,8 +44,8 @@
 
 <script>
 // Utils
-import {encodePath, fileTypeIcon, cloneObject} from '../utils'
-import {Request} from '../../shared/lib/request'
+import {encodePath, fileTypeIcon, cloneObject} from '../lib/utils'
+import {Request} from '../lib/request'
 
 // Components
 import ErrorBox from './ErrorBox.svelte'
@@ -55,7 +55,7 @@ import ActionsModal from './ActionsModal.svelte'
 import Spinner from '../components/Spinner.svelte'
 
 // Stores
-import {readOnly, modal} from '../../shared/stores'
+import {readOnly, modal} from '../stores'
 import {operationResult, fileList} from '../stores'
 
 // Props for the view
