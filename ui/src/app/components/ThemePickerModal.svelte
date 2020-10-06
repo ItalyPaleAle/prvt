@@ -36,8 +36,8 @@ import {modal} from '../stores'
 
 // Set the theme
 function setTheme(t) {
-  $theme = t
-  // Hide the modal
-  $modal = null
+    $theme = t
+    // Hide the modal
+    $modal = null
 }
 </script>

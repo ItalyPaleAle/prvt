@@ -46,7 +46,6 @@ async function getGpgUnlock(qs) {
             gpgUnlock = false
             if (res && res.keys) {
                 for (let i = 0; i < res.keys.length; i++) {
-                    console.log(res.keys[i])
                     if (res.keys[i] && res.keys[i].type == 'gpg') {
                         gpgUnlock = true
                         break

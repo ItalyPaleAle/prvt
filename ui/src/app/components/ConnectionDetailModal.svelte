@@ -61,4 +61,3 @@ function requestInfo(name) {
     requesting = Request('/api/connection/' + name)
 }
 </script>
-  
