@@ -175,9 +175,6 @@ func (s *Server) registerAPIRoutes(router *gin.Engine) {
 		requireUnlock.GET("/file/:fileId", s.FileHandler)
 		requireUnlock.HEAD("/file/:fileId", s.FileHandler)
 
-		// Request a raw file
-		requireUnlock.GET("/rawfile/:path", s.RawFileGetHandler)
-
 		// APIs
 		group := requireUnlock.Group("/api")
 		group.GET("/tree", s.GetTreeHandler)
@@ -205,8 +202,12 @@ func (s *Server) registerAPIRoutes(router *gin.Engine) {
 		)
 	}
 
-	// Other APIs that don't require the repository to be unlocked
+	// Other routes that don't require the repository to be unlocked
 	{
+		// Request a raw file
+		requireRepo.GET("/rawfile/:path", s.RawFileGetHandler)
+
+		// APIs
 		group := requireRepo.Group("/api")
 		group.GET("/repo/key", s.MiddlewareRequireInfoFileVersion(2), s.GetRepoKeyHandler)
 

@@ -175,8 +175,8 @@ module.exports = {
         new InjectManifest({
             swSrc: './src/wasm/sw.js',
             // In dev mode, include fonts only
-            //include: prod ? undefined : [/^fonts/],
-            include: [/^fonts/],
+            include: prod ? undefined : [/^fonts/],
+            //include: [/^fonts/],
         }),
     ].concat(addPlugins), // Add other plugins
     mode,

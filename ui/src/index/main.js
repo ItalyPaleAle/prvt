@@ -14,12 +14,30 @@
                 return true
             }
             catch(e) {
-                return false
+                if (e instanceof SyntaxError) {
+                    return false
+                }
+                // If the error is not a syntax error, it's probably due to CSP not allowing eval
+                throw e
             }
         },
 
         fetch: function() {
             return !!window.fetch
+        },
+
+        async: function() {
+            try {
+                eval('async () => {}')
+                return true
+            }
+            catch(e) {
+                if (e instanceof SyntaxError) {
+                    return false
+                }
+                // If the error is not a syntax error, it's probably due to CSP not allowing eval
+                throw e
+            }
         },
 
         flexbox: function() {
