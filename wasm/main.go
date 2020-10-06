@@ -27,18 +27,34 @@ $GOROOT/misc/wasm/wasm_exec.js
 */
 
 import (
+	"fmt"
 	"syscall/js"
 )
 
-const MaxSafeInteger = 9007199254740991
+// Package-wide variable containing the address of Prvt node
+var baseUrl string
 
 func main() {
 	// Export a "Prvt" global object that contains our functions
 	js.Global().Set("Prvt", map[string]interface{}{
+		"setBaseURL":     SetBaseUrl(),
 		"decryptRequest": DecryptRequest(),
 		"getIndex":       GetIndex(),
 	})
 
 	// Prevent the function from returning, which is required in a wasm module
 	select {}
+}
+
+// SetBaseUrl is a JS function that sets a new value for baseUrl
+// Arguments: baseUrl (string)
+func SetBaseUrl() js.Func {
+	// JS Function
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if len(args) != 1 {
+			return jsError(fmt.Sprintf("Invalid number of arguments passed: %d", len(args)))
+		}
+		baseUrl = args[0].String()
+		return nil
+	})
 }

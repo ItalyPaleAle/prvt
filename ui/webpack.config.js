@@ -38,12 +38,6 @@ const pageList = {
         html: path.resolve(__dirname, 'src/app/index.html'),
         entry: [path.resolve(__dirname, 'src/app/main.js')]
     },
-    wasm: {
-        dist: 'wasm.html',
-        chunks: ['wasm'],
-        html: path.resolve(__dirname, 'src/wasm/index.html'),
-        entry: [path.resolve(__dirname, 'src/wasm/main.js')]
-    },
 }
 
 // Entry points
@@ -173,8 +167,9 @@ module.exports = {
 
         // Service worker
         new InjectManifest({
-            swSrc: './src/wasm/sw.js',
+            swSrc: './src/sw/sw.js',
             // In dev mode, include fonts only
+            // TODO: DO NOT PRECACHE THE WASM FILE AUTOMATICALLY IN PROD
             include: prod ? undefined : [/^fonts/],
             //include: [/^fonts/],
         }),

@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,6 +37,7 @@ import (
 var metadataCache *fsutils.MetadataCache
 var mux *sync.Mutex
 var client *http.Client
+var fileRequestIdRegexp = regexp.MustCompile("^\\/?(raw)?file\\/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})$")
 
 // Init static variables
 func init() {
@@ -82,7 +85,18 @@ func DecryptRequest() js.Func {
 		if reqUrlVal.Type() != js.TypeString {
 			return jsError("Empty or invalid URL from the request")
 		}
-		var reqUrl string = reqUrlVal.String()
+		var reqUrlStr string = reqUrlVal.String()
+
+		// Get the file ID
+		reqUrl, err := url.Parse(reqUrlStr)
+		if err != nil {
+			return jsError("Cannot parse request URL: " + err.Error())
+		}
+		match := fileRequestIdRegexp.FindStringSubmatch(reqUrl.EscapedPath())
+		if match == nil || len(match) != 3 || len(match[2]) == 0 {
+			return jsError("File ID not found in the URL")
+		}
+		fileId := match[2]
 
 		// Check if we have a range
 		var rng *utils.HttpRange
@@ -104,10 +118,10 @@ func DecryptRequest() js.Func {
 		var method js.Func
 		if rng == nil {
 			// Full-file requests
-			method = decryptRequestPromise(masterKey, reqUrl)
+			method = decryptRequestPromise(masterKey, fileId)
 		} else {
 			// Range requests
-			method = decryptRangeRequestPromise(masterKey, reqUrl, rng)
+			method = decryptRangeRequestPromise(masterKey, fileId, rng)
 		}
 		promiseConstructor := js.Global().Get("Promise")
 		promise := promiseConstructor.New(method)
@@ -167,7 +181,7 @@ func requestMetadataCb(headers *js.Value, rng *fsutils.RequestRange, responseSta
 }
 
 // Returns a Promise that decrypts a full file
-func decryptRequestPromise(masterKey []byte, reqUrl string) js.Func {
+func decryptRequestPromise(masterKey []byte, fileId string) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// Arguments: resolve (function), reject (function)
 		resolve := args[0]
@@ -176,15 +190,15 @@ func decryptRequestPromise(masterKey []byte, reqUrl string) js.Func {
 		go func() {
 			// Will be used to add metadata to the cache
 			cacheAdd := &metadataCacheAdd{
-				// Request URL is the key for the cache
-				Name: reqUrl,
+				// File ID is the key for the cache
+				Name: fileId,
 			}
 
 			// Context for the entire method
 			ctx := context.Background()
 
 			// Request the file by making a HTTP call
-			httpReq, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+			httpReq, err := http.NewRequestWithContext(ctx, "GET", baseUrl+"/rawfile/"+fileId, nil)
 			if err != nil {
 				reject.Invoke(jsError(err.Error()))
 				return
@@ -238,7 +252,7 @@ func decryptRequestPromise(masterKey []byte, reqUrl string) js.Func {
 }
 
 // Returns a Promise that decrypts a range request
-func decryptRangeRequestPromise(masterKey []byte, reqUrl string, rngHeader *utils.HttpRange) js.Func {
+func decryptRangeRequestPromise(masterKey []byte, fileId string, rngHeader *utils.HttpRange) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// Arguments: resolve (function), reject (function)
 		resolve := args[0]
@@ -263,13 +277,13 @@ func decryptRangeRequestPromise(masterKey []byte, reqUrl string, rngHeader *util
 
 			// Check if the metadata is in cache already
 			mux.Lock()
-			headerVersion, headerLength, wrappedKey, metadataLength, metadata := metadataCache.Get(reqUrl)
+			headerVersion, headerLength, wrappedKey, metadataLength, metadata := metadataCache.Get(fileId)
 			mux.Unlock()
 			if headerVersion == 0 || headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
 				// Need to request the metadata and cache it
 				// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
 				var length int64 = 64*1024 + 32 + 256
-				mdHttpReq, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+				mdHttpReq, err := http.NewRequestWithContext(ctx, "GET", baseUrl+"/rawfile/"+fileId, nil)
 				mdHttpReq.Header.Set("Range", fmt.Sprintf("bytes=0-%d", length))
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
@@ -295,7 +309,7 @@ func decryptRangeRequestPromise(masterKey []byte, reqUrl string, rngHeader *util
 
 				// Store the metadata in cache
 				mux.Lock()
-				metadataCache.Add(reqUrl, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
+				metadataCache.Add(fileId, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
 				mux.Unlock()
 			}
 
@@ -308,7 +322,7 @@ func decryptRangeRequestPromise(masterKey []byte, reqUrl string, rngHeader *util
 			metadataCb(metadata, metadataLength)
 
 			// Request the actual ranges that we need by making a HTTP call
-			httpReq, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+			httpReq, err := http.NewRequestWithContext(ctx, "GET", baseUrl+"/rawfile/"+fileId, nil)
 			httpReq.Header.Set("Range", rng.RequestHeaderValue())
 			if err != nil {
 				reject.Invoke(jsError(err.Error()))

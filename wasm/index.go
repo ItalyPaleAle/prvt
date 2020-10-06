@@ -35,11 +35,10 @@ import (
 func GetIndex() js.Func {
 	// JS Function
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		if len(args) != 2 {
+		if len(args) != 1 {
 			return jsError(fmt.Sprintf("Invalid number of arguments passed: %d", len(args)))
 		}
-		baseURL := args[0].String()
-		masterKey := bytesFromJs(args[1])
+		masterKey := bytesFromJs(args[0])
 
 		// Ensure the master key isn't empty
 		if masterKey == nil || len(masterKey) < 1 {
@@ -48,7 +47,7 @@ func GetIndex() js.Func {
 
 		// Init the RepoIndex object
 		ri := RepoIndex{}
-		ri.Init(baseURL, masterKey)
+		ri.Init(baseUrl, masterKey)
 
 		// Return the JS dictionary with the functions in the index object
 		return ri.JSValue()
