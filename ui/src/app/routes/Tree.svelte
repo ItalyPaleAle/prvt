@@ -4,7 +4,7 @@
     <Path {path} />
   </span>
   <span class="flex-none" slot="right">
-    {#if !$readOnly}
+    {#if $AppInfo && !AppInfo.readOnly}
       <TitleBarButton name="Add files" icon="fa-cloud-upload" href={'#/add/' + path} />
     {/if}
   </span>
@@ -18,7 +18,7 @@ import TitleBarButton from '../components/TitleBarButton.svelte'
 import Path from '../components/Path.svelte'
 
 import {cleanPath} from '../lib/utils'
-import {readOnly} from '../stores'
+import AppInfo from '../lib/appinfo'
 
 // Props for this view
 export let params = {}

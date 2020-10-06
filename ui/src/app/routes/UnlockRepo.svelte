@@ -29,7 +29,36 @@ import {querystring, push} from 'svelte-spa-router'
 import PageTitle from '../components/PageTitle.svelte'
 
 // Enable unlock with a GPG key if the repo supports it
-$: gpgUnlock = $querystring == 'gpg=1'
+let gpgUnlock
+$: getGpgUnlock($querystring)
+async function getGpgUnlock(qs) {
+    // If there's an explicit parameter in the querystring, rely on that
+    if (qs == 'gpg=1') {
+        gpgUnlock = true
+    } else if (qs == 'gpg=0') {
+        gpgUnlock = false
+    } else {
+        // Need to request if the server supports GPG
+        gpgUnlock = undefined
+        try {
+            // Check if one of the keys is a GPG key
+            const res = await Request('/api/repo/key')
+            gpgUnlock = false
+            if (res && res.keys) {
+                for (let i = 0; i < res.keys.length; i++) {
+                    console.log(res.keys[i])
+                    if (res.keys[i] && res.keys[i].type == 'gpg') {
+                        gpgUnlock = true
+                        break
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.error('Caught exception:', err)
+        }
+    }
+}
 
 let requesting = null
 let passphrase = ''

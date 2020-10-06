@@ -71,12 +71,7 @@ async function selectItem(name) {
     // Update the app info
     await AppInfo.update()
     // Go to the next page
-    if (data && data.gpgUnlock) {
-        push('/unlock?gpg=1')
-    }
-    else {
-        push('/unlock')
-    }
+    push('/unlock?gpg=' + ((data && data.gpgUnlock) ? '1' : '0'))
 }
 
 // Open the modal to add new items
