@@ -31,7 +31,8 @@ func TestMapify(t *testing.T) {
 		expect map[string]interface{}
 	)
 	now := time.Now()
-	nowJSON, _ := now.MarshalJSON()
+	nowBytes, _ := now.MarshalText()
+	nowString := string(nowBytes)
 	str := "bar"
 
 	// Test a simple struct
@@ -68,7 +69,7 @@ func TestMapify(t *testing.T) {
 	}
 	expect = map[string]interface{}{
 		"foo":  "bar",
-		"time": string(nowJSON),
+		"time": string(nowString),
 		"null": nil,
 	}
 	res = Mapify(el2)
@@ -86,7 +87,7 @@ func TestMapify(t *testing.T) {
 	}
 	expect = map[string]interface{}{
 		"foo":      "bar",
-		"time":     string(nowJSON),
+		"time":     string(nowString),
 		"nullTime": nil,
 	}
 	res = Mapify(el3)

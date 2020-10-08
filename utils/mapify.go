@@ -18,13 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package utils
 
 import (
+	"encoding"
 	"encoding/json"
 	"reflect"
 	"strings"
 )
 
 // Mapify converts a struct to a map[string]interface{}
-// If fields are structs, they're converted to JSON strings
+// If fields are structs, they're converted to their textual representation
 func Mapify(m interface{}) map[string]interface{} {
 	// Get a reflection for this object
 	// If it's a pointer, get the element it's pointing to
@@ -35,6 +36,9 @@ func Mapify(m interface{}) map[string]interface{} {
 
 	// Result
 	result := make(map[string]interface{}, v.NumField())
+
+	// Used for checking if a struct implements encoding.TextMarshaler
+	textMarshalerType := reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 	// Iterate through the fields of the struct
 	typ := v.Type()
@@ -68,14 +72,25 @@ func Mapify(m interface{}) map[string]interface{} {
 			}
 		}
 
-		// If this is a struct, convert to string by using json.Marshal
+		// If this is a struct, convert to string
 		if fieldVal.Kind() == reflect.Struct {
-			b, err := json.Marshal(fieldVal.Interface())
-			if b == nil || err != nil {
-				// Ignore errors, and convert to an empty byte slice
-				b = []byte{}
+			// First, check if the struct implements encoding.TextMarshaler for marshaling
+			// Otherwise, fall back to using json.Marshal
+			if fieldTyp.Type.Implements(textMarshalerType) {
+				txt, err := fieldVal.Interface().(encoding.TextMarshaler).MarshalText()
+				if txt == nil || err != nil {
+					// Ignore errors, and convert to an empty byte slice
+					txt = []byte{}
+				}
+				result[name] = string(txt)
+			} else {
+				b, err := json.Marshal(fieldVal.Interface())
+				if b == nil || err != nil {
+					// Ignore errors, and convert to an empty byte slice
+					b = []byte{}
+				}
+				result[name] = string(b)
 			}
-			result[name] = string(b)
 		} else {
 			// Set the field in the result map
 			result[name] = fieldVal.Interface()
