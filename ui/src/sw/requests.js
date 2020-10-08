@@ -22,6 +22,14 @@ export default function(event) {
         return
     }
 
+    // Waiting on: https://github.com/w3c/ServiceWorker/issues/1544
+    /*self.addEventListener('fetch', (event) => {
+        console.log('fetch', event)
+        event.request.signal.addEventListener('abort', (event) => {
+            console.log('aborted', event)
+        })
+    })*/
+
     // Only capture requests to the API server
     if (URL_PREFIX) {
         if (!event.request.url.startsWith(URL_PREFIX)) {

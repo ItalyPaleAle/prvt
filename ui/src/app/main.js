@@ -22,22 +22,29 @@ import App from './App.svelte'
         console.error('Service worker registration failed with ' + err)
     }
 
+    await enableWasm(true)
+
     // Initialize the Svelte app and inject it in the DOM
     new App({
         target: document.body,
     })
 })()
 
-window.enableWasm = (enable) => {
+const enableWasm = (enable) => {
     navigator.serviceWorker.controller.postMessage({
         message: 'wasm',
         enable
     })
+    return new Promise((resolve) => {
+        const cb = (event) => {
+            if (event && event.data && event.data.message == 'wasm') {
+                // eslint-disable-next-line no-console
+                console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disable')
+            }
+            navigator.serviceWorker.removeEventListener('message', cb)
+            resolve(event.data)
+        }
+        navigator.serviceWorker.addEventListener('message', cb)
+    })
 }
-
-navigator.serviceWorker.onmessage = (event) => {
-    if (event && event.data) {
-        // eslint-disable-next-line no-console
-        console.log('Message from SW:', event.data)
-    }
-}
+window.enableWasm = enableWasm

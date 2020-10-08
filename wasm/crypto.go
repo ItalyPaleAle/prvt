@@ -113,6 +113,13 @@ func DecryptRequest() js.Func {
 			}
 		}
 
+		// Waiting for https://github.com/w3c/ServiceWorker/issues/1544
+		/*// Check if we have an AbortSignal object we can use to listen to canceled request
+		var ok bool = req.Get("signal").Truthy()
+		if ok {
+			fmt.Println("Has signal")
+		}*/
+
 		// Return a Promise
 		// This is because HTTP request needs to be made in a separate goroutine: https://github.com/golang/go/issues/41310
 		var method js.Func
