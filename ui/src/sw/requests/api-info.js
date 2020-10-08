@@ -27,6 +27,9 @@ export default async function(req) {
         const stats = await stores.index.stat()
         data.fileCount = stats.fileCount
 
+        // While in Wasm mode (at least for now), we are always in read-only mode
+        data.readOnly = true
+
         // Rebuild the Response object
         const headers = new Headers()
         headers.set('Content-Type', 'application/json')

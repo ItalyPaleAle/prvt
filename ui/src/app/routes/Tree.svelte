@@ -4,7 +4,7 @@
     <Path {path} />
   </span>
   <span class="flex-none" slot="right">
-    {#if $AppInfo && !AppInfo.readOnly}
+    {#if $AppInfo && !$AppInfo.readOnly}
       <TitleBarButton name="Add files" icon="fa-cloud-upload" href={'#/add/' + path} />
     {/if}
   </span>
