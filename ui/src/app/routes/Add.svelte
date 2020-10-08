@@ -84,7 +84,7 @@
 <script>
 // Utils
 import {encodePath, cleanPath} from '../lib/utils'
-import {Request} from '../lib/request'
+import {Request} from '../../shared/request'
 
 // Components
 import PageTitle from '../components/PageTitle.svelte'

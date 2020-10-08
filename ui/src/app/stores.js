@@ -8,3 +8,6 @@ export const operationResult = writable(null)
 
 // This stores the latest list loaded
 export const fileList = writable(null)
+
+// This stores is true when Wasm is enabled
+export const wasm = writable(false)

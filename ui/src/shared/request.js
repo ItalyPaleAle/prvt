@@ -64,7 +64,7 @@ export function Request(url, options) {
             if (options.rawResponse) {
                 return response
             }
-            
+
             // We're expecting a JSON document
             if (!response.headers.get('content-type').match(/application\/json/i)) {
                 throw Error('Response was not JSON')

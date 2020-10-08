@@ -45,7 +45,7 @@
 <script>
 // Utils
 import {encodePath, fileTypeIcon, cloneObject} from '../lib/utils'
-import {Request} from '../lib/request'
+import {Request} from '../../shared/request'
 import AppInfo from '../lib/appinfo'
 
 // Components

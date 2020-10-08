@@ -4,6 +4,9 @@ import '../css/style.css'
 // Themes
 import './lib/theme'
 
+// Stores
+import {wasm} from './stores'
+
 // Svelte app
 import App from './App.svelte'
 
@@ -38,11 +41,14 @@ const enableWasm = (enable) => {
     return new Promise((resolve) => {
         const cb = (event) => {
             if (event && event.data && event.data.message == 'wasm') {
+                wasm.set(event.data.enabled)
+                navigator.serviceWorker.removeEventListener('message', cb)
+
                 // eslint-disable-next-line no-console
-                console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disable')
+                console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disabled')
+
+                resolve(event.data)
             }
-            navigator.serviceWorker.removeEventListener('message', cb)
-            resolve(event.data)
         }
         navigator.serviceWorker.addEventListener('message', cb)
     })

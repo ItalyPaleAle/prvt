@@ -1,6 +1,8 @@
 /* global URL_PREFIX */
 
 import fileHandler from './requests/file'
+import apiRepoUnlockHandler from './requests/api-repo-unlock'
+import apiInfoHandler from './requests/api-info'
 
 // List of fetch requests to intercept and their handlers
 // Path can either be a string, which matches the pathname's prefix, or a regular expression matching the pathname
@@ -8,6 +10,14 @@ const requests = [
     {
         path: '/file',
         handler: fileHandler
+    },
+    {
+        path: '/api/repo/unlock',
+        handler: apiRepoUnlockHandler
+    },
+    {
+        path: '/api/info',
+        handler: apiInfoHandler
     }
 ]
 

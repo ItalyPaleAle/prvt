@@ -26,7 +26,7 @@
 <script>
 // Utils
 import {fileTypeIcon, formatSize} from '../lib/utils'
-import {Request} from '../lib/request'
+import {Request} from '../../shared/request'
 import format from 'date-fns/format'
 
 // Props

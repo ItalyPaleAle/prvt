@@ -19,7 +19,7 @@
 
 <script>
 // Utils
-import {Request} from '../lib/request'
+import {Request} from '../../shared/request'
 
 // Props
 export let element = null

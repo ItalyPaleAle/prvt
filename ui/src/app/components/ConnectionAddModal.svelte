@@ -42,7 +42,7 @@
 import ConnectionAddOptsForm from "./ConnectionAddOptsForm.svelte"
 
 // Utils
-import {Request} from '../lib/request'
+import {Request} from '../../shared/request'
 
 // Props
 export let add = null

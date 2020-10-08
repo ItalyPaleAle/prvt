@@ -77,11 +77,11 @@ async function requireRepo() {
 }
 
 // Allow a route only if the repo is unlocked;
-// otherwise, redirects to /repo to select a repo
+// otherwise, redirects to /unlock to unlock the pre-selected repo
 async function requireUnlocked() {
     const info = await AppInfo.get()
     if (!info || !info.repoUnlocked) {
-        push('/repo')
+        push('/unlock')
         return false
     }
     return true

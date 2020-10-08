@@ -3,7 +3,7 @@
 {#await requesting}
     Requesting…
 {:then list}
-    {#each Object.keys(list) as k}
+    {#each Object.keys(list || {}) as k}
         <div class="mb-6 px-4 py-2 flex flex-row items-center cursor-pointer rounded shadow bg-shade-neutral hover:bg-shade-100 list-item">
             <div class="flex-grow flex flex-row items-center" on:click={() => requesting = selectItem(k)}>
                 <div class="flex-grow-0 pr-4">
@@ -46,7 +46,7 @@
 
 <script>
 // Libraries
-import {Request} from '../lib/request'
+import {Request} from '../../shared/request'
 import AppInfo from '../lib/appinfo'
 import {push} from 'svelte-spa-router'
 

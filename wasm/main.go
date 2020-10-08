@@ -40,6 +40,7 @@ func main() {
 		"setBaseURL":     SetBaseUrl(),
 		"decryptRequest": DecryptRequest(),
 		"getIndex":       GetIndex(),
+		"unlock":         Unlock(),
 	})
 
 	// Prevent the function from returning, which is required in a wasm module

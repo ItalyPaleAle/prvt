@@ -62,7 +62,7 @@
 <script>
 // Utils
 import {fileType} from '../lib/utils'
-import {Request} from '../lib/request'
+import {Request} from '../../shared/request'
 
 // Stores
 import {fileList} from '../stores'

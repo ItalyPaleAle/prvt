@@ -1,4 +1,4 @@
-import {Request} from './request'
+import {Request} from '../../shared/request'
 
 /**
  * @typedef {Object} AppInfoObject

@@ -1,5 +1,7 @@
 /* global Prvt */
-/* global masterKey */
+
+// Stores
+import stores from '../stores'
 
 /**
  * Handler for the /file requests, which fetches a file and decrypts it.
@@ -10,7 +12,7 @@
  */
 export default async function(req) {
     const response = await Prvt.decryptRequest(
-        new Uint8Array(masterKey),
+        new Uint8Array(stores.masterKey),
         req
     )
     if (!response) {
