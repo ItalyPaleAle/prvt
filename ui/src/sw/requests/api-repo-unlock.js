@@ -1,5 +1,8 @@
 /* global Prvt */
 
+// Utils
+import {JSONResponse} from '../lib/utils'
+
 // Stores
 import stores from '../stores'
 
@@ -28,13 +31,8 @@ export default async function(req) {
     stores.index = Prvt.getIndex(stores.masterKey)
 
     // Return a Response object just like the API server would for /api/repo/unlock
-    const headers = new Headers()
-    headers.set('Content-Type', 'application/json')
-    return new Response(
-        JSON.stringify({
-            keyId: result.keyId,
-            type: 'passphrase'
-        }),
-        {headers}
-    )
+    return JSONResponse({
+        keyId: result.keyId,
+        type: 'passphrase'
+    })
 }

@@ -1,3 +1,6 @@
+// Utils
+import {JSONResponse} from '../lib/utils'
+
 // Stores
 import stores from '../stores'
 
@@ -13,7 +16,7 @@ export default async function(req) {
     let res = await fetch(req)
 
     // Check if the repo is unlocked
-    if (stores.masterKey) {
+    if (stores.masterKey && stores.index) {
         // Read the response
         const data = await res.json()
         if (!data) {
@@ -31,9 +34,7 @@ export default async function(req) {
         data.readOnly = true
 
         // Rebuild the Response object
-        const headers = new Headers()
-        headers.set('Content-Type', 'application/json')
-        res = new Response(JSON.stringify(data), {headers})
+        res = JSONResponse(data)
     }
 
     return res
