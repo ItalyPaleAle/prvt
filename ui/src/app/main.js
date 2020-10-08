@@ -9,8 +9,14 @@ import {wasm} from './stores'
 
 // Svelte app
 import App from './App.svelte'
+import LoadingApp from './LoadingApp.svelte'
 
 ;(async function main() {
+    // Show the LoadingApp component while the app is initializing
+    const loading = new LoadingApp({
+        target: document.body,
+    })
+
     // Register the service worker and wait for its activation
     try {
         await navigator.serviceWorker.register('sw.js')
@@ -25,7 +31,11 @@ import App from './App.svelte'
         console.error('Service worker registration failed with ' + err)
     }
 
+    // Force-enable Wasm in development
     await enableWasm(true)
+
+    // Remove the loading component
+    loading.$destroy()
 
     // Initialize the Svelte app and inject it in the DOM
     new App({
