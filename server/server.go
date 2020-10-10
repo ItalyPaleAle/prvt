@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -87,17 +89,24 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 	// Register all API routes
 	s.registerAPIRoutes(router)
 
-	// UI
-	uiBox, err := pkger.Open("/ui/dist")
-	if err != nil {
-		return err
-	}
-	router.GET("/ui/*page", gin.WrapH(http.StripPrefix("/ui/", http.FileServer(uiBox))))
-
 	// Redirect from / to the UI
 	router.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusFound, "/ui")
+		c.Redirect(http.StatusFound, "/index.html")
 	})
+
+	// UI
+	// This is the fallback if no other route has been specified
+	if utils.IsTruthy(buildinfo.Production) {
+		uiBox, err := pkger.Open("/ui/dist")
+		if err != nil {
+			return err
+		}
+		router.NoRoute(gin.WrapH(http.FileServer(uiBox)))
+	} else {
+		// In development, proxy to the webpack dev server
+		target, _ := url.Parse("http://localhost:3000")
+		router.NoRoute(gin.WrapH(httputil.NewSingleHostReverseProxy(target)))
+	}
 
 	// Start the server
 	err = s.launchServer(ctx, address, port, router)

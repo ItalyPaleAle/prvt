@@ -38,7 +38,7 @@ self.addEventListener('message', async (event) => {
                     go = new Go()
 
                     // Fetch the Wasm code
-                    const result = await WebAssembly.instantiateStreaming(fetch((URL_PREFIX || '') + '/ui/app.wasm'), go.importObject)
+                    const result = await WebAssembly.instantiateStreaming(fetch('assets/app.wasm'), go.importObject)
                     go.run(result.instance)
 
                     // Set the base URL
