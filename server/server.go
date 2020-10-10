@@ -89,11 +89,6 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 	// Register all API routes
 	s.registerAPIRoutes(router)
 
-	// Redirect from / to the UI
-	router.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusFound, "/index.html")
-	})
-
 	// UI
 	// This is the fallback if no other route has been specified
 	if utils.IsTruthy(buildinfo.Production) {

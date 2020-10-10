@@ -127,7 +127,11 @@ jobs:
       - name: Test
         run: |
           # Exclude the wasm package because it requires a different compilation target
-          ./go-acc $(go list ./... | grep -v prvt/wasm) -- -v
+          ./go-acc \
+            $(go list ./... | grep -v prvt/wasm) \
+            -- \
+              -v \
+              -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1"
 
       - name: Send coverage
         env:
@@ -194,4 +198,4 @@ jobs:
 
       - name: Test
         run: |
-          iex "go.exe test -v $(go.exe list ./... | grep -v prvt/wasm)"
+          iex "go.exe test -v $(go.exe list ./... | grep -v prvt/wasm) -ldflags '-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1'"
