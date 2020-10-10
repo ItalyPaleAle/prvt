@@ -128,6 +128,20 @@ func DecryptRequest() js.Func {
 			method = decryptRequestPromise(masterKey, fileId)
 		} else {
 			// Range requests
+
+			// If this is a request for a video or audio, then we will limit the returned range to to 2 MB max
+			// This is because we have no way yet to detect if requests are canceled (waiting for https://github.com/w3c/ServiceWorker/issues/1544) and this way we at least waste less data when requests are canceled
+			// We determine if the request is for a video or audio by looking at the destination (see https://developer.mozilla.org/en-US/docs/Web/API/Request/destination)
+			destination := req.Get("destination").String()
+			if destination == "audio" || destination == "track" || destination == "video" {
+				// Limit to 2 MB
+				// Also the case of Length = 0, which means that the request was for the entire file
+				if rng.Length > (2<<20) || rng.Length == 0 {
+					rng.Length = 2 << 20
+				}
+			}
+
+			// Make the request
 			method = decryptRangeRequestPromise(masterKey, fileId, rng)
 		}
 		promiseConstructor := js.Global().Get("Promise")
@@ -391,7 +405,6 @@ func responseUnderlyingSource(body io.ReadCloser, decryptFunc decryptFuncSignatu
 				for {
 					buf := make([]byte, 65536)
 					n, err := pr.Read(buf)
-					fmt.Println("Read", n, err)
 					if err != nil && err != io.EOF {
 						// Stream had an error
 						controller.Call("error", jsError(err.Error()))
@@ -402,7 +415,6 @@ func responseUnderlyingSource(body io.ReadCloser, decryptFunc decryptFuncSignatu
 					}
 					if err == io.EOF {
 						// Stream is done
-						fmt.Println("Stream closed")
 						controller.Call("close")
 						return
 					}
