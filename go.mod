@@ -10,7 +10,7 @@ require (
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/golang/protobuf v1.4.2
-	github.com/google/tink/go v1.4.0
+	github.com/google/tink/go v1.5.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/manifoldco/promptui v0.7.0
 	github.com/minio/minio-go/v7 v7.0.5
@@ -19,7 +19,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/goleak v1.1.10
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/text v0.3.3
 	google.golang.org/protobuf v1.25.0
 )
