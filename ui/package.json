@@ -14,7 +14,7 @@
   "dependencies": {
     "date-fns": "2.16.1",
     "fork-awesome": "1.1.7",
-    "svelte-spa-router": "2.2.0",
+    "svelte-spa-router": "3.0.5",
     "tailwindcss": "1.8.5"
   },
   "devDependencies": {
