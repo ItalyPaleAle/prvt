@@ -20,6 +20,6 @@ require (
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/goleak v1.1.10
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
-	golang.org/x/text v0.3.3
+	golang.org/x/text v0.3.4
 	google.golang.org/protobuf v1.25.0
 )
