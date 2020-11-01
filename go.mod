@@ -9,7 +9,7 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/gofrs/uuid v3.3.0+incompatible
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.4.3
 	github.com/google/tink/go v1.4.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/manifoldco/promptui v0.7.0
