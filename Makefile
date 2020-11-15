@@ -13,12 +13,13 @@ get-tools:
 
 # Clean all compiled files
 clean:
+	rm -rfv ui/src/sw/wasm_exec.js || true
 	rm -rfv ui/dist/* || true
 	rm -rfv .bin/prvt* bin || true
 	rm -v pkged.go || true
 
 # Build the entire app
-build: build-ui build-app
+build: build-ui build-app build-wasm
 
 # Build the Go code
 build-app:
@@ -28,9 +29,22 @@ build-app:
 	  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=$(APP_VERSION) -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=$(APP_VERSION) -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=$(BUILD_TIME) -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=$(COMMIT_HASH)" \
 	  -o bin
 
-# Buold the web UI
-build-ui:
+# Build the web UI
+build-ui: copy-wasm-runtime
 	(cd ui; npm ci; APP_VERSION="$(APP_VERSION)" npm run build)
+
+# Copy the wasm_exec.js file from the Go installation
+copy-wasm-runtime:
+	# Copy the Go wasm runtime
+	cp -v $$(go env GOROOT)/misc/wasm/wasm_exec.js ui/src/sw/
+
+# Build the wasm binary
+build-wasm:
+	# Build the wasm file
+	( cd wasm; GOOS=js GOARCH=wasm go build -o ../ui/dist/assets/app.wasm )
+	# Compress with brotli
+	rm ui/dist/assets/app.wasm.br || true
+	brotli -9k ui/dist/assets/app.wasm
 
 # Run tests
 test:
