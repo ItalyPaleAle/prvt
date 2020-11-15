@@ -42,7 +42,7 @@ func TestFsAzure(t *testing.T) {
 		return
 	}
 
-	// Generate a container name and get the region
+	// Generate a container name
 	container := "prvttest" + RandString(6)
 
 	// Init the object

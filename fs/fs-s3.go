@@ -108,7 +108,6 @@ func (f *S3) InitWithOptionsMap(opts map[string]string, cache *fsutils.MetadataC
 	}
 
 	// Initialize minio client object for connecting to S3
-	// Client is a higher-level API, that is convenient for things like putting files
 	// Core is a lower-level API, which is easier for us when requesting data
 	minioOpts := &minio.Options{
 		Creds:  credentials.NewStaticV4(opts["accessKey"], opts["secretKey"], ""),
