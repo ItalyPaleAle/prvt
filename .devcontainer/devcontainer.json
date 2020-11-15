@@ -3,8 +3,8 @@
 
 	// Use a docker-compose manifest
 	"dockerComposeFile": "docker-compose.yaml",
-	"service": "development",
-	"workspaceFolder": "/workspace",
+	"service": "workspace",
+	"workspaceFolder": "/home/vscode/workspace",
 
 	// Set *default* container-specific settings.json values on container create
 	"settings": {
@@ -25,6 +25,8 @@
 		"dbaeumer.vscode-eslint",
 		"eg2.vscode-npm-script",
 		"golang.go",
+		"gruntfuggly.todo-tree",
+		"mikestead.dotenv",
 		"ms-vscode.hexeditor",
 		"redhat.vscode-yaml",
 		"svelte.svelte-vscode",

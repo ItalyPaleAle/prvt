@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  development:
+  workspace:
     build: 
       context: .
       dockerfile: Dockerfile
@@ -10,10 +10,14 @@ services:
         VARIANT: '1.15'
         # Enable installing Node.js and specify the version
         INSTALL_NODE: 'true'
-        NODE_VERSION: '12'
+        NODE_VERSION: '14'
+    networks:
+      - prvt-dev
     volumes:
       # Update this to wherever you want VS Code to mount the folder of your project
-      - ..:/workspace:cached
+      - ..:/home/vscode/workspace:cached
+      - shell-history:/shell-history
+      - prvt-local:/home/vscode/prvt-data
     # Overrides default command so things don't shut down after the process ends
     command: sleep infinity 
     # Use a non-root user for all processes
@@ -39,10 +43,13 @@ services:
       - 'PRVT_STORE=local:/home/vscode/prvt-data'
   minio:
     image: minio/minio
-    container_name: minio
     command: 'server /data'
     volumes:
       - minio-data:/data
+    networks:
+      prvt-dev:
+        aliases: 
+          - minio
     ports:
       - 9000:9000
     environment:
@@ -50,8 +57,11 @@ services:
       - 'MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
-    container_name: azurite
     command: 'azurite-blob -l /data --blobHost 0.0.0.0 --blobPort 10000'
+    networks:
+      prvt-dev:
+        aliases: 
+          - azurite
     volumes:
       - azurite-data:/data
     ports:
@@ -60,3 +70,8 @@ services:
 volumes:
   minio-data:
   azurite-data:
+  shell-history:
+  prvt-local:
+
+networks:
+  prvt-dev:
