@@ -13,6 +13,7 @@ ui/src/sw/wasm_exec.js
 coverage.txt
 
 # Development
+.env
 old/
 test/
 test2/

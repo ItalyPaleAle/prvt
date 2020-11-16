@@ -46,6 +46,7 @@ type funcTestSuite struct {
 	client     *http.Client
 	serverAddr string
 	fileIds    map[string]string
+	prevVerDir string
 }
 
 // Run the test suite

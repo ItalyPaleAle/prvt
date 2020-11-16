@@ -2,14 +2,18 @@ APP_VERSION ?= dev
 BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%S')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
+.PHONY: all build test clean
+
 # Performs a builld
 all: build
 
 # Fetches the tools that are required to build prvt
 get-tools:
 	mkdir -p .bin
-	curl -sf https://gobinaries.com/github.com/ory/go-acc@v0.2.6 | PREFIX=.bin/ sh
-	curl -sf https://gobinaries.com/github.com/markbates/pkger/cmd/pkger@v0.17.1 | PREFIX=.bin/ sh
+	test -f .bin/go-acc || \
+	  curl -sf https://gobinaries.com/github.com/ory/go-acc@v0.2.6 | PREFIX=.bin/ sh
+	test -f .bin/pkger || \
+	  curl -sf https://gobinaries.com/github.com/markbates/pkger/cmd/pkger@v0.17.1 | PREFIX=.bin/ sh
 
 # Clean all compiled files
 clean:
@@ -47,15 +51,15 @@ build-wasm:
 	brotli -9k ui/dist/assets/app.wasm
 
 # Run tests
-test:
-	GPGKEY_ID="0x4C6D7DB1D92F58EE"
-	GPGKEY_USER="prvt CI <ci@prvt>"
+test: get-tools
 	# Exclude the wasm package because it requires a different compilation target
-	.bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1"
+	GPGKEY_ID="0x4C6D7DB1D92F58EE" \
+	GPGKEY_USER="prvt CI <ci@prvt>" \
+	  .bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1"
 
 # Run the shorter test suite
-test-short:
-	GPGKEY_ID="0x4C6D7DB1D92F58EE"
-	GPGKEY_USER="prvt CI <ci@prvt>"
+test-short: get-tools
 	# Exclude the wasm package because it requires a different compilation target
-	.bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1" --short
+	GPGKEY_ID="0x4C6D7DB1D92F58EE" \
+	GPGKEY_USER="prvt CI <ci@prvt>" \
+	  .bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1" --short

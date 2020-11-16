@@ -27,6 +27,8 @@ import (
 	"testing"
 
 	"github.com/ItalyPaleAle/prvt/infofile"
+
+	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,6 +37,13 @@ func (s *funcTestSuite) RunPreviousVersions(t *testing.T) {
 	// Skip when running a short test
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
+	}
+
+	// Copy all fixtures to a temporary folder
+	s.prevVerDir = t.TempDir()
+	err := copy.Copy(filepath.Join(s.fixtures, "previous-versions"), s.prevVerDir)
+	if err != nil {
+		t.Fatal("fatal error while copying fixturs to temporary directory", err.Error())
 	}
 
 	// v0.2 has the same data structures as v0.1
@@ -67,9 +76,9 @@ func (s *funcTestSuite) RunPreviousVersions(t *testing.T) {
 // Tests for working with repositories created by version 0.2
 func (s *funcTestSuite) previousVersion_0_2(t *testing.T, isGPG bool) {
 	// Start the server
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.2-gpg")
+	path := filepath.Join(s.prevVerDir, "v0.2-gpg")
 	if !isGPG {
-		path = filepath.Join(s.fixtures, "previous-versions", "v0.2")
+		path = filepath.Join(s.prevVerDir, "v0.2")
 		s.promptPwd.SetPasswords("hello world")
 	}
 	close := s.startServer(t, "--store", "local:"+path)
@@ -139,9 +148,9 @@ func (s *funcTestSuite) previousVersion_0_2(t *testing.T, isGPG bool) {
 // Tests for working with repositories created by version 0.3
 func (s *funcTestSuite) previousVersion_0_3(t *testing.T, isGPG bool) {
 	// Start the server
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.3-gpg")
+	path := filepath.Join(s.prevVerDir, "v0.3-gpg")
 	if !isGPG {
-		path = filepath.Join(s.fixtures, "previous-versions", "v0.3")
+		path = filepath.Join(s.prevVerDir, "v0.3")
 		s.promptPwd.SetPasswords("hello world")
 	}
 	close := s.startServer(t, "--store", "local:"+path)
@@ -215,9 +224,9 @@ func (s *funcTestSuite) previousVersion_0_3(t *testing.T, isGPG bool) {
 // Tests for working with repositories created by version 0.4
 func (s *funcTestSuite) previousVersion_0_4(t *testing.T, isGPG bool) {
 	// Start the server
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.4-gpg")
+	path := filepath.Join(s.prevVerDir, "v0.4-gpg")
 	if !isGPG {
-		path = filepath.Join(s.fixtures, "previous-versions", "v0.4")
+		path = filepath.Join(s.prevVerDir, "v0.4")
 		s.promptPwd.SetPasswords("hello world")
 	}
 	close := s.startServer(t, "--store", "local:"+path)
@@ -275,9 +284,9 @@ func (s *funcTestSuite) previousVersion_0_4(t *testing.T, isGPG bool) {
 // Tests for working with repositories created by version 0.5
 func (s *funcTestSuite) previousVersion_0_5(t *testing.T, isGPG bool) {
 	// Start the server
-	path := filepath.Join(s.fixtures, "previous-versions", "v0.5-gpg")
+	path := filepath.Join(s.prevVerDir, "v0.5-gpg")
 	if !isGPG {
-		path = filepath.Join(s.fixtures, "previous-versions", "v0.5")
+		path = filepath.Join(s.prevVerDir, "v0.5")
 		s.promptPwd.SetPasswords("hello world")
 	}
 	close := s.startServer(t, "--store", "local:"+path)

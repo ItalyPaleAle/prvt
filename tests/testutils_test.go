@@ -75,8 +75,8 @@ func runCmd(t *testing.T, args []string, errCb func(error), stdoutValidate func(
 	if stderrValidate != nil {
 		stderrValidate(string(stderr))
 	} else {
-		// Ensure it's empty
-		if len(stderr) != 0 {
+		// Ensure it's empty if we were not expecting any error
+		if len(stderr) != 0 && errCb == nil {
 			t.Errorf("stderr is not empty:\n%s\n", stderr)
 		}
 	}
