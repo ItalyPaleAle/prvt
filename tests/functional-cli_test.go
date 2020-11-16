@@ -297,6 +297,18 @@ func (s *funcTestSuite) cmdRepoKey(t *testing.T) {
 		nil,
 	)
 
+	// Error: the same GPG key has already been added
+	runCmd(t,
+		[]string{"repo", "key", "add", "--store", "local:" + s.dirs[1], "--gpg", s.gpgKeyId},
+		func(err error) {
+			if !assert.EqualError(t, err, "[Error] A GPG key with the same ID is already authorized to unlock this repository\n") {
+				t.Fatal("error does not match", err)
+			}
+		},
+		nil,
+		nil,
+	)
+
 	// Remove the passphrase that was added
 	runCmd(t,
 		[]string{"repo", "key", "rm", "--key", passphraseId, "--store", "local:" + s.dirs[1]},

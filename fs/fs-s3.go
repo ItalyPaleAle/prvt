@@ -62,7 +62,7 @@ func (f *S3) OptionsList() *FsOptionsList {
 		Required: []FsOption{
 			{Name: "bucket", Type: "string", Label: "Bucket name"},
 			{Name: "accessKey", Type: "string", Label: "Access key"},
-			{Name: "secretKey", Type: "string", Label: "Secret key"},
+			{Name: "secretKey", Type: "string", Label: "Secret key", Private: true},
 		},
 		Optional: []FsOption{
 			{Name: "endpoint", Type: "string", Label: "Endpoint", Description: "For S3-compatible servers; leave empty for AWS S3", Default: "s3.amazonaws.com"},

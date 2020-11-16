@@ -10,14 +10,16 @@
                     <i class="fa fa-chevron-right" aria-hidden="true"></i>
                 </div>
                 <div class="flex-grow">
-                    <p class="font-bold text-lg md:text-xl text-accent-300">{k}</p>
+                    <p class="font-bold text-lg md:text-xl text-accent-300" class:italic={list[k]._isCurrent}>{k}</p>
                     <p>{list[k].type} <span class="text-text-200">::</span> {list[k].account}</p>
                 </div>
             </div>
-            <div class="extra flex-grow-0 pl-4" on:click={() => expandItem(k)}>
-                <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true" title="Details"></i>
-                <span class="sr-only">Expand details</span>
-            </div>
+            {#if !list[k]._isCurrent}
+                <div class="extra flex-grow-0 pl-4" on:click={() => expandItem(k)}>
+                    <i class="fa fa-ellipsis-v fa-fw" aria-hidden="true" title="Details"></i>
+                    <span class="sr-only">Expand details</span>
+                </div>
+            {/if}
         </div>
     {/each}
     <div
@@ -65,7 +67,7 @@ async function getList() {
     
     // If we have a repo currently selected, ensure that it's added to the list
     const info = await AppInfo.get()
-    if (info && info.repoId) {
+    if (info && info.storeType && info.storeAccount) {
         let found = false
         for (const k in list) {
             found = list.hasOwnProperty(k)
@@ -77,7 +79,7 @@ async function getList() {
             }
         }
         if (!found) {
-            list['Currently selected'] = {
+            list['Active connection'] = {
                 _isCurrent: true,
                 type: info.storeType,
                 account: info.storeAccount

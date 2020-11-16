@@ -5,7 +5,7 @@
     <input
       class="bg-shade-neutral appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 text-text-300 leading-tight focus:outline-none focus:bg-shade-100 focus:border-accent-200"
       name="{opt.name}"
-      type="text"
+      type={opt.private ? 'password' : 'text'}
       value={opt.default || ''}
       placeholder={opt.default || ''}
       {required}

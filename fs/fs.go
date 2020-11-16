@@ -200,6 +200,7 @@ type FsOption struct {
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
 	Default     string `json:"default,omitempty"`
+	Private     bool   `json:"private,omitempty"`
 }
 
 // List of options for each filesystem

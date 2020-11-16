@@ -88,13 +88,3 @@ self.addEventListener('message', async (event) => {
             break
     }
 })
-
-/*
-Test:
-
-await (await fetch('http://localhost:3129/rawfile/015d4c16-2d95-4059-9f99-d91055c7a955', {
-    headers: {
-        Range: 'bytes=600000-'
-    }
-})).text()
-*/

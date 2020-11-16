@@ -64,7 +64,7 @@ func (f *AzureStorage) OptionsList() *FsOptionsList {
 		Label: "Azure Storage",
 		Required: []FsOption{
 			{Name: "storageAccount", Type: "string", Label: "Storage account name"},
-			{Name: "accessKey", Type: "string", Label: "Storage account key"},
+			{Name: "accessKey", Type: "string", Label: "Storage account key", Private: true},
 			{Name: "container", Type: "string", Label: "Container name"},
 		},
 		Optional: []FsOption{
