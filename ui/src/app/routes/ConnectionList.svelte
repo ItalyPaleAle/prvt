@@ -51,6 +51,7 @@
 import {Request} from '../../shared/request'
 import AppInfo from '../lib/appinfo'
 import {push} from 'svelte-spa-router'
+import {onMount} from 'svelte'
 
 // Components
 import PageTitle from '../components/PageTitle.svelte'
@@ -58,7 +59,15 @@ import ConnectionAddModal from '../components/ConnectionAddModal.svelte'
 import ConnectionDetailModal from '../components/ConnectionDetailModal.svelte'
 
 // Stores
-import {modal} from '../stores'
+import {modal, showStoreName} from '../stores'
+
+// Hide the repo name from the footer while this route is open
+onMount(() => {
+    $showStoreName = false
+    return () => {
+        $showStoreName = true
+    }
+})
 
 let requesting = getList()
 async function getList() {

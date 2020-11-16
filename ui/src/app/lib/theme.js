@@ -7,9 +7,9 @@ export const themes = [
     'auto-orange',
     'dark-blue',
     'dark-orange',
-    'midnight',
     'light-blue',
-    'light-orange'
+    'light-orange',
+    'midnight'
 ]
 
 // Return the current theme

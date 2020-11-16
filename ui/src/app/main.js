@@ -31,8 +31,10 @@ import LoadingApp from './LoadingApp.svelte'
         console.error('Service worker registration failed with ' + err)
     }
 
-    // Force-enable Wasm in development
-    await enableWasm(true)
+    // Check if we need to enable wasm
+    if (localStorage.getItem('useWasm') == '1') {
+        await enableWasm(true)
+    }
 
     // Remove the loading component
     loading.$destroy()
@@ -51,11 +53,13 @@ const enableWasm = (enable) => {
     return new Promise((resolve) => {
         const cb = (event) => {
             if (event && event.data && event.data.message == 'wasm') {
-                wasm.set(event.data.enabled)
+                const active = event.data.enabled
+                
+                wasm.set(active)
                 navigator.serviceWorker.removeEventListener('message', cb)
 
                 // eslint-disable-next-line no-console
-                console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disabled')
+                console.log(active ? 'Wasm enabled' : 'Wasm disabled')
 
                 resolve(event.data)
             }
@@ -63,4 +67,8 @@ const enableWasm = (enable) => {
         navigator.serviceWorker.addEventListener('message', cb)
     })
 }
-window.enableWasm = enableWasm
+
+/* global PRODUCTION */
+if (!PRODUCTION) {
+    window.enableWasm = enableWasm
+}

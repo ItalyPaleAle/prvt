@@ -11,3 +11,6 @@ export const fileList = writable(null)
 
 // This stores is true when Wasm is enabled
 export const wasm = writable(false)
+
+// This stores controls whether to hide the store name from the footer
+export const showStoreName = writable(true)

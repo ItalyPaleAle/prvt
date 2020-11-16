@@ -8,7 +8,7 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
       {#each Object.keys(options) as el}  
         <button type="button"
-          class="p-2 bg-shade-neutral rounded shadow text-accent-200 hover:bg-shade-100"
+          class="p-2 bg-shade-neutral rounded shadow hover:bg-shade-100"
           on:click={() => {fs = el}}>
           {options[el].label}
         </button>

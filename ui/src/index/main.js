@@ -40,19 +40,12 @@
             }
         },
 
-        flexbox: function() {
-            try {
-                var element = document.createElement('b')
-                element.style.display = 'flex'
-                return element.style.display == 'flex'
-            }
-            catch (exception) {
-                return false
-            }
-        },
-
-        cssVariables: function() {
-            return window.CSS && CSS.supports('color', 'var(--fake-var)')
+        css: function() {
+            // Tests for flexbox, grids, and CSS variables
+            return window.CSS
+                && CSS.supports('display', 'flex')
+                && CSS.supports('display', 'grid') 
+                && CSS.supports('color', 'var(--fake-var)')
         },
 
         cssTransitions: function() {
