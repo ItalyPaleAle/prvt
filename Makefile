@@ -34,7 +34,7 @@ build-app:
 	  -o bin
 
 # Build the web UI
-build-ui: copy-wasm-runtime
+build-ui:
 	(cd ui; npm ci; APP_VERSION="$(APP_VERSION)" npm run build)
 
 # Copy the wasm_exec.js file from the Go installation

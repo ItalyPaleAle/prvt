@@ -7,7 +7,6 @@ packrd/
 *-packr.go
 *.wasm
 *.wasm.br
-ui/src/sw/wasm_exec.js
 
 # Test results
 coverage.txt
