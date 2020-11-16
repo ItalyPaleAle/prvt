@@ -5,7 +5,7 @@
 {:then list}
     {#each Object.keys(list || {}) as k}
         <div class="mb-6 px-4 py-2 flex flex-row items-center cursor-pointer rounded shadow bg-shade-neutral hover:bg-shade-100 list-item">
-            <div class="flex-grow flex flex-row items-center" on:click={() => requesting = selectItem(k)}>
+            <div class="flex-grow flex flex-row items-center" on:click={() => requesting = selectItem(k, list[k]._isCurrent)}>
                 <div class="flex-grow-0 pr-4">
                     <i class="fa fa-chevron-right" aria-hidden="true"></i>
                 </div>
@@ -58,14 +58,44 @@ import ConnectionDetailModal from '../components/ConnectionDetailModal.svelte'
 // Stores
 import {modal} from '../stores'
 
-let requesting = null
-getList()
-function getList() {
-    requesting = Request('/api/connection')
+let requesting = getList()
+async function getList() {
+    // Get the list
+    const list = await Request('/api/connection')
+    
+    // If we have a repo currently selected, ensure that it's added to the list
+    const info = await AppInfo.get()
+    if (info && info.repoId) {
+        let found = false
+        for (const k in list) {
+            found = list.hasOwnProperty(k)
+                && list[k]
+                && list[k].type == info.storeType
+                && list[k].account == info.storeAccount
+            if (found) {
+                break
+            }
+        }
+        if (!found) {
+            list['Currently selected'] = {
+                _isCurrent: true,
+                type: info.storeType,
+                account: info.storeAccount
+            }
+        }
+    }
+
+    return list
 }
 
 // Select the item on click
-async function selectItem(name) {
+async function selectItem(name, isCurrent) {
+    // Select the repo if it's not the currently-selected one
+    if (isCurrent) {
+        // Go to the next page (we don't know if the repo supports GPG unlock)
+        push('/unlock')
+        return
+    }
     const postData = {name}
     const data = await Request('/api/repo/select', {postData})
     // Update the app info

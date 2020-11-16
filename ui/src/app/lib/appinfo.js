@@ -12,10 +12,17 @@ import {Request} from '../../shared/request'
  * @property {boolean} [readOnly] - If true, the repository is in read-only mode
  * @property {boolean} [repoSelected] - If true, a repository has been selected (but not necessarily unlocked)
  * @property {boolean} [repoUnlocked] - If true, the selected repository has been unlocked
+ * @property {string} [storeType] - Type of the store used
+ * @property {string} [storeAccount] - Account of the store used
+ * @property {boolean} [repoId] - ID of the repository selected
+ * @property {number} [repoVersion] - Version of the repository
+ * @property {number} [files] - Number of files
+ * @property {boolean} [gpgUnlock] - If true, repository can be unlocked with a GPG key
  */
 
 /**
  * Offers mechanisms to access info about the application and server
+ * Implements the Svelte readable store contracts
  */
 export class AppInfo {
     /**
