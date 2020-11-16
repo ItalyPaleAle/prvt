@@ -6,7 +6,7 @@
     var features = {
         es6: function() {
             try {
-                /*! ES6 detection credits DaBs and Netflix: https://gist.github.com/DaBs/89ccc2ffd1d435efdacff05248514f38 License: MIT */
+                /* ES6 detection credits DaBs and Netflix: https://gist.github.com/DaBs/89ccc2ffd1d435efdacff05248514f38 License: MIT */
                 eval('class ಠ_ಠ extends Array {constructor(j = "a", ...c) {const q = (({u: e}) => {return { [`s${c}`]: Symbol(j) };})({});super(j, q, ...c);}}' + 
                 'new Promise((f) => {const a = function* (){return "\\u{20BB7}".match(/./u)[0].length === 2 || true;};for (let vre of a()) {' +
                 'const [uw, as, he, re] = [new Set(), new WeakSet(), new Map(), new WeakMap()];break;}f(new Proxy({}, {get: (han, h) => h in han ? han[h] ' + 

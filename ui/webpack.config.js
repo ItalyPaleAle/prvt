@@ -66,17 +66,20 @@ module.exports = {
         extensions: ['.mjs', '.js', '.svelte']
     },
     output: {
-        path: path.resolve(__dirname, 'dist'),
-        filename: prod ? '[name].[hash:8].js' : '[name].js',
+        path: path.resolve(__dirname, 'dist/'),
+        publicPath: '/',
+        filename: prod ? '[name].[contenthash:8].js' : '[name].js',
         chunkFilename: prod ? '[name].[contenthash:8].js' : '[name].js',
         crossOriginLoading: 'anonymous'
     },
     optimization: {
         usedExports: true,
-        moduleIds: 'hashed',
+        moduleIds: 'deterministic',
         runtimeChunk: false,
         splitChunks: {
             cacheGroups: {
+                default: false,
+                defaultVendors: false,
                 // Contains all CSS (for all pages) and the shared code
                 shared: {
                     name: 'shared',
@@ -121,20 +124,21 @@ module.exports = {
             },
             {
                 test: /\.wasm$/,
-                loaders: ['base64-loader'],
+                use: {
+                    loader: 'base64-loader'
+                },
                 type: 'javascript/auto'
             },
             {
                 test: /\.(eot|svg|ttf|woff|woff2)$/,
-                loader: 'file-loader?name=fonts/[name].[ext]'
+                use: {
+                    loader: 'file-loader',
+                    options: {
+                        name: 'fonts/[name].[ext]'
+                    }
+                }
             }
         ]
-    },
-    node: {
-        __dirname: false,
-        fs: 'empty',
-        Buffer: false,
-        process: false
     },
     plugins: [
         // Cleanup dist folder
