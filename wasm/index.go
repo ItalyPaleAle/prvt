@@ -373,6 +373,12 @@ func (i *IndexProviderHTTP) Get(ctx context.Context) (data []byte, isJSON bool, 
 
 	// Ensure we got a 200 status code
 	if httpResp.StatusCode != http.StatusOK {
+		// If the status code is 404, it means the index didn't exist
+		if httpResp.StatusCode == http.StatusNotFound || httpResp.StatusCode == http.StatusNoContent {
+			data = nil
+			err = nil
+			return
+		}
 		err = fmt.Errorf("invalid response status code: %d", httpResp.StatusCode)
 		return
 	}

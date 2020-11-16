@@ -13,16 +13,16 @@ import stores from '../stores'
  */
 export default async function(req) {
     // Submit the request as-is
-    let res = await fetch(req)
+    const res = await fetch(req)
+
+    // Read the response
+    const data = await res.json()
+    if (!data) {
+        throw Error('Response is empty')
+    }
 
     // Check if the repo is unlocked
     if (stores.masterKey && stores.index) {
-        // Read the response
-        const data = await res.json()
-        if (!data) {
-            throw Error('Response is empty')
-        }
-
         // Set the repoUnlocked flag
         data.repoUnlocked = true
 
@@ -32,10 +32,12 @@ export default async function(req) {
 
         // While in Wasm mode (at least for now), we are always in read-only mode
         data.readOnly = true
-
-        // Rebuild the Response object
-        res = JSONResponse(data)
+    }
+    else {
+        // If we don't have the master key, the repo isn't unlocked, no matter what the server said
+        data.repoUnlocked = false
     }
 
-    return res
+    // Rebuild the Response object
+    return JSONResponse(data)
 }

@@ -9,35 +9,42 @@
             on:close={() => $operationResult = null}
         />
     {/if}
-    <ul>
-        {#if levelUp !== null}
-            <ListItem
-                label="Up one level"
-                icon="fa-level-up"
-                link="#/tree/{levelUp}"
-            />
-        {/if}
-        {#each list as el}
-            {#if el.isDir}
+    {#if list && list.length}
+        <ul>
+            {#if levelUp !== null}
                 <ListItem
-                    label={el.path}
-                    icon="fa-folder"
-                    link="#/tree/{path ? path + '/' : ''}{el.path}"
-                    actions={true}
-                    on:actions={() => showActions(el)}
-                />
-            {:else if el.fileId}
-                <ListItem
-                    label={el.path}
-                    icon="{fileTypeIcon(el.mimeType)}"
-                    link="#/view/{el.fileId}"
-                    date={el.date ? new Date(el.date) : null}
-                    actions={true}
-                    on:actions={() => showActions(el)}
+                    label="Up one level"
+                    icon="fa-level-up"
+                    link="#/tree/{levelUp}"
                 />
             {/if}
-        {/each}
-    </ul>
+            {#each list as el}
+                {#if el.isDir}
+                    <ListItem
+                        label={el.path}
+                        icon="fa-folder"
+                        link="#/tree/{path ? path + '/' : ''}{el.path}"
+                        actions={true}
+                        on:actions={() => showActions(el)}
+                    />
+                {:else if el.fileId}
+                    <ListItem
+                        label={el.path}
+                        icon="{fileTypeIcon(el.mimeType)}"
+                        link="#/view/{el.fileId}"
+                        date={el.date ? new Date(el.date) : null}
+                        actions={true}
+                        on:actions={() => showActions(el)}
+                    />
+                {/if}
+            {/each}
+        </ul>
+    {:else}
+        <div class="mx-2">
+            <h1 class="text-2xl text-accent-300">This repository is empty</h1>
+            <p>Add files to get started.</p>
+        </div>
+    {/if}
 {:catch err}
     <ErrorBox message={err} />
 {/await}
