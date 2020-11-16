@@ -74,7 +74,10 @@ function submit(event) {
     }
     Object.keys(form.elements).forEach((key) => {
         const el = form.elements[key]
-        if (el.type != "submit") {
+        if (el.type == 'checkbox') {
+            data[el.name] = el.checked ? '1' : '0'
+        }
+        else if (el.type == 'text' || el.type == 'password') {
             data[el.name] = el.value
         }
     })

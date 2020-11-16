@@ -29,7 +29,7 @@ import {querystring, push} from 'svelte-spa-router'
 import PageTitle from '../components/PageTitle.svelte'
 
 // Stores
-import {wasm} from '../stores'
+import {wasm, fileList, operationResult} from '../stores'
 
 // Enable unlock with a GPG key if the repo supports it
 let gpgUnlock
@@ -82,6 +82,10 @@ function unlockGPG() {
 async function doUnlock(postData) {
     // Make the unlock request
     await Request('/api/repo/unlock', {postData})
+
+    // Reset the cache
+    $fileList = null
+    $operationResult = null
 
     // On success, refresh AppInfo and go back to the app
     await AppInfo.update()
