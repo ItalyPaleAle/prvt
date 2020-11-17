@@ -3,7 +3,9 @@
 {/if}
 
 <div class="container w-full lg:w-3/5 px-2 pt-6 lg:pt-10">
-    <Router {routes} on:routeLoaded={routeLoaded} />
+    {#if !hide}
+        <Router {routes} on:routeLoaded={routeLoaded} />
+    {/if}
 
     <Footer />
 </div>
@@ -12,6 +14,9 @@
 
 <script>
 import Router from 'svelte-spa-router'
+
+// Props
+export let hide = false
 
 // Routes
 import routes from './routes'

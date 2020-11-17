@@ -5,6 +5,9 @@ import apiRepoUnlockHandler from './requests/api-repo-unlock'
 import apiInfoHandler from './requests/api-info'
 import apiTreeHandler from './requests/api-tree'
 
+// Stores
+import stores from './stores'
+
 // List of fetch requests to intercept and their handlers
 // Path can either be a string, which matches the pathname's prefix, or a regular expression matching the pathname
 const requests = [
@@ -32,8 +35,8 @@ const requests = [
  * @param {Event} event - Event object; only "fetch" events are handled
  */
 export default function(event) {
-    // Only handle fetch events
-    if (event.type != 'fetch') {
+    // Only handle fetch events and only if enabled
+    if (!stores.wasm || event.type != 'fetch') {
         return
     }
 

@@ -40,6 +40,11 @@
             }
         },
 
+        indexedDb: function() {
+            // Test for both indexedDB itself and the getAll() method in the objectStore
+            return !!(window.indexedDB && window.IDBObjectStore && IDBObjectStore.prototype.getAll)
+        },
+
         css: function() {
             // Tests for flexbox, grids, and CSS variables
             return window.CSS

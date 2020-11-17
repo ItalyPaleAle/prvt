@@ -9,12 +9,11 @@
 import SettingsThemePicker from './SettingsThemePicker.svelte'
 
 // Stores
-import {wasm} from '../stores'
+import {wasm, modal} from '../stores'
 
 // Enable or disable wasm
 function toggleWasm() {
-    localStorage.setItem('useWasm', $wasm ? '0' : '1')
-    location.replace('app.html#')
-    location.reload()
+    window.enableWasm(!$wasm)
+    $modal = null
 }
 </script>

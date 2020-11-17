@@ -4,14 +4,20 @@ import '../css/style.css'
 // Themes
 import './lib/theme'
 
-// Stores
+// Stores and app info
 import {wasm} from './stores'
+import AppInfo from './lib/appinfo'
+
+// Libraries
+import {tick} from 'svelte'
 
 // Svelte app
 import App from './App.svelte'
 import LoadingApp from './LoadingApp.svelte'
 
 ;(async function main() {
+    let app
+
     // Show the LoadingApp component while the app is initializing
     const loading = new LoadingApp({
         target: document.body,
@@ -31,40 +37,65 @@ import LoadingApp from './LoadingApp.svelte'
         console.error('Service worker registration failed with ' + err)
     }
 
-    // Check if we need to enable wasm
-    if (localStorage.getItem('useWasm') == '1') {
-        await enableWasm(true)
-    }
+    // Listen to messages coming from the service worker
+    let wasmCb = null
+    navigator.serviceWorker.addEventListener('message', async (event) => {
+        if (!event || !event.data) {
+            return
+        }
+
+        console.log('received message', event.data)
+        if (event.data.message == 'wasm') {
+            const active = event.data.enabled
+            
+            // Set the value in the wasm store
+            wasm.set(active)
+
+            // eslint-disable-next-line no-console
+            console.log(active ? 'Wasm enabled' : 'Wasm disabled')
+
+            // If there's an app mounted, that means this is not the startup sequence, so…
+            if (app) {
+                // 1. …Reset app info cache
+                AppInfo.reset()
+
+                // 2. …Force a reload of the route
+                // TODO: THIS ISN'T WORKING
+                app.$set('hide', true)
+                await tick()
+                app.$set('hide', false)
+            }
+
+            // Invoke the callback if any
+            if (wasmCb) {
+                wasmCb(active)
+                wasmCb = null
+            }
+        }
+    })
+
+    // Request wasm status
+    await new Promise((resolve) => {
+        wasmCb = resolve
+        // Send the request
+        navigator.serviceWorker.controller.postMessage({
+            message: 'get-wasm'
+        })
+    })
 
     // Remove the loading component
     loading.$destroy()
 
     // Initialize the Svelte app and inject it in the DOM
-    new App({
+    app = new App({
         target: document.body,
     })
 })()
 
-const enableWasm = (enable) => {
+const enableWasm = (enabled) => {
     navigator.serviceWorker.controller.postMessage({
-        message: 'wasm',
-        enable
-    })
-    return new Promise((resolve) => {
-        const cb = (event) => {
-            if (event && event.data && event.data.message == 'wasm') {
-                const active = event.data.enabled
-                
-                wasm.set(active)
-                navigator.serviceWorker.removeEventListener('message', cb)
-
-                // eslint-disable-next-line no-console
-                console.log(active ? 'Wasm enabled' : 'Wasm disabled')
-
-                resolve(event.data)
-            }
-        }
-        navigator.serviceWorker.addEventListener('message', cb)
+        message: 'set-wasm',
+        enabled
     })
 }
 

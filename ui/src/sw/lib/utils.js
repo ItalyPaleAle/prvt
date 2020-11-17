@@ -11,3 +11,22 @@ export function JSONResponse(data) {
         {headers}
     )
 }
+
+/**
+ * Convenience method that returns a Promise for an operation with IndexedDB
+ * @template T
+ * @param {IDBRequest<T>} req - Request
+ * @returns {Promise<T>}
+ */
+export function idbPromisify(req) {
+    return new Promise((resolve, reject) => {
+        req.onerror = () => {
+            // eslint-disable-next-line no-console
+            console.error('IndexedDB error', req.error)
+            reject(req.error)
+        }
+        req.onsuccess = (event) => {
+            resolve(event.target.result)
+        }
+    })
+}

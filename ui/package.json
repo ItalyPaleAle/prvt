@@ -41,6 +41,6 @@
     "webpack-cli": "^4.2.0",
     "webpack-dev-server": "^3.11.0",
     "webpack-subresource-integrity": "^1.5.2",
-    "workbox-webpack-plugin": "v6.0.0-alpha.3"
+    "workbox-webpack-plugin": "v6.0.0-rc.0"
   }
 }

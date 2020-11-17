@@ -86,6 +86,22 @@ export class AppInfo {
 
         return this._requesting
     }
+    
+    /**
+     * Resets the acached app info object if present
+     */
+    reset() {
+        // Append to the pending request
+        // If there's no pending request, just add a promise
+        this._requesting = (this._requesting || Promise.resolve())
+            .then(() => {
+                // Reset the cache
+                this._cached = null
+            
+                // Notify al subscribers
+                this._notify()
+            })
+    }
 
     /**
      * Returns true if the repository is open in read-only mode
