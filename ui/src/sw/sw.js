@@ -1,3 +1,4 @@
+/// <reference path="./Prvt.d.ts" />
 /* global Go, Prvt, URL_PREFIX */
 
 // Import the Go WebAssembly runtime

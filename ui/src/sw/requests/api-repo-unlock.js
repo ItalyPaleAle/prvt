@@ -1,3 +1,4 @@
+/// <reference path="../Prvt.d.ts" />
 /* global Prvt */
 
 // Utils
