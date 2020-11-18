@@ -23,6 +23,13 @@ export function cloneObject(obj) {
     return JSON.parse(JSON.stringify(obj))
 }
 
+export function enableWasm(enabled) {
+    navigator.serviceWorker.controller.postMessage({
+        message: 'set-wasm',
+        enabled
+    })
+}
+
 // Formats a size in bytes into human-readable
 export function formatSize(sz) {
     let prefix = 0

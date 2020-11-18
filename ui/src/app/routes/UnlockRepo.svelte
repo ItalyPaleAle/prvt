@@ -1,4 +1,4 @@
-<PageTitle title="Unlock repository" backButton={"#/repo"} />
+<PageTitle title="Unlock repository" />
 
 {#await requesting}
   <p>Unlocking…</p>

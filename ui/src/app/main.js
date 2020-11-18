@@ -4,19 +4,20 @@ import '../css/style.css'
 // Themes
 import './lib/theme'
 
+// Libraries
+import {push, location} from 'svelte-spa-router'
+import {get} from 'svelte/store'
+
 // Stores and app info
 import {wasm} from './stores'
 import AppInfo from './lib/appinfo'
-
-// Libraries
-import {tick} from 'svelte'
 
 // Svelte app
 import App from './App.svelte'
 import LoadingApp from './LoadingApp.svelte'
 
 ;(async function main() {
-    let app
+    let app = null
 
     // Show the LoadingApp component while the app is initializing
     const loading = new LoadingApp({
@@ -44,33 +45,37 @@ import LoadingApp from './LoadingApp.svelte'
             return
         }
 
-        console.log('received message', event.data)
-        if (event.data.message == 'wasm') {
-            const active = event.data.enabled
-            
-            // Set the value in the wasm store
-            wasm.set(active)
+        switch (event.data.message) {
+            case 'wasm':                
+                // Set the value in the wasm store
+                wasm.set(event.data.enabled)
 
-            // eslint-disable-next-line no-console
-            console.log(active ? 'Wasm enabled' : 'Wasm disabled')
+                // eslint-disable-next-line no-console
+                console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disabled')
 
-            // If there's an app mounted, that means this is not the startup sequence, so…
-            if (app) {
-                // 1. …Reset app info cache
-                AppInfo.reset()
+                // If there's an app mounted, that means this is not the startup sequence, so…
+                if (app) {
+                    // 1. …Refresh app info cache
+                    const info = await AppInfo.update()
 
-                // 2. …Force a reload of the route
-                // TODO: THIS ISN'T WORKING
-                app.$set('hide', true)
-                await tick()
-                app.$set('hide', false)
-            }
+                    // 2. …If the repo is now locked, redirect users to unlock
+                    // Otherwise, if we're in the /unlock route already, go to the main view
+                    if (!info || !info.repoUnlocked) {
+                        push('/unlock')
+                    }
+                    else {
+                        if (get(location) == '/unlock') {
+                            push('/')
+                        }
+                    }
+                }
 
-            // Invoke the callback if any
-            if (wasmCb) {
-                wasmCb(active)
-                wasmCb = null
-            }
+                // Invoke the callback if any
+                if (wasmCb) {
+                    wasmCb(event.data.enabled)
+                    wasmCb = null
+                }
+                break
         }
     })
 
@@ -91,15 +96,3 @@ import LoadingApp from './LoadingApp.svelte'
         target: document.body,
     })
 })()
-
-const enableWasm = (enabled) => {
-    navigator.serviceWorker.controller.postMessage({
-        message: 'set-wasm',
-        enabled
-    })
-}
-
-/* global PRODUCTION */
-if (!PRODUCTION) {
-    window.enableWasm = enableWasm
-}

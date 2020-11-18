@@ -12,9 +12,11 @@
     {#if !$AppInfo.repoUnlocked}
       <p class="text-accent-300">Repository has not been unlocked</p>
     {/if}
-    {#if $AppInfo.readOnly}
-      <p class="text-accent-300">Read-only mode enabled</p>
-    {/if}
+  {/if}
+  {#if $wasm}
+    <p class="text-accent-300">In-Browser E2EE enabled (read-only)</p>
+  {:else if $AppInfo.readOnly}
+    <p class="text-accent-300">Read-only mode</p>
   {/if}
   <p class="ml-2 pt-3">
     <SettingsLink />
@@ -23,7 +25,7 @@
 
 <script>
 /* global APP_VERSION */
-import {showStoreName} from '../stores'
+import {showStoreName, wasm} from '../stores'
 import AppInfo from '../lib/appinfo'
 import SettingsLink from './SettingsLink.svelte'
 const appVersion = APP_VERSION
