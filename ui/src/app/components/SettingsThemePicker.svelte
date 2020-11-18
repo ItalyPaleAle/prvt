@@ -31,14 +31,18 @@
 <script>
 // Theme data
 import {themes} from '../lib/theme'
-import theme from '../lib/theme'
 
 // Stores
 import {modal} from '../stores'
 
 // Set the theme
 function setTheme(t) {
-    $theme = t
+    // Set the theme by telling the service worker
+    navigator.serviceWorker.controller.postMessage({
+        message: 'set-theme',
+        theme: t
+    })
+    
     // Hide the modal
     $modal = null
 }

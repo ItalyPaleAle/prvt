@@ -11,14 +11,16 @@ import {PrecacheController} from 'workbox-precaching'
 // Handler for fetch requests
 import requestHandler from './requests'
 
-// Stores
+// Stores and settings
 import stores from './stores'
-
-// Settings
 import * as settings from './settings'
+
+// Utils
+import {BroadcastMessage} from './lib/utils'
 
 // Enable skipWaiting and clientsClaim options
 clientsClaim()
+self.skipWaiting()
 
 // Automatically pre-cache all assets from Webpack - this will contain auto-generated code
 const precacheController = new PrecacheController()
@@ -64,7 +66,6 @@ self.addEventListener('message', async (event) => {
         return
     }
 
-    let list
     switch (event.data.message) {
         // Message 'get-wasm' requests the status of Wasm
         case 'get-wasm':
@@ -81,12 +82,32 @@ self.addEventListener('message', async (event) => {
             enableWasm(!!(event.data && event.data.enabled))
 
             // Notify all clients
-            list = await self.clients.matchAll()
-            list.forEach(c => {
-                c.postMessage({
-                    message: 'wasm',
-                    enabled: stores.wasm
-                })
+            // No need to await on this, just let it run in background
+            BroadcastMessage({
+                message: 'wasm',
+                enabled: stores.wasm
+            })
+            break
+
+        // Message 'get-theme' requests the current theme
+        case 'get-theme':
+            // Respond
+            event.source.postMessage({
+                message: 'theme',
+                theme: await settings.Get('theme')
+            })
+            break
+
+        // Message 'set-theme' sets a new theme
+        case 'set-theme':
+            // Set the preference
+            await settings.Set('theme', (event.data && event.data.theme) || '')
+
+            // Notify all clients
+            // No need to await on this, just let it run in background
+            BroadcastMessage({
+                message: 'theme',
+                theme: (event.data && event.data.theme) || ''
             })
             break
 

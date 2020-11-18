@@ -4,11 +4,11 @@
   <p>Unlocking…</p>
 {:then _}
   <div class="md:flex md:flex-row">
-    <div class="md:w-1/2 flex-grow p-4 mx-3 mb-4 bg-shade-neutral flex flex-col justify-between">
+    <form class="md:w-1/2 flex-grow p-4 mx-3 mb-4 bg-shade-neutral flex flex-col justify-between" on:submit|preventDefault={unlockPassphrase}>
       <h2 class="text-2xl mb-3">Passphrase</h2>
-      <input type="password" name="passphrase" placeholder="Passphrase" class="bg-shade-neutral appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 mb-3 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" bind:value={passphrase} />
-      <button type="button" class="shadow bg-shade-100 hover:bg-shade-200 focus:shadow-outline focus:outline-none text-text-200 font-bold py-2 px-4 rounded" on:click={unlockPassphrase}>Unlock with passphrase</button>
-    </div>
+      <input type="password" name="passphrase" placeholder="Passphrase" class="bg-shade-neutral appearance-none border-2 border-shade-200 rounded w-full py-2 px-4 mb-3 text-text-300 leading-tight focus:outline-none focus:bg-shade-neutral focus:border-accent-200" bind:value={passphrase} autocomplete="off" />
+      <button type="submit" class="shadow bg-shade-100 hover:bg-shade-200 focus:shadow-outline focus:outline-none text-text-200 font-bold py-2 px-4 rounded">Unlock with passphrase</button>
+    </form>
     {#if gpgUnlock && !$wasm}
       <div class="md:w-1/2 p-4 mx-3 mb-4 bg-shade-neutral flex flex-col justify-between">
         <h2 class="text-2xl mb-3">GPG Key</h2>
@@ -87,8 +87,7 @@ async function doUnlock(postData) {
     $fileList = null
     $operationResult = null
 
-    // On success, refresh AppInfo and go back to the app
-    await AppInfo.update()
-    push('/')
+    // On success, the app will receive an "unlocked" message from the SW
+    // The handler for that message will also refresh the app info cache and go to the / route
 }
 </script>

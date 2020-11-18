@@ -45,7 +45,13 @@ const theme = {
     },
 
     set: (val) => {
+        // Set the default theme if empty
+        if (!val || themes.indexOf(val) < 0) {
+            val = defaultTheme
+        }
+        // Update in local storage
         setTheme(val)
+        // Notify all subscribers
         for (let i = 0; i < subscriptions.length; i++) {
             if (subscriptions[i]) {
                 subscriptions[i]('theme-' + val)

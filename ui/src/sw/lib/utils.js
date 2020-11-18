@@ -13,6 +13,18 @@ export function JSONResponse(data) {
 }
 
 /**
+ * Sends a message to every client connected to this service worker
+ *
+ * @param {{message: string, [other: string]: unknown}} data - Message to send
+ */
+export async function BroadcastMessage(data) {
+    const list = await self.clients.matchAll()
+    list.forEach(c => {
+        c.postMessage(data)
+    })
+}
+
+/**
  * Convenience method that returns a Promise for an operation with IndexedDB
  * @template T
  * @param {IDBRequest<T>} req - Request

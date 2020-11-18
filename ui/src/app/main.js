@@ -2,7 +2,7 @@
 import '../css/style.css'
 
 // Themes
-import './lib/theme'
+import theme from './lib/theme'
 
 // Libraries
 import {push, location} from 'svelte-spa-router'
@@ -16,9 +16,10 @@ import AppInfo from './lib/appinfo'
 import App from './App.svelte'
 import LoadingApp from './LoadingApp.svelte'
 
-;(async function main() {
-    let app = null
+let app = null
+let wasmCb = null
 
+;(async function main() {
     // Show the LoadingApp component while the app is initializing
     const loading = new LoadingApp({
         target: document.body,
@@ -39,44 +40,12 @@ import LoadingApp from './LoadingApp.svelte'
     }
 
     // Listen to messages coming from the service worker
-    let wasmCb = null
-    navigator.serviceWorker.addEventListener('message', async (event) => {
-        if (!event || !event.data) {
-            return
-        }
+    navigator.serviceWorker.addEventListener('message', swMessage)
 
-        switch (event.data.message) {
-            case 'wasm':                
-                // Set the value in the wasm store
-                wasm.set(event.data.enabled)
-
-                // eslint-disable-next-line no-console
-                console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disabled')
-
-                // If there's an app mounted, that means this is not the startup sequence, so…
-                if (app) {
-                    // 1. …Refresh app info cache
-                    const info = await AppInfo.update()
-
-                    // 2. …If the repo is now locked, redirect users to unlock
-                    // Otherwise, if we're in the /unlock route already, go to the main view
-                    if (!info || !info.repoUnlocked) {
-                        push('/unlock')
-                    }
-                    else {
-                        if (get(location) == '/unlock') {
-                            push('/')
-                        }
-                    }
-                }
-
-                // Invoke the callback if any
-                if (wasmCb) {
-                    wasmCb(event.data.enabled)
-                    wasmCb = null
-                }
-                break
-        }
+    // Request the current theme from the service worker
+    // Initially, the theme is loaded from localStorage, but that might be out of sync
+    navigator.serviceWorker.controller.postMessage({
+        message: 'get-theme'
     })
 
     // Request wasm status
@@ -96,3 +65,59 @@ import LoadingApp from './LoadingApp.svelte'
         target: document.body,
     })
 })()
+
+async function swMessage(event) {
+    if (!event || !event.data) {
+        return
+    }
+
+    switch (event.data.message) {
+        // The repo was unlocked
+        case 'unlocked':
+            // Refresh app info cache
+            await AppInfo.update()
+
+            // If we are on the /unlock route, go to the main view
+            if (app && get(location) == '/unlock') {
+                push('/')
+            }
+            break
+
+        // Wasm was enabled or disabled
+        case 'wasm':                
+            // Set the value in the wasm store
+            wasm.set(event.data.enabled)
+
+            // eslint-disable-next-line no-console
+            console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disabled')
+
+            // If there's an app mounted, that means this is not the startup sequence, so…
+            if (app) {
+                // 1. …Refresh app info cache
+                const info = await AppInfo.update()
+
+                // 2. …If the repo is now locked, redirect users to unlock
+                // Otherwise, if we're in the /unlock route already, go to the main view
+                if (!info || !info.repoUnlocked) {
+                    push('/unlock')
+                }
+                else {
+                    if (get(location) == '/unlock') {
+                        push('/')
+                    }
+                }
+            }
+
+            // Invoke the callback if any
+            if (wasmCb) {
+                wasmCb(event.data.enabled)
+                wasmCb = null
+            }
+            break
+
+        // Theme has changed
+        case 'theme':
+            theme.set(event.data.theme)
+            break
+    }
+}
