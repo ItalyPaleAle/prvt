@@ -17,12 +17,15 @@
     {/if}
   </div>
 {:catch err}
-  <p>Error: {err}</p>
+  {#if err}
+    <p>Error: {err.message}</p>
+  {:else}
+    <p>An undefined error eccorrued</p>
+  {/if}
 {/await}
 
 <script>
 import {Request} from '../../shared/request'
-import AppInfo from '../lib/appinfo'
 import {querystring, push} from 'svelte-spa-router'
 
 // Components

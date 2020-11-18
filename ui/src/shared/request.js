@@ -7,7 +7,7 @@ const requestTimeout = 5000 // 5s
 /**
  * Performs API requests.
  */
-export function Request(url, options) {
+export async function Request(url, options) {
     if (!options) {
         options = {}
     }
@@ -54,42 +54,42 @@ export function Request(url, options) {
     }
 
     // Make the request
-    let p = fetch(url, reqOptions)
-    if (options.timeout === undefined || options.timeout === null || options.timeout > 0) {
-        p = timeoutPromise(p, options.timeout || requestTimeout)
+    try {
+        let p = fetch(url, reqOptions)
+        if (options.timeout === undefined || options.timeout === null || options.timeout > 0) {
+            p = timeoutPromise(p, options.timeout || requestTimeout)
+        }
+        const response = await p
+
+        // Read the response stream and get the data
+        if (options.rawResponse) {
+            return response
+        }
+    
+        // We're expecting a JSON document
+        if (!response.headers.get('content-type').match(/application\/json/i)) {
+            throw Error('Response was not JSON')
+        }
+    
+        // Get the JSON data from the response
+        const body = await response.json()
+
+        // Check if we have a response with status code 200-299
+        if (!response || !response.ok) {
+            if (body && body.error) {
+                // eslint-disable-next-line no-console
+                console.error('Invalid response status code')
+                throw Error(body.error)
+            }
+            throw Error('Invalid response status code')
+        }
+    
+        return body
     }
-    return p
-        .then((response) => {
-            // Read the response stream and get the data
-            if (options.rawResponse) {
-                return response
-            }
-
-            // We're expecting a JSON document
-            if (!response.headers.get('content-type').match(/application\/json/i)) {
-                throw Error('Response was not JSON')
-            }
-
-            // Get the JSON data from the response
-            return response.json()
-                .then((body) => {
-                    // Check if we have a response with status code 200-299
-                    if (!response || !response.ok) {
-                        if (body && body.error) {
-                            // eslint-disable-next-line no-console
-                            console.error('Invalid response status code')
-                            throw Error(body.error)
-                        }
-                        throw Error('Invalid response status code')
-                    }
-
-                    return body
-                })
-        })
-        .catch((err) => {
-            if (err instanceof TimeoutError) {
-                throw Error('Request has timed out')
-            }
-            throw err
-        })
+    catch (err) {
+        if (err instanceof TimeoutError) {
+            throw Error('Request has timed out')
+        }
+        throw err
+    }
 }

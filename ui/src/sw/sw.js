@@ -49,10 +49,10 @@ self.addEventListener('activate', (event) => {
     precacheController.activate(event)
 
     // Check if we need to enable wasm
-    event.waitUntil((async () => {
-        const wasm = await settings.Get('wasm')
-        enableWasm(!!wasm)
-    })())
+    event.waitUntil(
+        settings.Get('wasm')
+            .then((wasm) => enableWasm(!!wasm))
+    )
 })
 
 // Add the event listener that can capture fetch requests

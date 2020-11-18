@@ -2,13 +2,14 @@
  * Returns a JavaScript Response object containing the given data.
  *
  * @param {*} data - Data that will be included in the response
+ * @param {number} [status] - Status code for the response (optional - defaults to 200)
  */
-export function JSONResponse(data) {
+export function JSONResponse(data, status) {
     const headers = new Headers()
     headers.set('Content-Type', 'application/json')
     return new Response(
         JSON.stringify(data),
-        {headers}
+        {headers, status}
     )
 }
 

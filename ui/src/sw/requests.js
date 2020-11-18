@@ -1,9 +1,13 @@
 /* global URL_PREFIX */
 
+// Handlers
 import fileHandler from './requests/file'
 import apiRepoUnlockHandler from './requests/api-repo-unlock'
 import apiInfoHandler from './requests/api-info'
 import apiTreeHandler from './requests/api-tree'
+
+// Utils
+import {JSONResponse} from './lib/utils'
 
 // Stores
 import stores from './stores'
@@ -27,7 +31,11 @@ const requests = [
         path: '/file',
         handler: fileHandler
     },
-]
+].map((e) => {
+    // Wrap every handler in "catchErrors"
+    e.handler = catchErrors(e.handler)
+    return e
+})
 
 /**
  * Sets up all handlers for fetch requests we want to intercept
@@ -71,6 +79,23 @@ export default function(event) {
             event.respondWith(e.handler(event.request))
             // We found a match, so abort the loop
             break
+        }
+    }
+}
+
+// Catches all errors/exceptions from the handlers and converts them to a Response with an error
+function catchErrors(handler) {
+    return async function(request) {
+        try {
+            // Do not just do "return handler()" because we want to catch exceptions here
+            const res = await handler(request)
+            return res
+        }
+        catch (err) {
+            // Convert to a Response object
+            return JSONResponse({
+                error: err && err.message
+            }, 400)
         }
     }
 }

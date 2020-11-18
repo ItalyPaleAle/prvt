@@ -82,7 +82,7 @@ func Unlock() js.Func {
 				// Try unlocking the repo
 				masterKey, keyId, errMessage, err := keys.GetMasterKeyWithPassphrase(infofile, passphrase)
 				if err != nil {
-					reject.Invoke(jsError(err.Error() + ":" + errMessage))
+					reject.Invoke(jsError(err.Error() + ": " + errMessage))
 					return
 				}
 
