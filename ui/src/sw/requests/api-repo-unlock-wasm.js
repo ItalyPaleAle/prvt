@@ -9,6 +9,7 @@ import stores from '../stores'
 
 /**
  * Handler for the /api/repo/unlock requests, which unlocks a repo.
+ * This is the handler for when in Wasm mode, in which the unlock happens in the Wasm code.
  *
  * @param {Request} req - Request object from the client
  * @returns {Response} Response object for the request

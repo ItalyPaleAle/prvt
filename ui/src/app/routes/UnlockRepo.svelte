@@ -1,8 +1,14 @@
 <PageTitle title="Unlock repository" />
 
 {#await requesting}
-  <p>Unlocking…</p>
-{:then _}
+  <Spinner title="Unlocking" />
+{:catch err}
+  <div class="mx-4">
+      <ErrorBox message={(err && err.message) || 'An undefined error eccorrued'} noClose={true} />
+  </div>
+{/await}
+
+{#if showForm}
   <div class="md:flex md:flex-row">
     <form class="md:w-1/2 flex-grow p-4 mx-3 mb-4 bg-shade-neutral flex flex-col justify-between" on:submit|preventDefault={unlockPassphrase}>
       <h2 class="text-2xl mb-3">Passphrase</h2>
@@ -16,26 +22,27 @@
       </div>
     {/if}
   </div>
-{:catch err}
-  {#if err}
-    <p>Error: {err.message}</p>
-  {:else}
-    <p>An undefined error eccorrued</p>
-  {/if}
-{/await}
+{/if}
 
 <script>
 import {Request} from '../../shared/request'
-import {querystring, push} from 'svelte-spa-router'
+import {querystring} from 'svelte-spa-router'
 
 // Components
+import ErrorBox from '../components/ErrorBox.svelte'
 import PageTitle from '../components/PageTitle.svelte'
+import Spinner from '../components/Spinner.svelte'
 
 // Stores
 import {wasm, fileList, operationResult} from '../stores'
 
+// State
+let requesting = null
+let passphrase = ''
+let showForm = true
+let gpgUnlock = undefined
+
 // Enable unlock with a GPG key if the repo supports it
-let gpgUnlock
 $: getGpgUnlock($querystring)
 async function getGpgUnlock(qs) {
     // If there's an explicit parameter in the querystring, rely on that
@@ -65,9 +72,6 @@ async function getGpgUnlock(qs) {
     }
 }
 
-let requesting = null
-let passphrase = ''
-
 // Unlock with passphrase
 function unlockPassphrase() {
     if (!passphrase) {
@@ -83,14 +87,30 @@ function unlockGPG() {
 }
 
 async function doUnlock(postData) {
-    // Make the unlock request
-    await Request('/api/repo/unlock', {postData})
+    // Hide the form
+    showForm = false
 
-    // Reset the cache
-    $fileList = null
-    $operationResult = null
+    try {
+        // Make the unlock request
+        await Request('/api/repo/unlock', {postData})
+    
+        // Hide the passphrase
+        passphrase = ''
+    
+        // Reset the cache
+        $fileList = null
+        $operationResult = null
+    
+        // On success, the app will receive an "unlocked" message from the SW
+        // The handler for that message will also refresh the app info cache and go to the / route
+    }
+    catch (err) {
+        // Show the form again
+        showForm = true
+        passphrase = ''
 
-    // On success, the app will receive an "unlocked" message from the SW
-    // The handler for that message will also refresh the app info cache and go to the / route
+        // Re-throw the error
+        throw err
+    }
 }
 </script>

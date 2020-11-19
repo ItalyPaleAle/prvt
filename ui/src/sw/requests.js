@@ -2,7 +2,8 @@
 
 // Handlers
 import fileHandler from './requests/file'
-import apiRepoUnlockHandler from './requests/api-repo-unlock'
+import apiRepoUnlockHandlerWasm from './requests/api-repo-unlock-wasm'
+import apiRepoUnlockHandlerServer from './requests/api-repo-unlock-server'
 import apiInfoHandler from './requests/api-info'
 import apiTreeHandler from './requests/api-tree'
 
@@ -12,16 +13,16 @@ import {JSONResponse} from './lib/utils'
 // Stores
 import stores from './stores'
 
-// List of fetch requests to intercept and their handlers
+// List of fetch requests to intercept when in Wasm mode and their handlers
 // Path can either be a string, which matches the pathname's prefix, or a regular expression matching the pathname
-const requests = [
+const requestsWasm = [
     {
         path: '/api/info',
         handler: apiInfoHandler
     },
     {
         path: '/api/repo/unlock',
-        handler: apiRepoUnlockHandler
+        handler: apiRepoUnlockHandlerWasm
     },
     {
         path: '/api/tree',
@@ -37,14 +38,22 @@ const requests = [
     return e
 })
 
+// List of fetch requests to intercept when not in Wasm mode and their handlers
+const requestsServer = [
+    {
+        path: '/api/repo/unlock',
+        handler: apiRepoUnlockHandlerServer
+    },
+]
+
 /**
  * Sets up all handlers for fetch requests we want to intercept
  *
  * @param {Event} event - Event object; only "fetch" events are handled
  */
 export default function(event) {
-    // Only handle fetch events and only if enabled
-    if (!stores.wasm || event.type != 'fetch') {
+    // Only handle fetch events
+    if (event.type != 'fetch') {
         return
     }
 
@@ -66,9 +75,12 @@ export default function(event) {
     // Get the URL
     const url = new URL(event.request.url)
 
+    // List of requests to match, depending on whether wasm is enabled
+    const list = stores.wasm ? requestsWasm : requestsServer
+
     // Check if we have a match
-    for (let i = 0; i < requests.length; i++) {
-        const e = requests[i]
+    for (let i = 0; i < list.length; i++) {
+        const e = list[i]
         // If path is a string, match the prefix
         // If it's a RegExp, match the entire pathname
         if (

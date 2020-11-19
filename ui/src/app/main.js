@@ -7,6 +7,7 @@ import theme from './lib/theme'
 // Libraries
 import {push, location} from 'svelte-spa-router'
 import {get} from 'svelte/store'
+import controlled from './lib/sw-controlled'
 
 // Stores and app info
 import {wasm} from './stores'
@@ -30,13 +31,19 @@ let wasmCb = null
         await navigator.serviceWorker.register('sw.js')
         // eslint-disable-next-line no-console
         console.info('Service worker registered')
-        await navigator.serviceWorker.ready
+
+        // See: https://github.com/w3c/ServiceWorker/issues/799
+        //await navigator.serviceWorker.ready
+        await controlled
+
         // eslint-disable-next-line no-console
         console.info('Service worker activated')
     }
     catch (err) {
         // eslint-disable-next-line no-console
         console.error('Service worker registration failed with ' + err)
+
+        // TODO: SHOW ERROR IN PAGE AS THE SITE IS BROKEN NOW
     }
 
     // Listen to messages coming from the service worker
