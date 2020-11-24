@@ -19,6 +19,7 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"os"
@@ -30,6 +31,9 @@ import (
 	mime "github.com/cubewise-code/go-mime"
 	"github.com/gofrs/uuid"
 )
+
+// Flag that controls whether SHA-256 digests are calculated for files
+var CalculateDigest = true
 
 // AddStream adds a document to the repository by reading it from a stream
 func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (fileIdStr string, status int, err error) {
@@ -56,19 +60,28 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 		return "", RepositoryStatusExisting, nil
 	}
 
+	// Create the hash
+	hash := sha256.New()
+
+	// Tee the in stream into the hash
+	tee := io.TeeReader(in, hash)
+
 	// Write the data to an encrypted file
 	metadata := &crypto.Metadata{
 		Name:        sanitizedFilename,
 		ContentType: mimeType,
 		Size:        size,
 	}
-	_, err = repo.Store.Set(ctx, fileId.String(), in, nil, metadata)
+	_, err = repo.Store.Set(ctx, fileId.String(), tee, nil, metadata)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}
 
+	// Complete the file's digest
+	digest := hash.Sum(nil)
+
 	// Add to the index
-	err = repo.Index.AddFile(sanitizedPath, fileId.Bytes(), mimeType)
+	err = repo.Index.AddFile(sanitizedPath, fileId.Bytes(), mimeType, size, digest)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}

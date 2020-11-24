@@ -39,6 +39,8 @@ type FolderList struct {
 	FileId    string     `json:"fileId,omitempty"`
 	Date      *time.Time `json:"date,omitempty"`
 	MimeType  string     `json:"mimeType,omitempty"`
+	Digest    []byte     `json:"digest,omitempty"`
+	Size      int64      `json:"size,omitempty"`
 }
 
 // IndexStats contains the result of the
@@ -173,7 +175,7 @@ func (i *Index) save(obj *pb.IndexFile) error {
 }
 
 // AddFile adds a file to the index
-func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
+func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64, digest []byte) error {
 	// path must be at least 2 characters (with / being one)
 	if len(path) < 2 {
 		return errors.New("path name is too short")
@@ -185,6 +187,14 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 	// Ensure the path does not end with /
 	if strings.HasSuffix(path, "/") {
 		return errors.New("path must not end with /")
+	}
+	// File size must not be negative (but can be empty)
+	if size < 0 {
+		return errors.New("invalid file size")
+	}
+	// If the digest is empty, ensure it's null
+	if len(digest) < 1 {
+		digest = nil
 	}
 
 	// Force a refresh of the index
@@ -210,6 +220,8 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string) error {
 			Seconds: time.Now().Unix(),
 		},
 		MimeType: mimeType,
+		Size:     size,
+		Digest:   digest,
 	}
 	elements := append(i.cache.Elements, fileEl)
 
@@ -317,6 +329,8 @@ func (i *Index) GetFileById(fileId string) (*FolderList, error) {
 		FileId:    fileId,
 		Date:      date,
 		MimeType:  el.MimeType,
+		Size:      el.Size,
+		Digest:    el.Digest,
 	}, nil
 }
 
@@ -447,6 +461,8 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 				FileId:    fileId.String(),
 				Date:      date,
 				MimeType:  el.File.MimeType,
+				Size:      el.File.Size,
+				Digest:    el.File.Digest,
 			}
 			y++
 		} else {

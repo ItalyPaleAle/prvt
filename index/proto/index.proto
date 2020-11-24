@@ -16,7 +16,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*
-//Build with:
+Build with:
 
 ```sh
 protoc \
@@ -40,10 +40,18 @@ option go_package = "github.com/ItalyPaleAle/index/proto";
 
 // IndexElement message
 message IndexElement {
+    // File's full path (directory + name)
     string path = 1 [json_name="p"];
+    // File ID (UUID), encoded as raw bytes
     bytes file_id = 2;
+    // Date when the file was added to the repository
     google.protobuf.Timestamp date = 3 [json_name="d"];
+    // File's content type
     string mime_type = 4 [json_name="m"];
+    // File size
+    int64 size = 5;
+    // File digest as SHA-256
+    bytes digest = 10;
 
     // This is added for compatibility with the version 1 JSON format
     string file_id_string = 102 [json_name="n",deprecated=true];
