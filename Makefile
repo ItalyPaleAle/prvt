@@ -17,7 +17,6 @@ get-tools:
 
 # Clean all compiled files
 clean:
-	rm -rfv ui/src/sw/wasm_exec.js || true
 	rm -rfv ui/dist/* || true
 	rm -rfv .bin/prvt* bin || true
 	rm -v pkged.go || true
