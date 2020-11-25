@@ -347,6 +347,8 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 			assert.True(t, e.Date != nil)
 			assert.True(t, e.FileId != "")
 			assert.True(t, e.MimeType == "text/plain")
+			assert.Greater(t, e.Size, int64(0))
+			assert.NotEmpty(t, e.Digest)
 		}
 		found = append(found, path)
 	}
@@ -370,6 +372,8 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 			assert.True(t, e.Date != nil)
 			assert.True(t, e.FileId != "")
 			assert.True(t, e.MimeType == "text/plain")
+			assert.Greater(t, e.Size, int64(0))
+			assert.NotEmpty(t, e.Digest)
 		}
 		found = append(found, path)
 	}
@@ -395,6 +399,8 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		assert.True(t, e.Date != nil)
 		assert.True(t, e.FileId != "")
 		assert.True(t, e.MimeType == "image/jpeg")
+		assert.Greater(t, e.Size, int64(0))
+		assert.NotEmpty(t, e.Digest)
 		found = append(found, e.Path)
 		s.fileIds["/upload/"+e.Path] = e.FileId
 	}

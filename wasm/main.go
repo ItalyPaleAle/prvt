@@ -19,8 +19,8 @@ package main
 
 /*
 Build with:
-GOOS=js GOARCH=wasm go build -o  ../ui/dist/assets/app.wasm
-brotli -9k ../ui/dist/assets/app.wasm
+GOOS=js GOARCH=wasm go build -o  ../ui/assets/app.wasm
+brotli -9 ../ui/assets/app.wasm
 
 The Go WebAssembly runtime is at:
 $GOROOT/misc/wasm/wasm_exec.js

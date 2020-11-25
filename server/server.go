@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -38,7 +36,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/markbates/pkger"
 	"github.com/spf13/viper"
 )
 
@@ -89,18 +86,10 @@ func (s *Server) Start(ctx context.Context, address, port string) error {
 	// Register all API routes
 	s.registerAPIRoutes(router)
 
-	// UI
-	// This is the fallback if no other route has been specified
-	if utils.IsTruthy(buildinfo.Production) {
-		uiBox, err := pkger.Open("/ui/dist")
-		if err != nil {
-			return err
-		}
-		router.NoRoute(gin.WrapH(http.FileServer(uiBox)))
-	} else {
-		// In development, proxy to the webpack dev server
-		target, _ := url.Parse("http://localhost:3000")
-		router.NoRoute(gin.WrapH(httputil.NewSingleHostReverseProxy(target)))
+	// Web UI
+	err = s.handleWebUI(router)
+	if err != nil {
+		return err
 	}
 
 	// Start the server

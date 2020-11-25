@@ -22,7 +22,7 @@ clean:
 	rm -v pkged.go || true
 
 # Build the entire app
-build: build-ui build-app build-wasm
+build: build-ui build-wasm-prod build-app
 
 # Build the Go code
 build-app:
@@ -43,11 +43,17 @@ copy-wasm-runtime:
 
 # Build the wasm binary
 build-wasm:
+	mkdir -p ui/assets
+	# Empty the directory
+	rm ui/assets/*.wasm || true
+	rm ui/assets/*.wasm.br || true
 	# Build the wasm file
-	( cd wasm; GOOS=js GOARCH=wasm go build -o ../ui/dist/assets/app.wasm )
+	( cd wasm; GOOS=js GOARCH=wasm go build -o ../ui/assets/app.wasm )
+
+# Build the wasm binary for production (compressed
+build-wasm-prod: build-wasm
 	# Compress with brotli
-	rm ui/dist/assets/app.wasm.br || true
-	brotli -9k ui/dist/assets/app.wasm
+	brotli -j9 ui/assets/app.wasm
 
 # Run tests
 test: get-tools

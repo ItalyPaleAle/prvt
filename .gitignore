@@ -5,6 +5,7 @@ bin
 .packr
 packrd/
 *-packr.go
+pkged.go
 *.wasm
 *.wasm.br
 
