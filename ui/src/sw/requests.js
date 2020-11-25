@@ -89,8 +89,7 @@ export default function(event) {
         ) {
             // Intercept the request
             event.respondWith(e.handler(event.request))
-            // We found a match, so abort the loop
-            break
+            return
         }
     }
 }

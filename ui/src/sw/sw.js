@@ -1,12 +1,13 @@
 /// <reference path="./Prvt.d.ts" />
-/* global Go, Prvt, URL_PREFIX */
+/* global Go, PRODUCTION, URL_PREFIX */
 
 // Import the Go WebAssembly runtime
 import './wasm_exec'
 
 // Imports from workbox, useful for setting up the service worker
 import {clientsClaim} from 'workbox-core'
-import {PrecacheController} from 'workbox-precaching'
+import {PrecacheController, PrecacheRoute} from 'workbox-precaching'
+import {registerRoute} from 'workbox-routing'
 
 // Handler for fetch requests
 import requestHandler from './requests'
@@ -18,21 +19,20 @@ import * as settings from './settings'
 // Utils
 import {BroadcastMessage} from './lib/utils'
 
+// URL of the Wasm file
+// TODO: APPEND VERSION
+const wasmURL = 'assets/app.wasm'
+
 // Enable skipWaiting and clientsClaim options
 clientsClaim()
 self.skipWaiting()
 
 // Automatically pre-cache all assets from Webpack - this will contain auto-generated code
 const precacheController = new PrecacheController()
-precacheController.addToCacheList(self.__WB_MANIFEST)
-console.log(self.__WB_MANIFEST)
-// precacheAndRoute(self.__WB_MANIFEST, {
-//     // Ignore all URL parameters
-//     ignoreURLParametersMatching: [/.*/],
-//     // Do not add .html to files by default
-//     cleanUrls: false,
-// })
-// TODO: WORKBOX ADD HANDLER FOR FETCH: https://developers.google.com/web/tools/workbox/modules/workbox-precaching
+if (self.__WB_MANIFEST) {
+    console.log('precached', self.__WB_MANIFEST)
+    precacheController.addToCacheList(self.__WB_MANIFEST)
+}
 
 // Listen to the service worker installation event
 self.addEventListener('install', (event) => {
@@ -56,8 +56,20 @@ self.addEventListener('activate', (event) => {
 })
 
 // Add the event listener that can capture fetch requests
-// When wasm mode is disabled, this just transparently lets requests continue as normal
 self.addEventListener('fetch', requestHandler)
+
+// Add another fetch event listener for precached resource, after the requestHandler above
+registerRoute(
+    new PrecacheRoute(
+        precacheController,
+            {
+            // Ignore all URL parameters
+            ignoreURLParametersMatching: [/.*/],
+            // Do not add .html to files by default
+            cleanUrls: false,
+        }
+    )
+)
 
 // Handle the events to turn on and off in-browser E2EE via Wasm
 let go = null
@@ -125,6 +137,7 @@ self.addEventListener('message', async (event) => {
     }
 })
 
+// Enable or disable Wasm
 async function enableWasm(enable) {
     // Check if we are enabling or disabling Wasm
     if (enable && !stores.wasm) {
@@ -133,7 +146,7 @@ async function enableWasm(enable) {
             go = new Go()
 
             // Fetch the Wasm code
-            const result = await WebAssembly.instantiateStreaming(fetch('assets/app.wasm'), go.importObject)
+            const result = await WebAssembly.instantiateStreaming(fetchWasm(), go.importObject)
             go.run(result.instance)
 
             // Set the base URL
@@ -165,4 +178,38 @@ async function enableWasm(enable) {
         stores.wasm = enable
         await settings.Set('wasm', enable)
     }
+}
+
+// Fetches the Wasm file, trying the cache first
+async function fetchWasm() {
+    const req = new Request(wasmURL)
+    
+    // If we're not in production, skip the cache
+    if (!PRODUCTION && 0) {
+        return fetch(req)
+    }
+
+    const wasmCache = await caches.open('wasm-cache')
+
+    // Check if we have the URL in the cache, and remove the old ones
+    const keys = await wasmCache.keys()
+    for (let i = 0; i < keys.length; i++) {
+        if (keys[i] && keys[i].url != req.url) {
+            // Delete old keys
+            await wasmCache.delete(keys[i])
+            console.info('Deleted old wasm file', keys[i].url)
+        }
+    }
+
+    // First try responding from the cache
+    // Otherwise, request the file and store it in the cache
+    let res = await wasmCache.match(req)
+    if (res) {
+        console.info('Loaded wasm from cache', wasmURL)
+        return res
+    }
+    // If we're here, we did not find a match in the cache, so request it and store it in the cache
+    res = await fetch(req)
+    wasmCache.put(req, res.clone())
+    return res
 }
