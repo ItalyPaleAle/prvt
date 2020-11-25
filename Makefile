@@ -43,7 +43,6 @@ copy-wasm-runtime:
 
 # Build the wasm binary
 build-wasm:
-	mkdir -p ui/assets
 	# Empty the directory
 	rm ui/assets/*.wasm || true
 	rm ui/assets/*.wasm.br || true
