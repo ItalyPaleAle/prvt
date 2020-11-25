@@ -13,6 +13,7 @@ services:
         NODE_VERSION: '14'
     networks:
       - prvt-dev
+    restart: unless-stopped
     volumes:
       # Update this to wherever you want VS Code to mount the folder of your project
       - ..:/home/vscode/workspace:cached
@@ -50,6 +51,7 @@ services:
       prvt-dev:
         aliases: 
           - minio
+    restart: unless-stopped
     ports:
       - 9000:9000
     environment:
@@ -58,6 +60,7 @@ services:
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
     command: 'azurite-blob -l /data --blobHost 0.0.0.0 --blobPort 10000'
+    restart: unless-stopped
     networks:
       prvt-dev:
         aliases: 

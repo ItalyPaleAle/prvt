@@ -13,7 +13,16 @@
 		"go.useLanguageServer": true,
 		"go.gopath": "/go",
 		"go.goroot": "/usr/local/go",
-		"go.toolsGopath": "/go/bin"
+		"go.toolsGopath": "/go/bin",
+		"go.toolsEnvVars": {
+			"GPGKEY_ID": "0x4C6D7DB1D92F58EE",
+			"GPGKEY_USER": "prvt CI <ci@prvt>"
+		},
+		"go.testFlags": [
+			"-v",
+			"-ldflags",
+			"-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1"
+		]
 	},
 
 	// Install VS Code extensions when the container is created

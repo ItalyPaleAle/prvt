@@ -61,4 +61,4 @@ test-short: get-tools
 	# Exclude the wasm package because it requires a different compilation target
 	GPGKEY_ID="0x4C6D7DB1D92F58EE" \
 	GPGKEY_USER="prvt CI <ci@prvt>" \
-	  .bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1" --short
+	  .bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1" -short
