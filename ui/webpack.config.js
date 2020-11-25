@@ -169,13 +169,13 @@ module.exports = {
             new BundleAnalyzerPlugin()
         ] : []),
 
-        // Service worker, only when in production mode
-        ...(prod ? [
+        // Service worker
+        new InjectManifest({
+            swSrc: './src/sw/sw.js',
+            // In dev mode, include fonts only
             // Note that this never pre-caches the WASM file, as that is not part of the output of Webpack
-            new InjectManifest({
-                swSrc: './src/sw/sw.js',
-            }),
-        ] : [])
+            include: prod ? undefined : [/^fonts/],
+        }),
     ].concat(addPlugins), // Add other plugins
     mode,
     devServer: {
