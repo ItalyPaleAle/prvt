@@ -56,6 +56,10 @@ You must specify a destination, which is a folder inside the repository where yo
 			if err != nil {
 				return NewExecError(ErrorApp, "Cannot get flag 'destination'", err)
 			}
+			flagForce, err := cmd.Flags().GetBool("force")
+			if err != nil {
+				return NewExecError(ErrorApp, "Cannot get flag 'force'", err)
+			}
 
 			// Get the file/folder name from the args
 			if len(args) < 1 {
@@ -130,7 +134,7 @@ You must specify a destination, which is a folder inside the repository where yo
 					folder := filepath.Dir(expanded)
 					target := filepath.Base(expanded)
 
-					repo.AddPath(ctx, folder, target, flagDestination, res)
+					repo.AddPath(ctx, folder, target, flagDestination, flagForce, res)
 				}
 
 				close(res)
@@ -160,6 +164,7 @@ You must specify a destination, which is a folder inside the repository where yo
 	addStoreFlag(c, true)
 	c.Flags().StringP("destination", "d", "", "destination folder")
 	c.MarkFlagRequired("destination")
+	c.Flags().BoolP("force", "f", false, "overwrite a file if existing")
 
 	return c
 }

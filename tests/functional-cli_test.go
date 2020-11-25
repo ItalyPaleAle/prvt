@@ -404,6 +404,53 @@ func (s *funcTestSuite) cmdAdd(t *testing.T) {
 	)
 	checkRepoDirectory(t, s.dirs[0], 7)
 
+	// Force-add a single file
+	s.promptPwd.SetPasswords("hello world")
+	runCmd(t,
+		[]string{"add", addPath2, "--destination", "/", "--store", "local:" + s.dirs[0], "--force"},
+		nil,
+		func(stdout string) {
+			expected := []string{
+				"",
+				"Added: /short.txt",
+			}
+			actual := strings.Split(stdout, "\n")
+			sort.Strings(actual)
+			if !reflect.DeepEqual(expected, actual) {
+				t.Error("output does not match", stdout)
+			}
+		},
+		nil,
+	)
+	// Should still be 7 files because the old files were deleted
+	checkRepoDirectory(t, s.dirs[0], 7)
+
+	// Force-add multiple files
+	s.promptPwd.SetPasswords("hello world")
+	runCmd(t,
+		[]string{"add", addPath1, addPath2, "--destination", "/", "--store", "local:" + s.dirs[0], "--force"},
+		nil,
+		func(stdout string) {
+			expected := []string{
+				"",
+				"Added: /photos/elton-sa-_3g60mG4N80-unsplash.jpg",
+				"Added: /photos/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
+				"Added: /photos/leigh-williams-CCABYukxjHs-unsplash.jpg",
+				"Added: /photos/nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
+				"Added: /photos/partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
+				"Added: /short.txt",
+			}
+			actual := strings.Split(stdout, "\n")
+			sort.Strings(actual)
+			if !reflect.DeepEqual(expected, actual) {
+				t.Error("output does not match", stdout)
+			}
+		},
+		nil,
+	)
+	// Should still be 7 files because the old files were deleted
+	checkRepoDirectory(t, s.dirs[0], 7)
+
 	// File does not exist
 	s.promptPwd.SetPasswords("hello world")
 	addPath = filepath.Join(s.fixtures, "notfound.txt")

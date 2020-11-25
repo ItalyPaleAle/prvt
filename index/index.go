@@ -175,7 +175,7 @@ func (i *Index) save(obj *pb.IndexFile) error {
 }
 
 // AddFile adds a file to the index
-func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64, digest []byte) error {
+func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64, digest []byte, force bool) error {
 	// path must be at least 2 characters (with / being one)
 	if len(path) < 2 {
 		return errors.New("path name is too short")
@@ -202,13 +202,18 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 		return err
 	}
 
-	// Check if the file already exists
-	exists, err := i.GetFileByPath(path)
-	if err != nil {
-		return err
-	}
-	// Path "/" always exists
-	if exists != nil || path == "/" {
+	// Check if the file already exists (unless we're forcing this)
+	if !force {
+		exists, err := i.GetFileByPath(path)
+		if err != nil {
+			return err
+		}
+		// Path "/" always exists
+		if exists != nil || path == "/" {
+			return errors.New("file already exists")
+		}
+	} else if path == "/" {
+		// We still can't accept a path of "/"
 		return errors.New("file already exists")
 	}
 

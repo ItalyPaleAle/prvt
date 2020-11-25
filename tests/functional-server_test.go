@@ -142,6 +142,7 @@ func (s *funcTestSuite) serverAdd(t *testing.T) {
 	t.Run("upload multiple files", s.serverAddUploadMultiFiles)
 	t.Run("add local files", s.serverAddLocalFiles)
 	t.Run("add one existing local file", s.serverAddLocalFileExisting)
+	t.Run("force-add one local file", s.serverForceAddLocalFile)
 }
 
 // Add a file by uploading it directly, to the / folder
@@ -292,33 +293,46 @@ func (s *funcTestSuite) serverAddLocalFiles(t *testing.T) {
 	}
 }
 
-// Add a single file from the local file system, to the /upload folder, already existing
-func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
+// Runs the tests for serverAddLocalFileExisting and serverForceAddLocalFile
+func (s *funcTestSuite) addLocalFile(t *testing.T, force bool) []server.TreeOperationResponse {
+	t.Helper()
+
 	// Create the request body
 	body := &bytes.Buffer{}
 	mpw := multipart.NewWriter(body)
 	err := mpw.WriteField("localpath", filepath.Join(s.fixtures, "photos", "joshua-woroniecki-dyEaBD5uiio-unsplash.jpg"))
 	if err != nil {
 		t.Fatal(err)
-		return
+		return nil
 	}
-	mpw.Close()
+	if force {
+		err = mpw.WriteField("force", "1")
+		if err != nil {
+			t.Fatal(err)
+			return nil
+		}
+	}
+	err = mpw.Close()
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
 
 	// Send the request
 	res, err := s.client.Post(s.serverAddr+"/api/tree/upload/", mpw.FormDataContentType(), body)
 	if err != nil {
 		t.Fatal(err)
-		return
+		return nil
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		t.Fatalf("invalid response status code: %d", res.StatusCode)
-		return
+		return nil
 	}
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)
-		return
+		return nil
 	}
 
 	// Parse the JSON response
@@ -326,14 +340,35 @@ func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
 	err = json.Unmarshal(read, &data)
 	if err != nil {
 		t.Fatal(err)
-		return
+		return nil
 	}
 
+	return data
+}
+
+// Add a single file from the local file system, to the /upload folder, already existing
+func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
+	data := s.addLocalFile(t, false)
+
+	// Check the result
 	assert.Len(t, data, 1)
 	assert.Equal(t, "", data[0].Error)
 	assert.Equal(t, "existing", data[0].Status)
 	assert.Equal(t, "/upload/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg", data[0].Path)
 	assert.Equal(t, "", data[0].FileId)
+}
+
+// Force-add a single file from the local file system, to the /upload folder
+func (s *funcTestSuite) serverForceAddLocalFile(t *testing.T) {
+	// This is the same test as the previous function, but it adds a "force"
+	data := s.addLocalFile(t, true)
+
+	// Check the result
+	assert.Len(t, data, 1)
+	assert.Equal(t, "", data[0].Error)
+	assert.Equal(t, "added", data[0].Status)
+	assert.Equal(t, "/upload/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg", data[0].Path)
+	assert.True(t, data[0].FileId != "")
 }
 
 // Test the endpoint that lists files

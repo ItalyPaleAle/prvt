@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/repository"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mitchellh/go-homedir"
@@ -54,18 +55,27 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 	go func() {
 		defer close(res)
 
-		// Check if we have a path from the local filesystem or a file uploaded
+		// Get the data from the request body, which must be a multipart/form-data
 		mpf, err := c.MultipartForm()
 		if err != nil {
 			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
+
+		// Check if we're forcing the request
+		force := false
+		forceVal, ok := mpf.Value["force"]
+		if ok && len(forceVal) > 0 {
+			force = utils.IsTruthy(forceVal[0])
+		}
+
+		// Check if we have a path from the local filesystem or a file uploaded
 		uploadFiles := mpf.File["file"]
 		localPaths := mpf.Value["localpath"]
 		if localPaths != nil && len(localPaths) > 0 && (uploadFiles == nil || len(uploadFiles) == 0) {
-			s.addLocalPath(ctx, localPaths, path, res)
+			s.addLocalPath(ctx, localPaths, path, force, res)
 		} else if uploadFiles != nil && len(uploadFiles) > 0 && (localPaths == nil || len(localPaths) == 0) {
-			s.addUploadedFiles(ctx, uploadFiles, path, res)
+			s.addUploadedFiles(ctx, uploadFiles, path, force, res)
 		} else {
 			c.AbortWithError(http.StatusBadRequest, errors.New("need to specify one and only one of 'file' or 'localpath' form fields"))
 			return
@@ -100,7 +110,7 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 }
 
 // Adds files from the local filesystem, passing the path
-func (s *Server) addLocalPath(ctx context.Context, paths []string, destination string, res chan<- repository.PathResultMessage) {
+func (s *Server) addLocalPath(ctx context.Context, paths []string, destination string, force bool, res chan<- repository.PathResultMessage) {
 	// Iterate through the paths and add them all
 	var err error
 	var expanded string
@@ -118,19 +128,19 @@ func (s *Server) addLocalPath(ctx context.Context, paths []string, destination s
 		folder := filepath.Dir(expanded)
 		target := filepath.Base(expanded)
 
-		s.Repo.AddPath(ctx, folder, target, destination, res)
+		s.Repo.AddPath(ctx, folder, target, destination, force, res)
 	}
 }
 
 // Add multiple files by streams
-func (s *Server) addUploadedFiles(ctx context.Context, uploadFiles []*multipart.FileHeader, destination string, res chan<- repository.PathResultMessage) {
+func (s *Server) addUploadedFiles(ctx context.Context, uploadFiles []*multipart.FileHeader, destination string, force bool, res chan<- repository.PathResultMessage) {
 	for _, f := range uploadFiles {
-		s.addUploadedFile(ctx, f, destination, res)
+		s.addUploadedFile(ctx, f, destination, force, res)
 	}
 }
 
 // Add a file by a stream
-func (s *Server) addUploadedFile(ctx context.Context, uploadFile *multipart.FileHeader, destination string, res chan<- repository.PathResultMessage) {
+func (s *Server) addUploadedFile(ctx context.Context, uploadFile *multipart.FileHeader, destination string, force bool, res chan<- repository.PathResultMessage) {
 	// Filename
 	filename := filepath.Base(uploadFile.Filename)
 	if filename == "" || filename == ".." || filename == "." || filename == "/" {
@@ -167,7 +177,7 @@ func (s *Server) addUploadedFile(ctx context.Context, uploadFile *multipart.File
 	}
 
 	// Add the file
-	fileId, result, err := s.Repo.AddStream(ctx, in, filename, destination, mime, size)
+	fileId, result, err := s.Repo.AddStream(ctx, in, filename, destination, mime, size, force)
 	res <- repository.PathResultMessage{
 		Path:   destination + filename,
 		Status: result,

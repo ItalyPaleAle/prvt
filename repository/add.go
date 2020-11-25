@@ -36,7 +36,7 @@ import (
 var CalculateDigest = true
 
 // AddStream adds a document to the repository by reading it from a stream
-func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filename, destinationFolder, mimeType string, size int64) (fileIdStr string, status int, err error) {
+func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filename, destinationFolder, mimeType string, size int64, force bool) (fileIdStr string, status int, err error) {
 	// Generate a file id
 	fileId, err := uuid.NewV4()
 	if err != nil {
@@ -51,12 +51,13 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	mimeType = utils.SanitizeMimeType(mimeType)
 
 	// Check if the file exists in the index already
-	exists, err := repo.Index.GetFileByPath(sanitizedPath)
+	existing, err := repo.Index.GetFileByPath(sanitizedPath)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}
-	// Path "/" always exists
-	if exists != nil || sanitizedPath == "/" {
+	// Unless we're force-adding the file, return an error if the file already exists
+	// Path "/" always exists and is always an error
+	if (!force && existing != nil) || sanitizedPath == "/" {
 		return "", RepositoryStatusExisting, nil
 	}
 
@@ -80,8 +81,26 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	// Complete the file's digest
 	digest := hash.Sum(nil)
 
+	// If there was an existing file, now it's time to remove it
+	if existing != nil {
+		// Remove it from the index
+		var objs []string
+		objs, _, err = repo.Index.DeleteFile(sanitizedPath)
+		if err != nil {
+			return "", RepositoryStatusInternalError, err
+		}
+		if len(objs) != 1 {
+			return "", RepositoryStatusInternalError, errors.New("invalid number of files removed from index")
+		}
+		// Delete the file data
+		err = repo.Store.Delete(ctx, objs[0], nil)
+		if err != nil {
+			return "", RepositoryStatusInternalError, err
+		}
+	}
+
 	// Add to the index
-	err = repo.Index.AddFile(sanitizedPath, fileId.Bytes(), mimeType, size, digest)
+	err = repo.Index.AddFile(sanitizedPath, fileId.Bytes(), mimeType, size, digest, force)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}
@@ -91,7 +110,7 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 
 // AddFile adds a file to the repository
 // This accepts any regular file, and it does not ignore any file
-func (repo *Repository) AddFile(ctx context.Context, folder, target, destinationFolder string) (fileIdStr string, status int, err error) {
+func (repo *Repository) AddFile(ctx context.Context, folder, target, destinationFolder string, force bool) (fileIdStr string, status int, err error) {
 	path := filepath.Join(folder, target)
 
 	// Check if target exists and it's a regular file
@@ -125,11 +144,11 @@ func (repo *Repository) AddFile(ctx context.Context, folder, target, destination
 	size := stat.Size()
 
 	// Add the file's stream
-	return repo.AddStream(ctx, in, target, destinationFolder, mimeType, size)
+	return repo.AddStream(ctx, in, target, destinationFolder, mimeType, size, force)
 }
 
 // AddPath adds a path (a file or a folder, recursively) and reports each element added in the res channel
-func (repo *Repository) AddPath(ctx context.Context, folder, target, destinationFolder string, res chan<- PathResultMessage) {
+func (repo *Repository) AddPath(ctx context.Context, folder, target, destinationFolder string, force bool, res chan<- PathResultMessage) {
 	path := filepath.Join(folder, target)
 
 	// Check if target exists
@@ -173,7 +192,7 @@ func (repo *Repository) AddPath(ctx context.Context, folder, target, destination
 
 	// For files, add that
 	if isFile {
-		fileId, status, err := repo.AddFile(ctx, folder, target, destinationFolder)
+		fileId, status, err := repo.AddFile(ctx, folder, target, destinationFolder, force)
 		res <- PathResultMessage{
 			Path:   destinationFolder + target,
 			Status: status,
@@ -205,7 +224,7 @@ func (repo *Repository) AddPath(ctx context.Context, folder, target, destination
 		}
 		for _, el := range list {
 			// Recursion
-			repo.AddPath(ctx, path, el.Name(), destinationFolder+target+"/", res)
+			repo.AddPath(ctx, path, el.Name(), destinationFolder+target+"/", force, res)
 		}
 	}
 
