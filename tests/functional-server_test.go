@@ -42,6 +42,7 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/cmd"
 	"github.com/ItalyPaleAle/prvt/index"
+	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/server"
 	"github.com/ItalyPaleAle/prvt/utils"
 
@@ -65,6 +66,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	t.Run("get file chunks", s.serverFileChunks)
 	t.Run("interrupt getting files", s.serverFileInterrupt)
 	t.Run("serving web UI", s.serverWebUI)
+	t.Run("get info file unlocked", s.serverGetInfoFile)
 	close()
 
 	// Test without unlocking the repo
@@ -73,6 +75,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	close = s.startServer(t, "--store", "local:"+s.dirs[1], "--no-unlock", "--read-only")
 	t.Run("unlock repo", s.serverUnlockRepo)
 	t.Run("read-only test", s.serverReadOnly)
+	t.Run("get info file locked", s.serverGetInfoFile)
 	close()
 
 	// Test without selecting a repo
@@ -291,59 +294,6 @@ func (s *funcTestSuite) serverAddLocalFiles(t *testing.T) {
 		assert.True(t, strings.HasSuffix(data[i].Path, "-unsplash.jpg"))
 		assert.True(t, data[i].FileId != "")
 	}
-}
-
-// Runs the tests for serverAddLocalFileExisting and serverForceAddLocalFile
-func (s *funcTestSuite) addLocalFile(t *testing.T, force bool) []server.TreeOperationResponse {
-	t.Helper()
-
-	// Create the request body
-	body := &bytes.Buffer{}
-	mpw := multipart.NewWriter(body)
-	err := mpw.WriteField("localpath", filepath.Join(s.fixtures, "photos", "joshua-woroniecki-dyEaBD5uiio-unsplash.jpg"))
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-	if force {
-		err = mpw.WriteField("force", "1")
-		if err != nil {
-			t.Fatal(err)
-			return nil
-		}
-	}
-	err = mpw.Close()
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-
-	// Send the request
-	res, err := s.client.Post(s.serverAddr+"/api/tree/upload/", mpw.FormDataContentType(), body)
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-	defer res.Body.Close()
-	if res.StatusCode < 200 || res.StatusCode > 299 {
-		t.Fatalf("invalid response status code: %d", res.StatusCode)
-		return nil
-	}
-	read, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-
-	// Parse the JSON response
-	data := make([]server.TreeOperationResponse, 0)
-	err = json.Unmarshal(read, &data)
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-
-	return data
 }
 
 // Add a single file from the local file system, to the /upload folder, already existing
@@ -1230,6 +1180,38 @@ func (s *funcTestSuite) serverManageKeys(t *testing.T) {
 
 }
 
+// Test the /api/repo/infofile endpoint, which returns the raw info file
+func (s *funcTestSuite) serverGetInfoFile(t *testing.T) {
+	// Send the request, then read the response and parse the JSON response
+	res, err := s.client.Get(s.serverAddr + "/api/repo/infofile")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatal(fmt.Errorf("invalid response status code: %d", res.StatusCode))
+		return
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	data := &infofile.InfoFile{}
+	err = json.Unmarshal(read, data)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// Check the result
+	assert.Equal(t, data.App, "prvt")
+	assert.Equal(t, data.Version, uint16(5))
+	assert.Equal(t, data.DataPath, "data")
+	assert.True(t, len(data.Keys) > 0)
+}
+
 // Internal function that starts the server
 func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 	// Start the server by invoking the command
@@ -1277,6 +1259,59 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 		// Wait a couple of seconds to ensure the server has stopped
 		time.Sleep(2 * time.Second)
 	}
+}
+
+// Runs the tests for serverAddLocalFileExisting and serverForceAddLocalFile
+func (s *funcTestSuite) addLocalFile(t *testing.T, force bool) []server.TreeOperationResponse {
+	t.Helper()
+
+	// Create the request body
+	body := &bytes.Buffer{}
+	mpw := multipart.NewWriter(body)
+	err := mpw.WriteField("localpath", filepath.Join(s.fixtures, "photos", "joshua-woroniecki-dyEaBD5uiio-unsplash.jpg"))
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+	if force {
+		err = mpw.WriteField("force", "1")
+		if err != nil {
+			t.Fatal(err)
+			return nil
+		}
+	}
+	err = mpw.Close()
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	// Send the request
+	res, err := s.client.Post(s.serverAddr+"/api/tree/upload/", mpw.FormDataContentType(), body)
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return nil
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	// Parse the JSON response
+	data := make([]server.TreeOperationResponse, 0)
+	err = json.Unmarshal(read, &data)
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	return data
 }
 
 // Internal function used to upload individual files

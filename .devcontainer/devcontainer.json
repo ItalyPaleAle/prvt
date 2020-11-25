@@ -20,6 +20,7 @@
 		},
 		"go.testFlags": [
 			"-v",
+			"-short",
 			"-ldflags",
 			"-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1"
 		]

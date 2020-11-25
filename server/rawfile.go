@@ -32,10 +32,7 @@ import (
 // RawFileGetHandler is the handler for GET /rawfile/:path, which returns a raw file from the fs
 func (s *Server) RawFileGetHandler(c *gin.Context) {
 	// Get the path and ensure the path does not start with /
-	path := c.Param("path")
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
+	path := strings.TrimPrefix(c.Param("path"), "/")
 	if path == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("empty path"))
 		return
