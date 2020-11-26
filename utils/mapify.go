@@ -19,6 +19,7 @@ package utils
 
 import (
 	"encoding"
+	"encoding/base64"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -91,6 +92,9 @@ func Mapify(m interface{}) map[string]interface{} {
 				}
 				result[name] = string(b)
 			}
+		} else if b, ok := fieldVal.Interface().([]byte); ok {
+			// This is a byte slice, so encode it as base64 for consistency with json.Marshal
+			result[name] = base64.StdEncoding.EncodeToString(b)
 		} else {
 			// Set the field in the result map
 			result[name] = fieldVal.Interface()

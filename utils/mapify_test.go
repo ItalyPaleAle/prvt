@@ -92,4 +92,16 @@ func TestMapify(t *testing.T) {
 	}
 	res = Mapify(el3)
 	assert.True(t, reflect.DeepEqual(res, expect))
+
+	// Struct with byte slices inside
+	el4 := struct {
+		Data []byte `json:"data"`
+	}{
+		Data: []byte{0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x21},
+	}
+	expect = map[string]interface{}{
+		"data": "SGVsbG8h",
+	}
+	res = Mapify(el4)
+	assert.True(t, reflect.DeepEqual(res, expect))
 }
