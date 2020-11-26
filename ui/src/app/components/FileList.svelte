@@ -172,7 +172,7 @@ function downloadFile(element) {
     $modal = null
 
     // Trigger a file download
-    location.href = '/file/' + element.fileId + '?dl=1'
+    location.href = (URL_PREFIX || '') + '/file/' + element.fileId + '?dl=1'
 }
 
 function deleteFile(element) {

@@ -98,6 +98,9 @@ func DecryptRequest() js.Func {
 		}
 		fileId := match[2]
 
+		// Check if we're forcing a download
+		forceDl := utils.IsTruthy(reqUrl.Query().Get("dl"))
+
 		// Check if we have a range
 		var rng *utils.HttpRange
 		reqHeaders := req.Get("headers")
@@ -125,7 +128,7 @@ func DecryptRequest() js.Func {
 		var method js.Func
 		if rng == nil {
 			// Full-file requests
-			method = decryptRequestPromise(masterKey, fileId)
+			method = decryptRequestPromise(masterKey, fileId, forceDl)
 		} else {
 			// Range requests
 
@@ -142,7 +145,7 @@ func DecryptRequest() js.Func {
 			}
 
 			// Make the request
-			method = decryptRangeRequestPromise(masterKey, fileId, rng)
+			method = decryptRangeRequestPromise(masterKey, fileId, rng, forceDl)
 		}
 		promiseConstructor := js.Global().Get("Promise")
 		promise := promiseConstructor.New(method)
@@ -152,16 +155,20 @@ func DecryptRequest() js.Func {
 }
 
 // Returns the callback metadata; used by DecryptRequest
-func requestMetadataCb(headers *js.Value, rng *fsutils.RequestRange, responseStatusCode *int, done chan int, cacheAdd *metadataCacheAdd) crypto.MetadataCbReturn {
+func requestMetadataCb(headers *js.Value, rng *fsutils.RequestRange, responseStatusCode *int, done chan int, cacheAdd *metadataCacheAdd, forceDl bool) crypto.MetadataCbReturn {
 	return func(metadata *crypto.Metadata, metadataSize int32) bool {
-		// Contents-Type and Content-Disposition
+		// Contents-Type
 		if metadata.ContentType != "" {
 			headers.Call("set", "Content-Type", metadata.ContentType)
 		} else {
 			headers.Call("set", "Content-Type", "application/octet-stream")
 		}
-		contentDisposition := "inline"
 
+		// Content-Disposition
+		contentDisposition := "inline"
+		if forceDl {
+			contentDisposition = "attachment"
+		}
 		if metadata.Name != "" {
 			fileName := strings.ReplaceAll(metadata.Name, "\"", "")
 			contentDisposition += "; filename=\"" + fileName + "\""
@@ -202,7 +209,7 @@ func requestMetadataCb(headers *js.Value, rng *fsutils.RequestRange, responseSta
 }
 
 // Returns a Promise that decrypts a full file
-func decryptRequestPromise(masterKey []byte, fileId string) js.Func {
+func decryptRequestPromise(masterKey []byte, fileId string, forceDl bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// Arguments: resolve (function), reject (function)
 		resolve := args[0]
@@ -239,7 +246,7 @@ func decryptRequestPromise(masterKey []byte, fileId string) js.Func {
 
 			// Metadata callback for decrypting the file
 			hasMetadata := make(chan int)
-			metadataCb := requestMetadataCb(&headers, nil, &responseStatusCode, hasMetadata, cacheAdd)
+			metadataCb := requestMetadataCb(&headers, nil, &responseStatusCode, hasMetadata, cacheAdd, forceDl)
 
 			// Underlying source for the stream
 			decryptFunc := func(out io.Writer, in io.Reader) (uint16, int32, []byte, error) {
@@ -273,7 +280,7 @@ func decryptRequestPromise(masterKey []byte, fileId string) js.Func {
 }
 
 // Returns a Promise that decrypts a range request
-func decryptRangeRequestPromise(masterKey []byte, fileId string, rngHeader *utils.HttpRange) js.Func {
+func decryptRangeRequestPromise(masterKey []byte, fileId string, rngHeader *utils.HttpRange, forceDl bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// Arguments: resolve (function), reject (function)
 		resolve := args[0]
@@ -294,7 +301,7 @@ func decryptRangeRequestPromise(masterKey []byte, fileId string, rngHeader *util
 			responseStatusCode := http.StatusOK
 
 			// Metadata callback
-			metadataCb := requestMetadataCb(&headers, rng, &responseStatusCode, nil, nil)
+			metadataCb := requestMetadataCb(&headers, rng, &responseStatusCode, nil, nil, forceDl)
 
 			// Get the file's metadata
 			// This uses the cache if it's available

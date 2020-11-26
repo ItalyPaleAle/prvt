@@ -14,6 +14,9 @@ services:
     networks:
       - prvt-dev
     restart: unless-stopped
+    ports:
+      - 127.0.0.1:3129:3129
+      - 127.0.0.1:3000:3000
     volumes:
       # Update this to wherever you want VS Code to mount the folder of your project
       - ..:/home/vscode/workspace:cached
@@ -53,7 +56,7 @@ services:
           - minio
     restart: unless-stopped
     ports:
-      - 9000:9000
+      - 127.0.0.1:9000:9000
     environment:
       - 'MINIO_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'
       - 'MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
@@ -68,7 +71,7 @@ services:
     volumes:
       - azurite-data:/data
     ports:
-      - 10000:10000
+      - 127.0.0.1:10000:10000
 
 volumes:
   minio-data:

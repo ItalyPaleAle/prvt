@@ -17,7 +17,7 @@
         <pre class="w-full px-4 text-sm whitespace-pre-wrap">{text}</pre>
       {:catch err}
         <ErrorBox title="Error requesting file" message={err || 'Unknwon error'} />
-        <DownloadBox {url}/>
+        <DownloadBox fileId={params.fileId}/>
       {/await}
     {:else if type == 'image'}
       <img src={url} alt={title} class="w-auto h-auto max-w-full max-h-90vh mx-auto" />
@@ -31,7 +31,7 @@
         </video>
       {:catch err}
         <ErrorBox title="Error requesting file" message={err || 'Unknwon error'} />
-        <DownloadBox {url}/>
+        <DownloadBox fileId={params.fileId}/>
       {/await}
     {:else if type == 'audio'}
       {#await requesting}
@@ -43,7 +43,7 @@
         </audio>
       {:catch err}
         <ErrorBox title="Error requesting file" message={err || 'Unknwon error'} />
-        <DownloadBox {url}/>
+        <DownloadBox fileId={params.fileId}/>
       {/await}
     {:else if type == 'pdf'}
       <object type="application/pdf"
@@ -55,7 +55,7 @@
     {/if}
   </div>
   <div class="my-10 pl-6">
-    <DownloadBox {url}/>
+    <DownloadBox fileId={params.fileId}/>
   </div>
 {/if}
 
