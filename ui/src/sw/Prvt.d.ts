@@ -12,6 +12,9 @@ interface Prvt {
     /** Returns the RepoIndex object for the current repo */
     getIndex: (masterKey: Uint8Array) => RepoIndex
 
+    /** Returns the metadata for a given file by its ID */
+    getFileMetadata: (masterKey: Uint8Array, fileId: string) => Promise<FileMetadata>
+
     /**
      * Try unlocking the repo with a passphrase and returns the master key
      * Note that this doesn't support unlocking with a GPG key, because Wasm can't communicate with the user's GPG agent safely
@@ -79,4 +82,14 @@ interface ListItem {
     size?: number
     /** SHA-256 checksum (for files only */
     digest?: Uint8Array
+}
+
+/** File metadata, as returned by Prvt.getFileMetadata */
+interface FileMetadata {
+    /** File name */
+    name: string
+    /** Mime type of the file */
+    mimeType?: string
+    /** File size */
+    size?: number
 }

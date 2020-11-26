@@ -37,10 +37,11 @@ var baseUrl string
 func main() {
 	// Export a "Prvt" global object that contains our functions
 	js.Global().Set("Prvt", map[string]interface{}{
-		"setBaseURL":     SetBaseUrl(),
-		"decryptRequest": DecryptRequest(),
-		"getIndex":       GetIndex(),
-		"unlock":         Unlock(),
+		"setBaseURL":      SetBaseUrl(),
+		"decryptRequest":  DecryptRequest(),
+		"getFileMetadata": GetFileMetadata(),
+		"getIndex":        GetIndex(),
+		"unlock":          Unlock(),
 	})
 
 	// Prevent the function from returning, which is required in a wasm module

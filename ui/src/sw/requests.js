@@ -6,6 +6,7 @@ import apiRepoUnlockHandlerWasm from './requests/api-repo-unlock-wasm'
 import apiRepoUnlockHandlerServer from './requests/api-repo-unlock-server'
 import apiInfoHandler from './requests/api-info'
 import apiTreeHandler from './requests/api-tree'
+import apiMetadataHandler from './requests/api-metadata'
 
 // Utils
 import {JSONResponse} from './lib/utils'
@@ -27,6 +28,10 @@ const requestsWasm = [
     {
         path: '/api/tree',
         handler: apiTreeHandler
+    },
+    {
+        path: '/api/metadata',
+        handler: apiMetadataHandler
     },
     {
         path: '/file',

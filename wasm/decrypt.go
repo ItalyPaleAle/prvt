@@ -296,42 +296,12 @@ func decryptRangeRequestPromise(masterKey []byte, fileId string, rngHeader *util
 			// Metadata callback
 			metadataCb := requestMetadataCb(&headers, rng, &responseStatusCode, nil, nil)
 
-			// Check if the metadata is in cache already
-			mux.Lock()
-			headerVersion, headerLength, wrappedKey, metadataLength, metadata := metadataCache.Get(fileId)
-			mux.Unlock()
-			if headerVersion == 0 || headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
-				// Need to request the metadata and cache it
-				// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
-				var length int64 = 64*1024 + 32 + 256
-				mdHttpReq, err := http.NewRequestWithContext(ctx, "GET", baseUrl+"/rawfile/"+fileId, nil)
-				mdHttpReq.Header.Set("Range", fmt.Sprintf("bytes=0-%d", length))
-				if err != nil {
-					reject.Invoke(jsError(err.Error()))
-					return
-				}
-				mdHttpResp, err := client.Do(mdHttpReq)
-				if err != nil {
-					reject.Invoke(jsError(err.Error()))
-					return
-				}
-				defer mdHttpResp.Body.Close()
-
-				// Decrypt the data
-				headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, mdHttpResp.Body, masterKey, func(md *crypto.Metadata, sz int32) bool {
-					metadata = md
-					metadataLength = sz
-					return false
-				})
-				if err != nil && err != crypto.ErrMetadataOnly {
-					reject.Invoke(jsError(err.Error()))
-					return
-				}
-
-				// Store the metadata in cache
-				mux.Lock()
-				metadataCache.Add(fileId, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
-				mux.Unlock()
+			// Get the file's metadata
+			// This uses the cache if it's available
+			headerVersion, headerLength, wrappedKey, metadataLength, metadata, err := getFileMetadata(ctx, masterKey, fileId)
+			if err != nil {
+				reject.Invoke(jsError(err.Error()))
+				return
 			}
 
 			// Add the offsets to the range object and set the file size (it's guaranteed it's set, or we wouldn't have a range request)
@@ -382,6 +352,54 @@ func decryptRangeRequestPromise(masterKey []byte, fileId string, rngHeader *util
 
 		return nil
 	})
+}
+
+// Returns the metadata for a file
+// If the metadata was already in cache, uses that first
+func getFileMetadata(ctx context.Context, masterKey []byte, fileId string) (headerVersion uint16, headerLength int32, wrappedKey []byte, metadataLength int32, metadata *crypto.Metadata, err error) {
+	// Check if the metadata is in cache already
+	mux.Lock()
+	headerVersion, headerLength, wrappedKey, metadataLength, metadata = metadataCache.Get(fileId)
+	mux.Unlock()
+
+	// If the metadata isn't in cache, we need to request it
+	if headerVersion == 0 || headerLength < 1 || wrappedKey == nil || len(wrappedKey) < 1 {
+		// Need to request the metadata and cache it
+		// For that, we need to request the header and the first package, which are at most 64kb + (32+256) bytes
+		var length int64 = 64*1024 + 32 + 256
+		var mdHttpReq *http.Request
+		mdHttpReq, err = http.NewRequestWithContext(ctx, "GET", baseUrl+"/rawfile/"+fileId, nil)
+		mdHttpReq.Header.Set("Range", fmt.Sprintf("bytes=0-%d", length))
+		if err != nil {
+			return
+		}
+		var mdHttpResp *http.Response
+		mdHttpResp, err = client.Do(mdHttpReq)
+		if err != nil {
+			return
+		}
+		defer mdHttpResp.Body.Close()
+
+		// Decrypt the data
+		headerVersion, headerLength, wrappedKey, err = crypto.DecryptFile(ctx, nil, mdHttpResp.Body, masterKey, func(md *crypto.Metadata, sz int32) bool {
+			metadata = md
+			metadataLength = sz
+			return false
+		})
+		if err != nil && err != crypto.ErrMetadataOnly {
+			return
+		} else {
+			// Override crypto.ErrMetadataOnly
+			err = nil
+		}
+
+		// Store the metadata in cache
+		mux.Lock()
+		metadataCache.Add(fileId, headerVersion, headerLength, wrappedKey, metadataLength, metadata)
+		mux.Unlock()
+	}
+
+	return
 }
 
 // Type for the decryptFunc parameter
