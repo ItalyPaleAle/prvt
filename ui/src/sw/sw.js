@@ -1,5 +1,5 @@
 /// <reference path="./Prvt.d.ts" />
-/* global Go, PRODUCTION, URL_PREFIX */
+/* global Prvt, Go, PRODUCTION, URL_PREFIX, APP_VERSION */
 
 // Import the Go WebAssembly runtime
 import './wasm_exec'
@@ -20,8 +20,7 @@ import * as settings from './settings'
 import {BroadcastMessage} from './lib/utils'
 
 // URL of the Wasm file
-// TODO: APPEND VERSION
-const wasmURL = 'assets/app.wasm'
+const wasmURL = 'assets/app-' + APP_VERSION + '.wasm'
 
 // Enable skipWaiting and clientsClaim options
 clientsClaim()
@@ -62,7 +61,7 @@ self.addEventListener('fetch', requestHandler)
 registerRoute(
     new PrecacheRoute(
         precacheController,
-            {
+        {
             // Ignore all URL parameters
             ignoreURLParametersMatching: [/.*/],
             // Do not add .html to files by default
@@ -185,7 +184,7 @@ async function fetchWasm() {
     const req = new Request(wasmURL)
     
     // If we're not in production, skip the cache
-    if (!PRODUCTION && 0) {
+    if (!PRODUCTION) {
         return fetch(req)
     }
 
@@ -204,12 +203,14 @@ async function fetchWasm() {
     // First try responding from the cache
     // Otherwise, request the file and store it in the cache
     let res = await wasmCache.match(req)
-    if (res) {
+    if (res && res.status >= 200 && res.status < 300) {
         console.info('Loaded wasm from cache', wasmURL)
         return res
     }
     // If we're here, we did not find a match in the cache, so request it and store it in the cache
     res = await fetch(req)
-    wasmCache.put(req, res.clone())
+    if (res && res.status >= 200 && res.status < 300) {
+        wasmCache.put(req, res.clone())
+    }
     return res
 }

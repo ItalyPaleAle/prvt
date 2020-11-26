@@ -31,7 +31,6 @@ import format from 'date-fns/format'
 
 // Props
 export let element = null
-let requesting = null
 
 // Metadata: this is pre-populated with data from the element prop, but then we request the fulll metadata
 let metadata = {}
@@ -47,7 +46,7 @@ function requestMetadata(el) {
     metadata = el
 
     // Request the full metadata
-    requesting = Request('/api/metadata/' + el.fileId)
+    Request('/api/metadata/' + el.fileId)
         .then((obj) => {
             if (obj.size === undefined || obj.size === null) {
                 obj.size = 0

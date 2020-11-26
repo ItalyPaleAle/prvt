@@ -71,6 +71,7 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 			Date:     el.Date,
 			MimeType: metadata.ContentType,
 			Size:     metadata.Size,
+			Digest:   el.Digest,
 		}
 		c.JSON(http.StatusOK, response)
 	})

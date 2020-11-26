@@ -22,12 +22,11 @@ clean:
 	rm -v pkged.go || true
 
 # Build the entire app
-build: build-ui build-wasm-prod build-app
+build: build-ui build-wasm-prod pkger build-app
 
 # Build the Go code
 build-app:
-	.bin/pkger list
-	.bin/pkger
+	test -f pkged.go || echo "WARN: pkger has not run"
 	go build \
 	  -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=$(APP_VERSION) -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=$(APP_VERSION) -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=$(BUILD_TIME) -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=$(COMMIT_HASH)" \
 	  -o bin
@@ -35,6 +34,11 @@ build-app:
 # Build the web UI
 build-ui:
 	(cd ui; npm ci; APP_VERSION="$(APP_VERSION)" npm run build)
+
+# Run pkger
+pkger:
+	.bin/pkger list
+	.bin/pkger
 
 # Copy the wasm_exec.js file from the Go installation
 copy-wasm-runtime:

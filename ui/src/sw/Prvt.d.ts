@@ -75,4 +75,8 @@ interface ListItem {
     date?: Date
     /** Mime type of the file (for files only) */
     mimeType?: string
+    /** File size (for files only) */
+    size?: number
+    /** SHA-256 checksum (for files only */
+    digest?: Uint8Array
 }

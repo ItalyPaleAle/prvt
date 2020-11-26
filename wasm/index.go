@@ -194,7 +194,9 @@ func (i *RepoIndex) GetFileByPath() js.Func {
 
 				// Resolve the Promise
 				// Returns the object converted to map[string]interface{}, so it'll be converted to a JS dictionary
-				resolve.Invoke(utils.Mapify(file))
+				res := utils.Mapify(file)
+				mapifyBytes(res, "digest")
+				resolve.Invoke(res)
 				return
 			}()
 			return nil
@@ -232,7 +234,9 @@ func (i *RepoIndex) GetFileById() js.Func {
 
 				// Resolve the Promise
 				// Returns the object converted to map[string]interface{}, so it'll be converted to a JS dictionary
-				resolve.Invoke(utils.Mapify(file))
+				res := utils.Mapify(file)
+				mapifyBytes(res, "digest")
+				resolve.Invoke(res)
 				return
 			}()
 			return nil
@@ -315,7 +319,9 @@ func (i *RepoIndex) ListFolder() js.Func {
 				// Returns the slice converted to []map[string]interface{}, so it'll be converted to a an array of JS dictionaries
 				res := make([]interface{}, len(list))
 				for i, e := range list {
-					res[i] = utils.Mapify(e)
+					m := utils.Mapify(e)
+					mapifyBytes(m, "digest")
+					res[i] = m
 				}
 
 				// Resolve the Promise

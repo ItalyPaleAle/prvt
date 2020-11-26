@@ -38,6 +38,7 @@ type MetadataResponse struct {
 	Date     *time.Time `json:"date,omitempty"`
 	MimeType string     `json:"mimeType,omitempty"`
 	Size     int64      `json:"size,omitempty"`
+	Digest   []byte     `json:"digest,omitempty"`
 }
 
 type RepoKeyListResponse struct {

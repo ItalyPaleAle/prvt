@@ -40,3 +40,27 @@ func jsFromBytes(data []byte) js.Value {
 	js.CopyBytesToJS(result, data)
 	return result
 }
+
+// Converts byte slice to JS types in the object returned by utils.Mapify
+func mapifyBytes(obj map[string]interface{}, key string) {
+	// Ensure the key exists and it's a byte slice
+	val, ok := obj[key]
+	if !ok {
+		// Do nothing
+		return
+	}
+	b, ok := val.([]byte)
+	if !ok {
+		// Not a byte slice; return
+		return
+	}
+
+	// If the slice is empty, then set a nil value
+	if len(b) == 0 {
+		obj[key] = nil
+		return
+	}
+
+	// Convert the byte slice to js.Value
+	obj[key] = jsFromBytes(b)
+}

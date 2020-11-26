@@ -41,7 +41,7 @@ func (s *Server) handleWebUI(router *gin.Engine) error {
 		return err
 	}
 
-	wasmMatch := regexp.MustCompile("^app(-([a-f0-9]{1,8}))?.wasm$")
+	wasmMatch := regexp.MustCompile("^app(-([a-z0-9\\.-_]+))?.wasm$")
 	acceptEncMatch := regexp.MustCompile("\\bbr\\b")
 
 	// Serve the files from the assets directory
