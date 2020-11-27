@@ -1,10 +1,12 @@
-name: Release
+name: Build (Manual)
 
 on:
-  push:
-    tags:
-      # Push to tags matching v*
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Build ID/version'
+        required: false
+        default: 'canary'
 
 env:
   GO_BUILDER_IMAGE: 'golang:1.15-alpine'
@@ -24,12 +26,11 @@ jobs:
       # Set variables
       - name: Set variables
         run: |
-          # Trim the first 10 characters, which are "refs/tags/"
-          BUILD_ID="${GITHUB_REF:10}"
-          # Just like BUILD_ID, but without the "v" at the beginning
-          BUILD_VERSION="${GITHUB_REF:11}"
+          # BUILD_ID and BUILD_VERSION are the same
+          BUILD_ID="${{ github.event.inputs.version }}"
+          BUILD_VERSION="${{ github.event.inputs.version }}"
           BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%S')
-          COMMIT_HASH=$(echo $GITHUB_SHA | head -c 7)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
           echo ::set-env name=BUILD_ID::$BUILD_ID
           echo ::set-env name=BUILD_VERSION::$BUILD_VERSION
           echo ::set-env name=BUILD_TIME::$BUILD_TIME
@@ -168,92 +169,10 @@ jobs:
                 '
           echo -e "\n###\nCompilation done\n"
           ls -al .bin
-
+      
       # Publish artifacts
       - name: Publish binaries as artifacts
         uses: actions/upload-artifact@v2
         with:
           name: bin
           path: .bin
-
-      # Create release and upload assets
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          draft: true
-          prerelease: false
-
-      - name: Upload release asset prvt-linux-amd64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz
-          asset_name: prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload release asset prvt-linux-386
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-386.tar.gz
-          asset_name: prvt-v${{env.BUILD_VERSION}}-linux-386.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload release asset prvt-linux-arm64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64.tar.gz
-          asset_name: prvt-v${{env.BUILD_VERSION}}-linux-arm64.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload release asset prvt-linux-armv7
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7.tar.gz
-          asset_name: prvt-v${{env.BUILD_VERSION}}-linux-armv7.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload release asset prvt-macos
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-macos.tar.gz
-          asset_name: prvt-v${{env.BUILD_VERSION}}-macos.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload release asset prvt-win64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-win64.zip
-          asset_name: prvt-v${{env.BUILD_VERSION}}-win64.zip
-          asset_content_type: application/zip
-
-      - name: Upload release asset prvt-win32
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .bin/prvt-v${{env.BUILD_VERSION}}-win32.zip
-          asset_name: prvt-v${{env.BUILD_VERSION}}-win32.zip
-          asset_content_type: application/zip
