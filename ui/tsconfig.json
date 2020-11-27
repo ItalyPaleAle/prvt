@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "noImplicitAny": false,
+        "sourceMap": false,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "target": "es2018",
+        "lib": [
+            "ES2018",
+            "WebWorker",
+            "DOM"
+        ],
+        "strict": true,
+        "declaration": true,
+        "types": [
+            "node"
+        ],
+        "outDir": "dist"
+    },
+    "include": [
+        "**/*.ts"
+    ],
+    "exclude": [
+        "node_modules/**/*",
+        "dist"
+    ]
+}

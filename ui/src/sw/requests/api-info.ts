@@ -8,15 +8,21 @@ import stores from '../stores'
  * Handler for the /api/info requests.
  * This intercepts the response and if the repo is unlocked via Wasm, sets the correct "repoUnlocked" flag.
  *
- * @param {Request} req - Request object from the client
- * @returns {Response} Response object for the request
+ * @param req Request object from the client
+ * @returns Response object for the request
  */
-export default async function(req) {
+export default async function(req: Request): Promise<Response> {
+    // Only GET requests are supported
+    const method = req.method
+    if (method != 'GET') {
+        throw Error('Invalid request method')
+    }
+
     // Submit the request as-is
     const res = await fetch(req)
 
     // Read the response
-    const data = await res.json()
+    const data = await res.json() as APIRepoInfoResponse
     if (!data) {
         throw Error('Response is empty')
     }
@@ -28,7 +34,7 @@ export default async function(req) {
 
         // Get repo stats to set file count
         const stats = await stores.index.stat()
-        data.fileCount = stats.fileCount
+        data.files = stats.fileCount
 
         // While in Wasm mode (at least for now), we are always in read-only mode
         data.readOnly = true

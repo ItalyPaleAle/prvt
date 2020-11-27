@@ -63,7 +63,7 @@ module.exports = {
     entry,
     resolve: {
         mainFields: ['svelte', 'browser', 'style', 'module', 'main'],
-        extensions: ['.mjs', '.js', '.svelte']
+        extensions: ['.ts', '.mjs', '.js', '.svelte']
     },
     output: {
         path: path.resolve(__dirname, 'dist/'),
@@ -112,6 +112,13 @@ module.exports = {
                         hotReload: true,
                         dev: !prod,
                     }
+                }
+            },
+            {
+                test: /\.ts$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'ts-loader'
                 }
             },
             {
@@ -171,7 +178,7 @@ module.exports = {
 
         // Service worker
         new InjectManifest({
-            swSrc: './src/sw/sw.js',
+            swSrc: './src/sw/sw.ts',
             // In dev mode, include fonts only
             // Note that this never pre-caches the WASM file, as that is not part of the output of Webpack
             include: prod ? undefined : [/^fonts/],

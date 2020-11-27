@@ -3,12 +3,12 @@ import {BroadcastMessage} from '../lib/utils'
 
 /**
  * Handler for the /api/repo/unlock requests, which unlocks a repo.
- * This is used for non-Wasm mode, in which the unlock happens in the server. We still need to intercept the request to notify all pages that the unlock happened
+ * This is used for non-Wasm mode, in which the unlock happens in the server. We still need to intercept the request to notify all pages that the unlock happened.
  *
- * @param {Request} req - Request object from the client
- * @returns {Response} Response object for the request
+ * @param req Request object from the client
+ * @returns Response object for the request
  */
-export default async function(req) {
+export default async function(req: Request): Promise<Response> {
     // Submit the request as-is
     const res = await fetch(req)
 

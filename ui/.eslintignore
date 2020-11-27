@@ -1,2 +1,5 @@
 # Compiled files
 dist
+
+# Files from the Go runtime
+src/wasm_exec.js

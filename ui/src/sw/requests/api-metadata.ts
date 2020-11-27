@@ -1,6 +1,3 @@
-/// <reference path="../Prvt.d.ts" />
-/* global Prvt */
-
 // Utils
 import {JSONResponse, IsUUID, BytesToHex} from '../lib/utils'
 
@@ -9,15 +6,13 @@ import stores from '../stores'
 
 /**
  * Handler for the GET /api/metadata/:file request.
- * 
  * This returns the metadata for a file, either by its path or its ID (UUID)
  *
- * @param {Request} req - Request object from the client
- * @returns {Response} Response object for the request
+ * @param req Request object from the client
+ * @returns Response object for the request
  */
-export default async function(req) {
-    // Get the method of the request
-    // Only GET requests are implemented for now
+export default async function(req: Request): Promise<Response> {
+    // Only GET requests are supported
     const method = req.method
     if (method != 'GET') {
         throw Error('Invalid request method')
@@ -36,7 +31,7 @@ export default async function(req) {
     let file = reqPath.substr(14) || ''
 
     // Get the file UUID and other data from the index
-    let indexEl = null
+    let indexEl: ListItem | null = null
 
     // Check if we have a UUID
     if (IsUUID(file)) {
@@ -65,15 +60,16 @@ export default async function(req) {
 
     // Combine the metadata and the data from the index to get the same response as the APIs
     const pos = indexEl.path.lastIndexOf('/') + 1
-    const res = {
+    const res: APIFileMetadataResponse = {
         fileId: indexEl.fileId,
         folder: indexEl.path.substr(pos),
         name: metadata.name,
-        date: indexEl.date,
+        // Encode to string for consistency with the REST API
+        date: indexEl.date?.toISOString(),
         mimeType: metadata.mimeType,
         size: metadata.size,
         // Encode to hex because Uint8Array doesn't survive the JSON encoding
-        digest: BytesToHex(indexEl.digest),
+        digest: indexEl.digest ? BytesToHex(indexEl.digest) : undefined,
     }
 
     // Return a Response object with the list of files

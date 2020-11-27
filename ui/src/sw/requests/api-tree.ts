@@ -6,14 +6,14 @@ import stores from '../stores'
 
 /**
  * Handler for the /api/tree/:path requests.
- * 
+ *
  * The GET method returns the list of files in the folder.
  * The POST method is not yet implemented; eventually, it will allow uploading files.
  *
- * @param {Request} req - Request object from the client
- * @returns {Response} Response object for the request
+ * @param req Request object from the client
+ * @returns Response object for the request
  */
-export default async function(req) {
+export default async function(req: Request): Promise<Response> {
     // Get the method of the request
     // Only GET requests are implemented for now
     const method = req.method

@@ -1,6 +1,3 @@
-/// <reference path="../Prvt.d.ts" />
-/* global Prvt */
-
 // Utils
 import {BroadcastMessage, JSONResponse} from '../lib/utils'
 
@@ -11,14 +8,15 @@ import stores from '../stores'
  * Handler for the /api/repo/unlock requests, which unlocks a repo.
  * This is the handler for when in Wasm mode, in which the unlock happens in the Wasm code.
  *
- * @param {Request} req - Request object from the client
- * @returns {Response} Response object for the request
+ * @param req Request object from the client
+ * @returns Response object for the request
  */
-export default async function(req) {
+export default async function(req: Request): Promise<Response> {
     // Get the body from the request
-    const data = await req.json()
+    // We only support passphrases when in Wasm mode
+    const data = await req.json() as APIRepoUnlockRequest
     if (!data || data.type != 'passphrase' || !data.passphrase) {
-        return
+        throw Error('In wasm mode, unlock requests support passphrases only')
     }
 
     // Unlock the repo

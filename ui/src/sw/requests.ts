@@ -1,4 +1,5 @@
-/* global URL_PREFIX */
+// Globals
+declare var URL_PREFIX: string
 
 // Handlers
 import fileHandler from './requests/file'
@@ -14,9 +15,23 @@ import {JSONResponse} from './lib/utils'
 // Stores
 import stores from './stores'
 
+// Types
+
+/** Handler function */
+type HandlerFunction = ((Request) => Promise<Response>)
+
+/** Object containing the definition of a request handler */
+interface RequestDefinition {
+    /** Path to match */
+    path: string | RegExp
+
+    /** Handler */
+    handler: HandlerFunction
+}
+
 // List of fetch requests to intercept when in Wasm mode and their handlers
 // Path can either be a string, which matches the pathname's prefix, or a regular expression matching the pathname
-const requestsWasm = [
+const requestsWasm: RequestDefinition[] = wrapDefinitionList([
     {
         path: '/api/info',
         handler: apiInfoHandler
@@ -37,28 +52,24 @@ const requestsWasm = [
         path: '/file',
         handler: fileHandler
     },
-].map((e) => {
-    // Wrap every handler in "catchErrors"
-    e.handler = catchErrors(e.handler)
-    return e
-})
+])
 
 // List of fetch requests to intercept when not in Wasm mode and their handlers
-const requestsServer = [
+const requestsServer: RequestDefinition[] = wrapDefinitionList([
     {
         path: '/api/repo/unlock',
         handler: apiRepoUnlockHandlerServer
-    },
-]
+    }
+])
 
 /**
  * Sets up all handlers for fetch requests we want to intercept
  *
- * @param {Event} event - Event object; only "fetch" events are handled
+ * @param event Event object; only "fetch" events are handled
  */
-export default function(event) {
+export default function(event: FetchEvent) {
     // Only handle fetch events
-    if (event.type != 'fetch') {
+    if (event?.type != 'fetch' || !(event?.request?.url)) {
         return
     }
 
@@ -99,8 +110,12 @@ export default function(event) {
     }
 }
 
-// Catches all errors/exceptions from the handlers and converts them to a Response with an error
-function catchErrors(handler) {
+/**
+ * Catches all errors/exceptions from the handlers and converts them to a Response with an error
+ *
+ * @param handler Handler function
+ */
+function catchErrors(handler: HandlerFunction): HandlerFunction {
     return async function(request) {
         try {
             // Do not just do "return handler()" because we want to catch exceptions here
@@ -110,8 +125,22 @@ function catchErrors(handler) {
         catch (err) {
             // Convert to a Response object
             return JSONResponse({
-                error: err && err.message
+                error: err?.message
             }, 400)
         }
     }
+}
+
+/**
+ * Wraps each request definition with `catchErrors`
+ *
+ * @param list List of definitions
+ * @returns Modified list
+ */
+function wrapDefinitionList(list: RequestDefinition[]): RequestDefinition[] {
+    return list.map((e) => {
+        // Wrap every handler in "catchErrors"
+        e.handler = catchErrors(e.handler)
+        return e
+    })
 }

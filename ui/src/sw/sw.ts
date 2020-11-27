@@ -1,11 +1,13 @@
-/// <reference path="./Prvt.d.ts" />
-/* global Prvt, Go, PRODUCTION, URL_PREFIX, APP_VERSION */
+// Globals
+declare var self: ServiceWorkerGlobalScope
+declare var APP_VERSION: string
+declare var URL_PREFIX: string
+declare var PRODUCTION: boolean
 
 // Import the Go WebAssembly runtime
 import './wasm_exec'
 
 // Imports from workbox, useful for setting up the service worker
-import {clientsClaim} from 'workbox-core'
 import {PrecacheController, PrecacheRoute} from 'workbox-precaching'
 import {registerRoute} from 'workbox-routing'
 
@@ -22,20 +24,21 @@ import {BroadcastMessage} from './lib/utils'
 // URL of the Wasm file
 const wasmURL = 'assets/app-' + APP_VERSION + '.wasm'
 
-// Enable skipWaiting and clientsClaim options
-clientsClaim()
-self.skipWaiting()
+// Flag used to know when the Go runtime has been loaded
+let goLoaded = false
 
 // Automatically pre-cache all assets from Webpack - this will contain auto-generated code
 const precacheController = new PrecacheController()
 const wbManifest = self.__WB_MANIFEST
 if (wbManifest) {
-    console.log('precached', wbManifest)
     precacheController.addToCacheList(wbManifest)
 }
 
 // Listen to the service worker installation event
 self.addEventListener('install', (event) => {
+    // Enable the skipWaiting option, meaning that the service worker will become active immediately
+    event.waitUntil(self.skipWaiting())
+
     // Install the precache controller
     // This calls event.waitUntil internally
     precacheController.install(event)
@@ -44,6 +47,9 @@ self.addEventListener('install', (event) => {
 // On activation, load all settings and check if we want to enable wasm mode
 // These are stored in IndexedDB for persisting
 self.addEventListener('activate', (event) => {
+    // Invoke clients.claim, which makes all tabs use this service worker
+    event.waitUntil(self.clients.claim())
+
     // Activate the precache controller
     // This calls event.waitUntil internally
     precacheController.activate(event)
@@ -66,7 +72,7 @@ registerRoute(
             // Ignore all URL parameters
             ignoreURLParametersMatching: [/.*/],
             // Do not add .html to files by default
-            cleanUrls: false,
+            cleanURLs: false,
         }
     )
 )
@@ -74,7 +80,7 @@ registerRoute(
 // Handle the events to turn on and off in-browser E2EE via Wasm
 let go = null
 self.addEventListener('message', async (event) => {
-    if (!event || !event.data) {
+    if (!(event?.data) || !(event?.source)) {
         return
     }
 
@@ -85,7 +91,7 @@ self.addEventListener('message', async (event) => {
             event.source.postMessage({
                 message: 'wasm',
                 enabled: stores.wasm
-            })
+            }, [])
             break
 
         // Message 'set-wasm' is for enabling or disabling Wasm
@@ -107,7 +113,7 @@ self.addEventListener('message', async (event) => {
             event.source.postMessage({
                 message: 'theme',
                 theme: await settings.Get('theme')
-            })
+            }, [])
             break
 
         // Message 'set-theme' sets a new theme
@@ -126,8 +132,14 @@ self.addEventListener('message', async (event) => {
         // Message 'set-master-key' is for overriding the master key
         // This is normally used in development only
         case 'set-master-key':
-            stores.masterKey = event.data.masterKey
-            stores.keyId = event.data.keyId
+            if (typeof event.data.masterKey != 'object' || !(event.data.masterKey instanceof Uint8Array)) {
+                throw Error('Invalid type for masterKey: must be Uint8Array')
+            }
+            if (typeof event.data.keyId != 'string' || !event.data.keyId) {
+                throw Error('KeyId must not be empty')
+            }
+            stores.masterKey = event.data.masterKey as Uint8Array
+            stores.keyId = event.data.keyId as string
             stores.index = Prvt.getIndex(stores.masterKey)
             break
 
@@ -138,12 +150,12 @@ self.addEventListener('message', async (event) => {
 })
 
 // Enable or disable Wasm
-async function enableWasm(enable) {
+async function enableWasm(enable: boolean): Promise<void> {
     // Check if we are enabling or disabling Wasm
     if (enable && !stores.wasm) {
         // Initialize the Go object and load the Wasm file if this is the first time we're enabling Wasm
-        if (!go) {
-            go = new Go()
+        if (!goLoaded) {
+            const go = new Go()
 
             // Fetch the Wasm code
             const result = await WebAssembly.instantiateStreaming(fetchWasm(), go.importObject)
@@ -166,9 +178,9 @@ async function enableWasm(enable) {
         stores.wasm = false
 
         // Unset the master key and related objects
-        stores.masterKey = null
-        stores.keyId = null
-        stores.index = null
+        stores.masterKey = undefined
+        stores.keyId = undefined
+        stores.index = undefined
 
         // Update the value in IndexedDB
         await settings.Set('wasm', false)
@@ -181,7 +193,7 @@ async function enableWasm(enable) {
 }
 
 // Fetches the Wasm file, trying the cache first
-async function fetchWasm() {
+async function fetchWasm(): Promise<Response> {
     const req = new Request(wasmURL)
     
     // If we're not in production, skip the cache

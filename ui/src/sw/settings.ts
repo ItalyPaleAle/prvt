@@ -1,13 +1,13 @@
 import {idbPromisify} from './lib/utils'
 
 // Database connection
-let _db = null
+let _db: IDBDatabase | null = null
 
 /**
  * Returns the DB connection
- * @returns {Promise<IDBDatabase>} DB connection
+ * @returns DB connection
  */
-export async function DB() {
+export async function DB(): Promise<IDBDatabase> {
     // If the database is open, return it
     if (_db) {
         return _db
@@ -25,10 +25,10 @@ export async function DB() {
 
 /**
  * Gets a setting by its key
- * @param {string} key - Key name
- * @returns {Promise<any>} Value for the setting
+ * @param key Key name
+ * @returns Value for the setting
  */
-export async function Get(key) {
+export async function Get(key: string): Promise<any> {
     // Get a connection to the IndexedDB
     const db = await DB()
 
@@ -40,10 +40,10 @@ export async function Get(key) {
 
 /**
  * Sets a new value for the settings
- * @param {string} key - Key name
- * @param {any} value - Value to set
+ * @param key Key name
+ * @param value Value to set
  */
-export async function Set(key, value) {
+export async function Set(key: string, value: any): Promise<IDBValidKey> {
     // Get a connection to the IndexedDB
     const db = await DB()
 
