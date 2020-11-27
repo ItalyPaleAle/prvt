@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/keys"
 	"github.com/ItalyPaleAle/prvt/repository"
@@ -66,7 +67,10 @@ func (s *Server) PostRepoUnlockHandler(dryRun bool) func(c *gin.Context) {
 				Store: s.Store,
 				Index: &index.Index{},
 			}
-			s.Repo.Index.SetStore(s.Store)
+			indexProvider := &fsindex.IndexProviderFs{
+				Store: s.Store,
+			}
+			s.Repo.Index.SetProvider(indexProvider)
 
 			fmt.Fprintln(s.LogWriter, "Repository unlocked with key:", keyId)
 		}

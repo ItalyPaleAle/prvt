@@ -23,4 +23,5 @@ var (
 	BuildID    string
 	CommitHash string
 	BuildTime  string
+	Production string
 )

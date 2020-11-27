@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 
 	"github.com/spf13/cobra"
@@ -72,8 +73,11 @@ func NewRepoInfoCmd() *cobra.Command {
 				store.SetMasterKey(keyId, masterKey)
 
 				// Set up the index
+				indexProvider := &fsindex.IndexProviderFs{
+					Store: store,
+				}
 				idx := &index.Index{}
-				idx.SetStore(store)
+				idx.SetProvider(indexProvider)
 
 				// Get stats
 				stat, err = idx.Stat()
@@ -82,8 +86,15 @@ func NewRepoInfoCmd() *cobra.Command {
 				}
 			}
 
-			// Show the version
+			// Show the id and version
+			if info.RepoId != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "Repository ID:       %s\n", info.RepoId)
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Repository version:  %d\n", info.Version)
+
+			// Show the store name and account
+			fmt.Fprintf(cmd.OutOrStdout(), "Store type:          %s\n", store.FSName())
+			fmt.Fprintf(cmd.OutOrStdout(), "Store account:       %s\n", store.AccountName())
 
 			// Show the stats, if any
 			if stat != nil {

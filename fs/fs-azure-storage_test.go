@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,13 +36,13 @@ func TestFsAzure(t *testing.T) {
 	}
 
 	// Init the caches
-	cache := &MetadataCache{}
+	cache := &fsutils.MetadataCache{}
 	err := cache.Init()
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	// Generate a container name and get the region
+	// Generate a container name
 	container := "prvttest" + RandString(6)
 
 	// Init the object

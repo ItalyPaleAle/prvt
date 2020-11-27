@@ -7,3 +7,6 @@
 gpg --import tests/fixtures/gpg-ci-key.asc
 echo "$GPGKEY_ID_FULL:6:" | gpg --import-ownertrust
 gpg --list-secret-keys
+
+# Fix permissions
+sudo chown vscode:vscode /home/vscode/prvt-data

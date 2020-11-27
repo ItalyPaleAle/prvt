@@ -5,11 +5,15 @@ bin
 .packr
 packrd/
 *-packr.go
+pkged.go
+*.wasm
+*.wasm.br
 
 # Test results
 coverage.txt
 
 # Development
+.env
 old/
 test/
 test2/

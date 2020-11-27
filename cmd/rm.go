@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/repository"
 
@@ -86,7 +87,10 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 				Store: store,
 				Index: &index.Index{},
 			}
-			repo.Index.SetStore(store)
+			indexProvider := &fsindex.IndexProviderFs{
+				Store: store,
+			}
+			repo.Index.SetProvider(indexProvider)
 
 			// Iterate through the args and remove all files
 			res := make(chan repository.PathResultMessage)

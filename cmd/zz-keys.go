@@ -85,8 +85,8 @@ func NewInfoFile(gpgKey string) (info *infofile.InfoFile, errMessage string, err
 
 // UpgradeInfoFile upgrades an info file to the latest version
 func UpgradeInfoFile(info *infofile.InfoFile) (errMessage string, err error) {
-	// Can only upgrade info files versions 1-3
-	if info.Version < 1 || info.Version > 3 {
+	// Can only upgrade info files versions 1-4
+	if info.Version < 1 || info.Version > 4 {
 		return "Unsupported repository version", errors.New("This repository has already been upgraded or is using an unsupported version")
 	}
 
@@ -114,8 +114,21 @@ func UpgradeInfoFile(info *infofile.InfoFile) (errMessage string, err error) {
 		info.RepoId = repoId.String()
 	}
 
+	// Upgrade 4 -> 5
+	if info.Version < 5 {
+		// Set the legacy values for Argon2 for each key
+		for i := 0; i < len(info.Keys); i++ {
+			// Ignore GPG keys and ignore keys that have already been upgraded (e.g. from v1)
+			if info.Keys[i].GPGKey != "" || info.Keys[i].KDFOptions != nil {
+				continue
+			}
+			info.Keys[i].KDF = "argon2"
+			info.Keys[i].KDFOptions = crypto.LegacyArgon2Options()
+		}
+	}
+
 	// Update the version
-	info.Version = 4
+	info.Version = 5
 
 	return "", nil
 }
@@ -131,10 +144,22 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 			return "Error getting passphrase", err
 		}
 
+		// Get the default parameters for Argon2
+		kdfOptions := crypto.LegacyArgon2Options()
+		if err != nil {
+			return "Error validating Argon2 parameters", err
+		}
+
 		// Get the current master key from the passphrase
-		masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt)
+		masterKey, confirmationHash, err := crypto.KeyFromPassphrase(passphrase, info.Salt, kdfOptions)
 		if err != nil || subtle.ConstantTimeCompare(info.ConfirmationHash, confirmationHash) == 0 {
 			return "Cannot unlock the repository", errors.New("Invalid passphrase")
+		}
+
+		// Now, set up the parameters for Argon2 before wrapping the key again
+		err = kdfOptions.Setup()
+		if err != nil {
+			return "Error setting up Argon2 parameters", err
 		}
 
 		// Create a new salt
@@ -144,7 +169,7 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 		}
 
 		// Create a new wrapping key
-		wrappingKey, newConfirmationHash, err := crypto.KeyFromPassphrase(passphrase, newSalt)
+		wrappingKey, newConfirmationHash, err := crypto.KeyFromPassphrase(passphrase, newSalt, kdfOptions)
 		if err != nil {
 			return "Error deriving the wrapping key", err
 		}
@@ -156,7 +181,7 @@ func upgradeInfoFileV1(info *infofile.InfoFile) (errMessage string, err error) {
 		}
 
 		// Add the key
-		err = info.AddPassphrase(newSalt, newConfirmationHash, wrappedKey)
+		err = info.AddPassphrase(newSalt, newConfirmationHash, wrappedKey, kdfOptions)
 		if err != nil {
 			return "Error adding the key", err
 		}

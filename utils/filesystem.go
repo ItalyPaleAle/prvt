@@ -63,3 +63,14 @@ func EnsureFolder(path string) error {
 
 	return nil
 }
+
+// TouchFile creates an empty file if it doesn't exist
+func TouchFile(name string) (err error) {
+	var file *os.File
+	file, err = os.OpenFile(name, os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		return
+	}
+	err = file.Close()
+	return
+}

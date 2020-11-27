@@ -19,6 +19,7 @@ package server
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -64,6 +65,10 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 	// Request the metadata
 	found, _, err := s.Store.Get(c.Request.Context(), el.FileId, nil, func(metadata *crypto.Metadata, metadataSize int32) {
 		pos := strings.LastIndex(el.Path, "/") + 1
+		var digest string
+		if len(el.Digest) > 0 {
+			digest = hex.EncodeToString(el.Digest)
+		}
 		response := MetadataResponse{
 			FileId:   el.FileId,
 			Folder:   el.Path[0:pos],
@@ -71,6 +76,7 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 			Date:     el.Date,
 			MimeType: metadata.ContentType,
 			Size:     metadata.Size,
+			Digest:   digest,
 		}
 		c.JSON(http.StatusOK, response)
 	})

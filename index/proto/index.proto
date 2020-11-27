@@ -1,0 +1,64 @@
+/*
+Copyright © 2020 Alessandro Segala (@ItalyPaleAle)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+Build with:
+
+```sh
+protoc \
+  *.proto \
+  --go_out=plugins=grpc:. \
+  --go_opt=paths=source_relative
+```
+
+Requires:
+
+- github.com/golang/protobuf/protoc-gen-go
+*/
+
+syntax = "proto3";
+package prvt_index;
+
+import "google/protobuf/timestamp.proto";
+
+// Go package name
+option go_package = "github.com/ItalyPaleAle/index/proto";
+
+// IndexElement message
+message IndexElement {
+    // File's full path (directory + name)
+    string path = 1 [json_name="p"];
+    // File ID (UUID), encoded as raw bytes
+    bytes file_id = 2;
+    // Date when the file was added to the repository
+    google.protobuf.Timestamp date = 3 [json_name="d"];
+    // File's content type
+    string mime_type = 4 [json_name="m"];
+    // File size
+    int64 size = 5;
+    // File digest as SHA-256
+    bytes digest = 10;
+
+    // This is added for compatibility with the version 1 JSON format
+    string file_id_string = 102 [json_name="n",deprecated=true];
+}
+  
+// IndexFile message
+message IndexFile {
+    uint32 version = 1 [json_name="v"];
+    repeated IndexElement elements = 2 [json_name="e"];
+}

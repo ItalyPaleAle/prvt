@@ -4,7 +4,7 @@
 @import "tailwindcss/utilities";
 
 /* Fork-Awesome */
-@import "fork-awesome/css/fork-awesome.css";
+@import "fork-awesome";
 
 /* Themes */
 /*! purgecss start ignore */

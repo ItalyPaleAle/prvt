@@ -31,6 +31,7 @@ import (
 	"sync"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
 
@@ -50,11 +51,20 @@ type Local struct {
 	fsBase
 
 	basePath string
-	cache    *MetadataCache
+	cache    *fsutils.MetadataCache
 	mux      sync.Mutex
 }
 
-func (f *Local) InitWithOptionsMap(opts map[string]string, cache *MetadataCache) error {
+func (f *Local) OptionsList() *FsOptionsList {
+	return &FsOptionsList{
+		Label: "Local path",
+		Required: []FsOption{
+			{Name: "path", Type: "path", Label: "Path", Description: "Path in the local filesystem"},
+		},
+	}
+}
+
+func (f *Local) InitWithOptionsMap(opts map[string]string, cache *fsutils.MetadataCache) error {
 	// Required keys: "path"
 	path := opts["path"]
 	if path == "" {
@@ -64,7 +74,7 @@ func (f *Local) InitWithOptionsMap(opts map[string]string, cache *MetadataCache)
 	return f.init(path, cache)
 }
 
-func (f *Local) InitWithConnectionString(connection string, cache *MetadataCache) error {
+func (f *Local) InitWithConnectionString(connection string, cache *fsutils.MetadataCache) error {
 	// Connection string format: "local:<path>" or "file:<path>"
 	// Get the path
 	path := connection[strings.Index(connection, ":")+1:]
@@ -72,7 +82,7 @@ func (f *Local) InitWithConnectionString(connection string, cache *MetadataCache
 	return f.init(path, cache)
 }
 
-func (f *Local) init(path string, cache *MetadataCache) error {
+func (f *Local) init(path string, cache *fsutils.MetadataCache) error {
 	// Expand the tilde if needed
 	path, err := homedir.Expand(path)
 	if err != nil {
@@ -102,9 +112,114 @@ func (f *Local) init(path string, cache *MetadataCache) error {
 	return nil
 }
 
+func (f *Local) FSName() string {
+	return "local"
+}
+
+func (f *Local) AccountName() string {
+	return f.basePath
+}
+
+func (f *Local) RawGet(ctx context.Context, name string, out io.Writer, start int64, count int64) (found bool, tag interface{}, err error) {
+	// Get the path to the file on disk
+	var path string
+	path, err = f.filePath(name, false)
+	if err != nil {
+		return
+	}
+
+	// Open the file
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			found = false
+			err = nil
+		}
+		return
+	}
+	defer file.Close()
+
+	found = true
+
+	// Check if the file has any content
+	stat, err := file.Stat()
+	if err != nil {
+		return
+	}
+	if stat.Size() == 0 {
+		found = false
+		return
+	}
+
+	// If there's a start offset, move it
+	if start > 0 {
+		_, err = file.Seek(start, 0)
+		if err != nil {
+			return
+		}
+	}
+
+	// Close the file if the context is canceled
+	go func() {
+		<-ctx.Done()
+		_ = file.Close()
+	}()
+
+	// Check if we're reading everything or just part of the file
+	if count > 1 {
+		_, err = io.CopyN(out, file, count)
+	} else {
+		_, err = io.Copy(out, file)
+	}
+	// Ignore EOF errors
+	if err != nil && err == io.EOF {
+		err = nil
+	}
+
+	return
+}
+
+func (f *Local) RawSet(ctx context.Context, name string, in io.Reader, tag interface{}) (tagOut interface{}, err error) {
+	// Get the path to the file on disk
+	var path string
+	path, err = f.filePath(name, true)
+	if err != nil {
+		return
+	}
+
+	// Create a temporary file; we'll rename it later
+	file, err := os.Create(path + ".tmp")
+	if err != nil {
+		return nil, err
+	}
+
+	// Write the data to the file
+	_, err = io.Copy(file, in)
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	file.Close()
+
+	// Rename the file
+	err = os.Rename(path+".tmp", path)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func (f *Local) GetInfoFile() (info *infofile.InfoFile, err error) {
+	// Get the path to the file on disk
+	var path string
+	path, err = f.filePath("_info.json", false)
+	if err != nil {
+		return
+	}
+
 	// Read the file
-	data, err := ioutil.ReadFile(f.basePath + "_info.json")
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = nil
@@ -143,14 +258,22 @@ func (f *Local) SetInfoFile(info *infofile.InfoFile) (err error) {
 		return
 	}
 
+	// Get the path to the file on disk
+	// Note: setting isCreate to false because the root folder was already created before in the init method
+	var path string
+	path, err = f.filePath("_info.json", false)
+	if err != nil {
+		return
+	}
+
 	// Write to file
-	err = ioutil.WriteFile(f.basePath+"_info.json.tmp", data, 0644)
+	err = ioutil.WriteFile(path+".tmp", data, 0644)
 	if err != nil {
 		return
 	}
 
 	// Rename to make the write atomic
-	err = os.Rename(f.basePath+"_info.json.tmp", f.basePath+"_info.json")
+	err = os.Rename(path+".tmp", path)
 	if err != nil {
 		return
 	}
@@ -159,21 +282,15 @@ func (f *Local) SetInfoFile(info *infofile.InfoFile) (err error) {
 }
 
 func (f *Local) Get(ctx context.Context, name string, out io.Writer, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
+	// Get the path to the file on disk
+	var path string
+	path, err = f.filePath(name, false)
+	if err != nil {
 		return
 	}
 
-	found = true
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if len(name) > 4 && name[0] != '_' {
-		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
-	}
-
 	// Open the file
-	file, err := os.Open(f.basePath + folder + name)
+	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			found = false
@@ -182,6 +299,8 @@ func (f *Local) Get(ctx context.Context, name string, out io.Writer, metadataCb 
 		return
 	}
 	defer file.Close()
+
+	found = true
 
 	// Check if the file has any content
 	stat, err := file.Stat()
@@ -218,22 +337,18 @@ func (f *Local) Get(ctx context.Context, name string, out io.Writer, metadataCb 
 	return
 }
 
-func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rng *RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
+func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rng *fsutils.RequestRange, metadataCb crypto.MetadataCb) (found bool, tag interface{}, err error) {
+	// Get the path to the file on disk
+	var path string
+	path, err = f.filePath(name, false)
+	if err != nil {
 		return
-	}
-
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if len(name) > 4 && name[0] != '_' {
-		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
 	}
 
 	found = true
 
 	// Open the file
-	file, err := os.Open(f.basePath + folder + name)
+	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			found = false
@@ -332,25 +447,15 @@ func (f *Local) GetWithRange(ctx context.Context, name string, out io.Writer, rn
 }
 
 func (f *Local) Set(ctx context.Context, name string, in io.Reader, tag interface{}, metadata *crypto.Metadata) (tagOut interface{}, err error) {
-	if name == "" {
-		err = errors.New("name is empty")
+	// Get the path to the file on disk
+	var path string
+	path, err = f.filePath(name, true)
+	if err != nil {
 		return
 	}
 
-	// If the file doesn't start with _, it lives in a sub-folder inside the data path
-	folder := ""
-	if len(name) > 4 && name[0] != '_' {
-		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
-
-		// Ensure the folder exists
-		err = utils.EnsureFolder(f.basePath + folder)
-		if err != nil {
-			return
-		}
-	}
-
 	// Create a temporary file; we'll rename it later
-	file, err := os.Create(f.basePath + folder + name + ".tmp")
+	file, err := os.Create(path + ".tmp")
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +469,7 @@ func (f *Local) Set(ctx context.Context, name string, in io.Reader, tag interfac
 	file.Close()
 
 	// Rename the file
-	err = os.Rename(f.basePath+folder+name+".tmp", f.basePath+folder+name)
+	err = os.Rename(path+".tmp", path)
 	if err != nil {
 		return nil, err
 	}
@@ -373,6 +478,23 @@ func (f *Local) Set(ctx context.Context, name string, in io.Reader, tag interfac
 }
 
 func (f *Local) Delete(ctx context.Context, name string, tag interface{}) (err error) {
+	// Get the path to the file on disk
+	var path string
+	path, err = f.filePath(name, false)
+	if err != nil {
+		return
+	}
+
+	// Note that we're not removing the data from the cache, as it's identified by the UUID which will not be used by other files
+
+	// Delete the file
+	err = os.Remove(path)
+	return
+}
+
+// Internal function that returns the path to the file on disk
+// The second argument should be true when we're getting a path for a new file: in that case, the function will check that the folder(s) exist on disk
+func (f *Local) filePath(name string, isCreate bool) (path string, err error) {
 	if name == "" {
 		err = errors.New("name is empty")
 		return
@@ -382,11 +504,16 @@ func (f *Local) Delete(ctx context.Context, name string, tag interface{}) (err e
 	folder := ""
 	if len(name) > 4 && name[0] != '_' {
 		folder = f.dataPath + "/" + name[0:2] + "/" + name[2:4] + "/"
+
+		if isCreate {
+			// Ensure the folder exists
+			err = utils.EnsureFolder(f.basePath + folder)
+			if err != nil {
+				return
+			}
+		}
 	}
 
-	// Note that we're not removing the data from the cache, as it's identified by the UUID which will not be used by other files
-
-	// Delete the file
-	err = os.Remove(f.basePath + folder + name)
+	path = f.basePath + folder + name
 	return
 }

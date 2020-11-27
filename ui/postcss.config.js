@@ -1,10 +1,10 @@
-const production = !process.env.ROLLUP_WATCH
+const production = process.env.NODE_ENV == 'production'
 
 module.exports = {
     plugins: [
         require('postcss-import')(),
+        require('postcss-url')(),
         require('tailwindcss'),
-        require('autoprefixer'),
         ...(production ? [require('@fullhuman/postcss-purgecss')({
 
             // Specify the paths to all of the template files in your project
@@ -18,5 +18,6 @@ module.exports = {
             // Include any special characters you're using in this regular expression
             defaultExtractor: content => content.match(/[\w-/:]+(?<!:)/g) || []
         })] : []),
+        ...(production ? [require('cssnano')] : []),
     ],
 }

@@ -22,8 +22,10 @@ import (
 	"net/http"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // PostRepoSelectHandler is the handler for POST /api/repo/select, which selects a repository
@@ -31,15 +33,35 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	// Get a set of key-values from the body
 	args := make(map[string]string)
 	if err := c.Bind(&args); err != nil || len(args) == 0 {
-		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse response body"})
+		if err != nil {
+			c.Error(err)
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not parse request body"})
 		return
 	}
 
-	// Get the storage type
-	if args["type"] == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Key 'type' is required"})
-		return
+	// Check if we have a name key, which would be the name of a saved connection
+	name, ok := args["name"]
+	if ok {
+		// Sanitize the name
+		name = utils.SanitizeConnectionName(name)
+		if name == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Value of 'name' is invalid"})
+			return
+		}
+
+		// Load the connection and check if it exists
+		args = viper.GetStringMapString("connections." + name)
+		if args == nil || len(args) == 0 || args["type"] == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{fmt.Sprintf("Connection not found: %s", name)})
+			return
+		}
+	} else {
+		// Get the storage type
+		if args["type"] == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Key 'type' is required"})
+			return
+		}
 	}
 
 	// Create the store object
@@ -58,7 +80,6 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 		return
 	}
 	if info == nil {
-		c.Error(err)
 		c.AbortWithStatusJSON(http.StatusForbidden, ErrorResponse{"Repository is not initialized"})
 		return
 	}
@@ -69,15 +90,26 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	s.Infofile = info
 	s.Repo = nil
 
+	// Check if we the repo can be unlocked with a GPG key
+	gpgUnlock := false
+	for _, k := range s.Infofile.Keys {
+		if k.GPGKey != "" {
+			gpgUnlock = true
+			break
+		}
+	}
+
 	// Response
 	repoId := s.Infofile.RepoId
 	if repoId == "" {
 		repoId = "(Repository ID missing)"
 	}
 	fmt.Fprintln(s.LogWriter, "Selected repository:", repoId)
-	c.JSON(http.StatusOK, struct {
-		Repo string `json:"id"`
-	}{
-		Repo: repoId,
+	c.JSON(http.StatusOK, RepoInfoResponse{
+		StoreType:    s.Store.FSName(),
+		StoreAccount: s.Store.AccountName(),
+		RepoID:       repoId,
+		RepoVersion:  s.Infofile.Version,
+		GPGUnlock:    gpgUnlock,
 	})
 }

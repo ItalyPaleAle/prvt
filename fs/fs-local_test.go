@@ -20,6 +20,7 @@ package fs
 import (
 	"testing"
 
+	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +29,7 @@ func TestFsLocal(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Init the cache
-	cache := &MetadataCache{}
+	cache := &fsutils.MetadataCache{}
 	err := cache.Init()
 	if !assert.NoError(t, err) {
 		return

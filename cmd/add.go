@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/ItalyPaleAle/prvt/fs"
+	"github.com/ItalyPaleAle/prvt/fs/fsindex"
 	"github.com/ItalyPaleAle/prvt/index"
 	"github.com/ItalyPaleAle/prvt/repository"
 
@@ -54,6 +55,10 @@ You must specify a destination, which is a folder inside the repository where yo
 			flagDestination, err := cmd.Flags().GetString("destination")
 			if err != nil {
 				return NewExecError(ErrorApp, "Cannot get flag 'destination'", err)
+			}
+			flagForce, err := cmd.Flags().GetBool("force")
+			if err != nil {
+				return NewExecError(ErrorApp, "Cannot get flag 'force'", err)
 			}
 
 			// Get the file/folder name from the args
@@ -104,7 +109,10 @@ You must specify a destination, which is a folder inside the repository where yo
 				Store: store,
 				Index: &index.Index{},
 			}
-			repo.Index.SetStore(store)
+			indexProvider := &fsindex.IndexProviderFs{
+				Store: store,
+			}
+			repo.Index.SetProvider(indexProvider)
 
 			// Iterate through the args and add them all
 			ctx := context.Background()
@@ -126,7 +134,7 @@ You must specify a destination, which is a folder inside the repository where yo
 					folder := filepath.Dir(expanded)
 					target := filepath.Base(expanded)
 
-					repo.AddPath(ctx, folder, target, flagDestination, res)
+					repo.AddPath(ctx, folder, target, flagDestination, flagForce, res)
 				}
 
 				close(res)
@@ -156,6 +164,7 @@ You must specify a destination, which is a folder inside the repository where yo
 	addStoreFlag(c, true)
 	c.Flags().StringP("destination", "d", "", "destination folder")
 	c.MarkFlagRequired("destination")
+	c.Flags().BoolP("force", "f", false, "overwrite a file if existing")
 
 	return c
 }

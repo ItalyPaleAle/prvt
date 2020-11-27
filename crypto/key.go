@@ -20,14 +20,100 @@ package crypto
 import (
 	"crypto/rand"
 	"errors"
+	"os"
+	"reflect"
+	"strconv"
 
 	"github.com/google/tink/go/kwp/subtle"
 	"golang.org/x/crypto/argon2"
 )
 
+// Options for the Argon2 Key Derivation Function
+type Argon2Options struct {
+	// Options for argon2id
+	Variant     string `json:"a2,omitempty"`
+	Version     uint16 `json:"a2v,omitempty"`
+	Memory      uint32 `json:"a2m,omitempty"`
+	Iterations  uint32 `json:"a2t,omitempty"`
+	Parallelism uint8  `json:"a2p,omitempty"`
+}
+
+// Setup sets the parameters for the key derivation function
+func (o *Argon2Options) Setup() error {
+	// Set variant and version
+	o.Variant = "argon2id"
+	o.Version = 0x13
+
+	// Check if we have the tune function, which is included with a build tag only
+	method := reflect.ValueOf(o).MethodByName("Tune")
+	if method.IsValid() {
+		method.Call([]reflect.Value{})
+	}
+
+	// Check if we have environmental variables to tune this
+	iterations, err := strconv.ParseUint(os.Getenv("PRVT_ARGON2_ITERATIONS"), 10, 32)
+	if err == nil && iterations > 0 {
+		o.Iterations = uint32(iterations)
+	}
+	memory, err := strconv.ParseUint(os.Getenv("PRVT_ARGON2_MEMORY"), 10, 32)
+	if err == nil && memory > 0 {
+		o.Memory = uint32(memory)
+	}
+	parallelism, err := strconv.ParseUint(os.Getenv("PRVT_ARGON2_PARALLELISM"), 10, 8)
+	if err == nil && parallelism > 0 {
+		o.Parallelism = uint8(parallelism)
+	}
+
+	return o.Validate()
+}
+
+// Validate the values and sets the defaults for the missing ones
+func (o *Argon2Options) Validate() error {
+	// Default variant is argon2id, and only one supported
+	if o.Variant == "" {
+		o.Variant = "argon2id"
+	} else if o.Variant != "argon2id" {
+		return errors.New("unsupported variant for argon2")
+	}
+	// Default version is 19 (0x13), and only one supported
+	if o.Version == 0 {
+		o.Version = 0x13
+	} else if o.Version != 0x13 {
+		return errors.New("unsupported version for argon2")
+	}
+	// Ensure that this library uses version 0x13 too
+	if argon2.Version != 0x13 {
+		panic("argon2 library uses a different version that expected")
+	}
+	// Default memory is 80MB (in KB)
+	if o.Memory == 0 {
+		o.Memory = 80 * 1024
+	}
+	// Default iterations is 4
+	if o.Iterations == 0 {
+		o.Iterations = 4
+	}
+	// Default parallelism is 2
+	if o.Parallelism == 0 {
+		o.Parallelism = 2
+	}
+	return nil
+}
+
+// LegacyArgon2Options returns an object with the parameters for Argon2 used by prvt version 4 and below
+func LegacyArgon2Options() *Argon2Options {
+	return &Argon2Options{
+		Variant:     "argon2id",
+		Version:     19,
+		Memory:      64 << 10,
+		Iterations:  1,
+		Parallelism: 4,
+	}
+}
+
 // KeyFromPassphrase returns the 32-byte key derived from a passphrase and a salt using Argon2id
 // It also returns a "confirmation hash" that can be used to ensure the passphrase is correct
-func KeyFromPassphrase(passphrase string, salt []byte) (key []byte, confirmationHash []byte, err error) {
+func KeyFromPassphrase(passphrase string, salt []byte, kd *Argon2Options) (key []byte, confirmationHash []byte, err error) {
 	// Ensure the passphrase isn't empty and that the salt is 16-byte
 	if passphrase == "" {
 		return nil, nil, errors.New("empty passphrase")
@@ -35,11 +121,18 @@ func KeyFromPassphrase(passphrase string, salt []byte) (key []byte, confirmation
 	if len(salt) != 16 {
 		return nil, nil, errors.New("invalid salt")
 	}
+	// Ensure the options are valid
+	if kd == nil {
+		kd = &Argon2Options{}
+	}
+	err = kd.Validate()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Derive the key using Argon2id
-	// From the docs: "The draft RFC recommends[2] time=1, and memory=64*1024 is a sensible number. If using that amount of memory (64 MB) is not possible in some contexts then the time parameter can be increased to compensate."
 	// Generate 64 bytes: the first 32 are the key, and the rest is the confirmation hash
-	gen := argon2.IDKey([]byte(passphrase), salt, 1, 64*1024, 4, 64)
+	gen := argon2.IDKey([]byte(passphrase), salt, kd.Iterations, kd.Memory, kd.Parallelism, 64)
 	return gen[0:32], gen[32:64], nil
 }
 

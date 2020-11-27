@@ -1,0 +1,178 @@
+name: Build (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Build ID/version'
+        required: false
+        default: 'canary'
+
+env:
+  GO_BUILDER_IMAGE: 'golang:1.15-alpine'
+  NODE_BUILDER_IMAGE: 'node:14-alpine'
+  PKGER_VERSION: 0.17.1
+  
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      # Set variables
+      - name: Set variables
+        run: |
+          # BUILD_ID and BUILD_VERSION are the same
+          BUILD_ID="${{ github.event.inputs.version }}"
+          BUILD_VERSION="${{ github.event.inputs.version }}"
+          BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%S')
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          echo ::set-env name=BUILD_ID::$BUILD_ID
+          echo ::set-env name=BUILD_VERSION::$BUILD_VERSION
+          echo ::set-env name=BUILD_TIME::$BUILD_TIME
+          echo ::set-env name=COMMIT_HASH::$COMMIT_HASH
+
+      # Build web UI
+      - name: Build web UI
+        run: |
+          # Build using Docker
+          docker run \
+            --rm \
+            -v "$PWD"/ui:/usr/src/myapp \
+            -w /usr/src/myapp \
+            -e APP_VERSION="${{env.BUILD_VERSION}}" \
+            ${{env.NODE_BUILDER_IMAGE}} \
+              sh -c '
+                set -e
+
+                echo -e "###\nInstalling npm dependencies\n"
+                npm ci
+
+                echo -e "\n###\nBuilding UI\n"
+                npm run build
+                '
+          echo -e "\n###\nCompilation done\n"
+          ls -al ui/dist
+
+      # Build for all platforms
+      - name: Build for all archs
+        run: |
+          mkdir -p .bin
+          # Build using Docker
+          # Disable CGO so the binary is fully static
+          docker run \
+            --rm \
+            -v "$PWD":/usr/src/myapp \
+            -w /usr/src/myapp \
+            -e CGO_ENABLED=0 \
+            -e GO111MODULE=on \
+            ${{env.GO_BUILDER_IMAGE}} \
+              sh -c '
+                set -e
+
+                echo -e "###\nInstall make, zip, brotli\n"
+                apk add make zip brotli
+
+                echo -e "\n###\nFetching tools\n"
+                make get-tools
+
+                echo -e "\n###\nBuild wasm module\n"
+                make build-wasm-prod
+
+                echo -e "\n###\nRunning pkger\n"
+                make pkger
+
+                echo -e "\n###\nFetching modules\n"
+                go get
+
+                echo -e "\n###\nBuilding linux/amd64\n"
+                mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
+                GOOS=linux \
+                GOARCH=amd64 \
+                  go build \
+                    -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                    -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64/prvt
+                cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
+                cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
+                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-amd64)
+
+                echo -e "\n###\nBuilding linux/386\n"
+                mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
+                GOOS=linux \
+                GOARCH=386 \
+                  go build \
+                    -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                    -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-386/prvt
+                cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
+                cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
+                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-386.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-386)
+
+                echo -e "\n###\nBuilding linux/arm64\n"
+                mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
+                GOOS=linux \
+                GOARCH=arm64 \
+                  go build \
+                    -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                    -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64/prvt
+                cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
+                cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
+                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-arm64.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-arm64)
+
+                echo -e "\n###\nBuilding linux/arm\n"
+                mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
+                GOOS=linux \
+                GOARCH=arm \
+                GOARM=7 \
+                  go build \
+                    -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                    -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7/prvt
+                cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
+                cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
+                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-armv7.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-armv7)
+
+                echo -e "\n###\nBuilding darwin/amd64\n"
+                mkdir .bin/prvt-v${{env.BUILD_VERSION}}-macos
+                GOOS=darwin \
+                GOARCH=amd64 \
+                  go build \
+                    -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                    -o .bin/prvt-v${{env.BUILD_VERSION}}-macos/prvt
+                cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-macos
+                cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-macos
+                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-macos.tar.gz prvt-v${{env.BUILD_VERSION}}-macos)
+
+                echo -e "\n###\nBuilding windows/amd64\n"
+                mkdir .bin/prvt-v${{env.BUILD_VERSION}}-win64
+                GOOS=windows \
+                GOARCH=amd64 \
+                  go build \
+                    -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                    -o .bin/prvt-v${{env.BUILD_VERSION}}-win64/prvt.exe
+                cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-win64
+                cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-win64
+                (cd .bin && zip -r prvt-v${{env.BUILD_VERSION}}-win64.zip prvt-v${{env.BUILD_VERSION}}-win64)
+
+                echo -e "\n###\nBuilding windows/386\n"
+                mkdir .bin/prvt-v${{env.BUILD_VERSION}}-win32
+                GOOS=windows \
+                GOARCH=386 \
+                  go build \
+                    -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
+                    -o .bin/prvt-v${{env.BUILD_VERSION}}-win32/prvt.exe
+                cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-win32
+                cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-win32
+                (cd .bin && zip -r prvt-v${{env.BUILD_VERSION}}-win32.zip prvt-v${{env.BUILD_VERSION}}-win32)
+                '
+          echo -e "\n###\nCompilation done\n"
+          ls -al .bin
+      
+      # Publish artifacts
+      - name: Publish binaries as artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: bin
+          path: .bin

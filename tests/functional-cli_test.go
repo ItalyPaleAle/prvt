@@ -105,13 +105,14 @@ func (s *funcTestSuite) cmdRepoInit(t *testing.T) {
 		err = json.Unmarshal(read, info)
 		assert.NoError(t, err)
 		assert.Equal(t, "prvt", info.App)
-		assert.Equal(t, uint16(4), info.Version)
+		assert.Equal(t, uint16(5), info.Version)
 		assert.NotEmpty(t, info.RepoId)
 		assert.Len(t, info.Keys, 1)
 		assert.Len(t, info.Keys[0].ConfirmationHash, 32)
 		assert.Len(t, info.Keys[0].MasterKey, 40)
 		assert.Len(t, info.Keys[0].Salt, 16)
 		assert.Len(t, info.Keys[0].GPGKey, 0)
+		s.repoIds[0] = info.RepoId
 	}
 
 	// Check the info file for the second repo
@@ -127,13 +128,14 @@ func (s *funcTestSuite) cmdRepoInit(t *testing.T) {
 		err = json.Unmarshal(read, info)
 		assert.NoError(t, err)
 		assert.Equal(t, "prvt", info.App)
-		assert.Equal(t, uint16(4), info.Version)
+		assert.Equal(t, uint16(5), info.Version)
 		assert.NotEmpty(t, info.RepoId)
 		assert.Len(t, info.Keys, 1)
 		assert.Len(t, info.Keys[0].ConfirmationHash, 0)
 		assert.True(t, len(info.Keys[0].MasterKey) > 100)
 		assert.Len(t, info.Keys[0].Salt, 0)
 		assert.True(t, len(info.Keys[0].GPGKey) > 0)
+		s.repoIds[1] = info.RepoId
 	}
 }
 
@@ -242,7 +244,7 @@ func (s *funcTestSuite) cmdRepoKey(t *testing.T) {
 		err = json.Unmarshal(read, info)
 		assert.NoError(t, err)
 		assert.Equal(t, "prvt", info.App)
-		assert.Equal(t, uint16(4), info.Version)
+		assert.Equal(t, uint16(5), info.Version)
 		assert.NotEmpty(t, info.RepoId)
 		assert.Len(t, info.Keys, 2)
 		assert.Len(t, info.Keys[0].ConfirmationHash, 0)
@@ -288,6 +290,18 @@ func (s *funcTestSuite) cmdRepoKey(t *testing.T) {
 		[]string{"repo", "key", "add", "--store", "local:" + s.dirs[1]},
 		func(err error) {
 			if !assert.EqualError(t, err, "[Error] Key already added\nThis passphrase has already been added to the repository\n") {
+				t.Fatal("error does not match", err)
+			}
+		},
+		nil,
+		nil,
+	)
+
+	// Error: the same GPG key has already been added
+	runCmd(t,
+		[]string{"repo", "key", "add", "--store", "local:" + s.dirs[1], "--gpg", s.gpgKeyId},
+		func(err error) {
+			if !assert.EqualError(t, err, "[Error] A GPG key with the same ID is already authorized to unlock this repository\n") {
 				t.Fatal("error does not match", err)
 			}
 		},
@@ -388,6 +402,53 @@ func (s *funcTestSuite) cmdAdd(t *testing.T) {
 		},
 		nil,
 	)
+	checkRepoDirectory(t, s.dirs[0], 7)
+
+	// Force-add a single file
+	s.promptPwd.SetPasswords("hello world")
+	runCmd(t,
+		[]string{"add", addPath2, "--destination", "/", "--store", "local:" + s.dirs[0], "--force"},
+		nil,
+		func(stdout string) {
+			expected := []string{
+				"",
+				"Added: /short.txt",
+			}
+			actual := strings.Split(stdout, "\n")
+			sort.Strings(actual)
+			if !reflect.DeepEqual(expected, actual) {
+				t.Error("output does not match", stdout)
+			}
+		},
+		nil,
+	)
+	// Should still be 7 files because the old files were deleted
+	checkRepoDirectory(t, s.dirs[0], 7)
+
+	// Force-add multiple files
+	s.promptPwd.SetPasswords("hello world")
+	runCmd(t,
+		[]string{"add", addPath1, addPath2, "--destination", "/", "--store", "local:" + s.dirs[0], "--force"},
+		nil,
+		func(stdout string) {
+			expected := []string{
+				"",
+				"Added: /photos/elton-sa-_3g60mG4N80-unsplash.jpg",
+				"Added: /photos/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg",
+				"Added: /photos/leigh-williams-CCABYukxjHs-unsplash.jpg",
+				"Added: /photos/nathan-thomassin-E6xV-UxrKSg-unsplash.jpg",
+				"Added: /photos/partha-narasimhan-kT5Syi2Ll3w-unsplash.jpg",
+				"Added: /short.txt",
+			}
+			actual := strings.Split(stdout, "\n")
+			sort.Strings(actual)
+			if !reflect.DeepEqual(expected, actual) {
+				t.Error("output does not match", stdout)
+			}
+		},
+		nil,
+	)
+	// Should still be 7 files because the old files were deleted
 	checkRepoDirectory(t, s.dirs[0], 7)
 
 	// File does not exist
@@ -596,14 +657,24 @@ func (s *funcTestSuite) cmdLsAndRm(t *testing.T) {
 }
 
 func (s *funcTestSuite) cmdRepoInfo(t *testing.T) {
+	storePath, err := filepath.Abs(s.dirs[0])
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
 	// Test repo info on a locked repo
 	runCmd(t,
 		[]string{"repo", "info", "--store", "local:" + s.dirs[0], "--no-unlock"},
 		nil,
 		func(stdout string) {
-			expected := "Repository version:  4\n"
+			expected := `Repository ID:       ` + s.repoIds[0] + `
+Repository version:  5
+Store type:          local
+Store account:       ` + storePath + `/
+`
 			if stdout != expected {
-				t.Fatal("output does not match", stdout)
+				t.Fatal("output does not match", stdout, expected)
 			}
 		},
 		nil,
@@ -615,7 +686,12 @@ func (s *funcTestSuite) cmdRepoInfo(t *testing.T) {
 		[]string{"repo", "info", "--store", "local:" + s.dirs[0]},
 		nil,
 		func(stdout string) {
-			expected := "Repository version:  4\nTotal files stored:  1\n"
+			expected := `Repository ID:       ` + s.repoIds[0] + `
+Repository version:  5
+Store type:          local
+Store account:       ` + storePath + `/
+Total files stored:  1
+`
 			if stdout != expected {
 				t.Fatal("output does not match", stdout)
 			}

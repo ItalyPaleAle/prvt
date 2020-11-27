@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ItalyPaleAle/prvt/crypto"
+
 	"github.com/gofrs/uuid"
 )
 
@@ -32,11 +34,20 @@ const UnknownGPGKey = "UnknownGPGKey"
 type InfoFileKey struct {
 	// Wrapped master key
 	MasterKey []byte `json:"m,omitempty"`
-	// Passphrase
-	Salt             []byte `json:"s,omitempty"`
-	ConfirmationHash []byte `json:"p,omitempty"`
-	// GPG key id
+
+	// GPG key id for when using a GPG key
 	GPGKey string `json:"g,omitempty"`
+
+	// ConfirmationHash for when using a passphrase
+	ConfirmationHash []byte `json:"p,omitempty"`
+	// Salt for when using a passphrase
+	Salt []byte `json:"s,omitempty"`
+
+	// Fields for version 5+
+	// Key Derivation Function for when using a passphrase (only "argon2" is currently supported)
+	KDF string `json:"f,omitempty"`
+	// Options for the Key Derivation Function (Argon2 only)
+	KDFOptions *crypto.Argon2Options `json:"o,omitempty"`
 }
 
 // InfoFile is the content of the info file
@@ -70,7 +81,7 @@ func New() (*InfoFile, error) {
 	// Info file
 	info := &InfoFile{
 		App:      "prvt",
-		Version:  4,
+		Version:  5,
 		RepoId:   repoId.String(),
 		DataPath: "data",
 	}
@@ -78,11 +89,13 @@ func New() (*InfoFile, error) {
 }
 
 // AddPassphrase adds a passphrase to an info file
-func (info *InfoFile) AddPassphrase(salt []byte, confirmationHash []byte, wrappedKey []byte) error {
+func (info *InfoFile) AddPassphrase(salt []byte, confirmationHash []byte, wrappedKey []byte, kd *crypto.Argon2Options) error {
 	key := InfoFileKey{
 		Salt:             salt,
 		ConfirmationHash: confirmationHash,
 		MasterKey:        wrappedKey,
+		KDF:              "argon2",
+		KDFOptions:       kd,
 	}
 
 	if info.Keys == nil {
@@ -195,8 +208,8 @@ func (info *InfoFile) Validate() error {
 				return errors.New("invalid confirmation hash in info file")
 			}
 		}
-	} else if info.Version >= 2 && info.Version <= 4 {
-		// Parse version 2 to 4
+	} else if info.Version >= 2 && info.Version <= 5 {
+		// Parse version 2 to 5
 		if len(info.Keys) == 0 {
 			return errors.New("repository does not have any key")
 		}

@@ -16,7 +16,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*
-//Build with:
+Build with:
 
 ```sh
 protoc \
@@ -38,7 +38,10 @@ option go_package = ".;crypto";
 
 // Metadata message
 message Metadata {
+    // File's original name
     string name = 1 [json_name="n"];
+    // File's content type
     string content_type = 2 [json_name="ct"];
+    // File size
     int64 size = 3 [json_name="sz"];
 }

@@ -27,11 +27,13 @@ import (
 	"io/ioutil"
 	"log"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +42,7 @@ import (
 
 	"github.com/ItalyPaleAle/prvt/cmd"
 	"github.com/ItalyPaleAle/prvt/index"
+	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/server"
 	"github.com/ItalyPaleAle/prvt/utils"
 
@@ -63,6 +66,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	t.Run("get file chunks", s.serverFileChunks)
 	t.Run("interrupt getting files", s.serverFileInterrupt)
 	t.Run("serving web UI", s.serverWebUI)
+	t.Run("get info file unlocked", s.serverGetInfoFile)
 	close()
 
 	// Test without unlocking the repo
@@ -71,6 +75,7 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 	close = s.startServer(t, "--store", "local:"+s.dirs[1], "--no-unlock", "--read-only")
 	t.Run("unlock repo", s.serverUnlockRepo)
 	t.Run("read-only test", s.serverReadOnly)
+	t.Run("get info file locked", s.serverGetInfoFile)
 	close()
 
 	// Test without selecting a repo
@@ -83,46 +88,36 @@ func (s *funcTestSuite) RunServer(t *testing.T) {
 
 // Test the API info endpoint
 func (s *funcTestSuite) serverInfo(t *testing.T) {
-	sendRequest := func() (data *server.InfoResponse, err error) {
-		// Send the request, then read the response and parse the JSON response into a map
-		res, err := s.client.Get(s.serverAddr + "/api/info")
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		if res.StatusCode < 200 || res.StatusCode > 299 {
-			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
-		}
-		read, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		data = &server.InfoResponse{}
-		err = json.Unmarshal(read, data)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
+	storePath, err := filepath.Abs(s.dirs[0])
+	if err != nil {
+		t.Fatal(err)
+		return
 	}
 
 	// Check the response
-	data, err := sendRequest()
+	data, err := s.infoRequest()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	assert.Equal(t, "prvt", data.Name)
-	assert.Equal(t, "canary", data.AppVersion)
+	assert.Equal(t, "dev", data.AppVersion)
 	assert.NotEmpty(t, data.Info)
 	assert.Empty(t, data.BuildID)
 	assert.Empty(t, data.BuildTime)
 	assert.Empty(t, data.CommitHash)
-	assert.NotEmpty(t, data.Runtime)
+	assert.Equal(t, runtime.Version(), data.Runtime)
 	assert.Empty(t, data.ReadOnly)
+	assert.True(t, data.RepoSelected)
+	assert.True(t, data.RepoUnlocked)
+	assert.NotEmpty(t, data.RepoID)
+	assert.Equal(t, uint16(5), data.RepoVersion)
+	assert.Equal(t, "local", data.StoreType)
+	assert.Equal(t, storePath+"/", data.StoreAccount)
 
 	// Set buildinfo then check again
 	reset := setBuildInfo()
-	data, err = sendRequest()
+	data, err = s.infoRequest()
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -133,8 +128,14 @@ func (s *funcTestSuite) serverInfo(t *testing.T) {
 	assert.NotEmpty(t, data.BuildID)
 	assert.NotEmpty(t, data.BuildTime)
 	assert.NotEmpty(t, data.CommitHash)
-	assert.NotEmpty(t, data.Runtime)
+	assert.Equal(t, runtime.Version(), data.Runtime)
 	assert.Empty(t, data.ReadOnly)
+	assert.True(t, data.RepoSelected)
+	assert.True(t, data.RepoUnlocked)
+	assert.NotEmpty(t, data.RepoID)
+	assert.Equal(t, uint16(5), data.RepoVersion)
+	assert.Equal(t, "local", data.StoreType)
+	assert.Equal(t, storePath+"/", data.StoreAccount)
 	reset()
 }
 
@@ -144,6 +145,7 @@ func (s *funcTestSuite) serverAdd(t *testing.T) {
 	t.Run("upload multiple files", s.serverAddUploadMultiFiles)
 	t.Run("add local files", s.serverAddLocalFiles)
 	t.Run("add one existing local file", s.serverAddLocalFileExisting)
+	t.Run("force-add one local file", s.serverForceAddLocalFile)
 }
 
 // Add a file by uploading it directly, to the / folder
@@ -239,6 +241,12 @@ func (s *funcTestSuite) serverAddUploadMultiFiles(t *testing.T) {
 		assert.Equal(t, "/upload/"+p, data[i].Path)
 		assert.True(t, data[i].FileId != "")
 	}
+
+	// Check the info file's stats
+	info, err := s.infoRequest()
+	assert.NoError(t, err)
+	assert.NotNil(t, info)
+	assert.Equal(t, len(paths)+2, info.FileCount)
 }
 
 // Add multiple files from the local file system, to the /added folder
@@ -290,46 +298,27 @@ func (s *funcTestSuite) serverAddLocalFiles(t *testing.T) {
 
 // Add a single file from the local file system, to the /upload folder, already existing
 func (s *funcTestSuite) serverAddLocalFileExisting(t *testing.T) {
-	// Create the request body
-	body := &bytes.Buffer{}
-	mpw := multipart.NewWriter(body)
-	err := mpw.WriteField("localpath", filepath.Join(s.fixtures, "photos", "joshua-woroniecki-dyEaBD5uiio-unsplash.jpg"))
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	mpw.Close()
+	data := s.addLocalFile(t, false)
 
-	// Send the request
-	res, err := s.client.Post(s.serverAddr+"/api/tree/upload/", mpw.FormDataContentType(), body)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	defer res.Body.Close()
-	if res.StatusCode < 200 || res.StatusCode > 299 {
-		t.Fatalf("invalid response status code: %d", res.StatusCode)
-		return
-	}
-	read, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-
-	// Parse the JSON response
-	data := make([]server.TreeOperationResponse, 0)
-	err = json.Unmarshal(read, &data)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-
+	// Check the result
 	assert.Len(t, data, 1)
 	assert.Equal(t, "", data[0].Error)
 	assert.Equal(t, "existing", data[0].Status)
 	assert.Equal(t, "/upload/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg", data[0].Path)
 	assert.Equal(t, "", data[0].FileId)
+}
+
+// Force-add a single file from the local file system, to the /upload folder
+func (s *funcTestSuite) serverForceAddLocalFile(t *testing.T) {
+	// This is the same test as the previous function, but it adds a "force"
+	data := s.addLocalFile(t, true)
+
+	// Check the result
+	assert.Len(t, data, 1)
+	assert.Equal(t, "", data[0].Error)
+	assert.Equal(t, "added", data[0].Status)
+	assert.Equal(t, "/upload/joshua-woroniecki-dyEaBD5uiio-unsplash.jpg", data[0].Path)
+	assert.True(t, data[0].FileId != "")
 }
 
 // Test the endpoint that lists files
@@ -358,6 +347,8 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 			assert.True(t, e.Date != nil)
 			assert.True(t, e.FileId != "")
 			assert.True(t, e.MimeType == "text/plain")
+			assert.Greater(t, e.Size, int64(0))
+			assert.NotEmpty(t, e.Digest)
 		}
 		found = append(found, path)
 	}
@@ -381,6 +372,8 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 			assert.True(t, e.Date != nil)
 			assert.True(t, e.FileId != "")
 			assert.True(t, e.MimeType == "text/plain")
+			assert.Greater(t, e.Size, int64(0))
+			assert.NotEmpty(t, e.Digest)
 		}
 		found = append(found, path)
 	}
@@ -406,6 +399,8 @@ func (s *funcTestSuite) serverListRemove(t *testing.T) {
 		assert.True(t, e.Date != nil)
 		assert.True(t, e.FileId != "")
 		assert.True(t, e.MimeType == "image/jpeg")
+		assert.Greater(t, e.Size, int64(0))
+		assert.NotEmpty(t, e.Digest)
 		found = append(found, e.Path)
 		s.fileIds["/upload/"+e.Path] = e.FileId
 	}
@@ -878,17 +873,16 @@ func (s *funcTestSuite) serverWebUI(t *testing.T) {
 func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	var (
 		res  *server.RepoKeyListItem
-		info *server.RepoInfoResponse
+		info *server.InfoResponse
 		err  error
 	)
 
 	// Test repo info endpoint, on a locked repo first
-	info, err = s.repoInfoRequest()
+	info, err = s.infoRequest()
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
-	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
-		Version: 4,
-	}, info))
+	assert.True(t, info.RepoSelected)
+	assert.False(t, info.RepoUnlocked)
 
 	// Error: cannot request an API list the file list one without unlocking the repo
 	_, err = s.listRequest("/")
@@ -928,13 +922,11 @@ func (s *funcTestSuite) serverUnlockRepo(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test repo info endpoint, on the unlocked repo
-	info, err = s.repoInfoRequest()
+	info, err = s.infoRequest()
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
-	assert.True(t, reflect.DeepEqual(&server.RepoInfoResponse{
-		Version:   4,
-		FileCount: 0,
-	}, info))
+	assert.True(t, info.RepoSelected)
+	assert.True(t, info.RepoUnlocked)
 }
 
 // Test read-only mode
@@ -954,44 +946,40 @@ func (s *funcTestSuite) serverReadOnly(t *testing.T) {
 
 // Select a repo using the APIs
 func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
-	selectRequest := func(args interface{}) (string, error) {
+	selectRequest := func(args interface{}) (*server.RepoInfoResponse, error) {
 		// Build the request body
 		reqBody, err := json.Marshal(args)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		// Send the request
 		buf := bytes.NewBuffer(reqBody)
 		res, err := s.client.Post(s.serverAddr+"/api/repo/select/", "application/json", buf)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		defer res.Body.Close()
 		if res.StatusCode < 200 || res.StatusCode > 299 {
-			return "", fmt.Errorf("invalid response status code: %d", res.StatusCode)
+			return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
 		}
 
 		// Read the response and parse the JSON content
 		read, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		data := map[string]string{}
-		err = json.Unmarshal(read, &data)
+		data := &server.RepoInfoResponse{}
+		err = json.Unmarshal(read, data)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		repoId, ok := data["id"]
-		if !ok {
-			return "", errors.New("missing key 'id' in response")
-		}
-		return repoId, nil
+		return data, nil
 	}
 
 	var (
-		repoId string
-		err    error
+		response *server.RepoInfoResponse
+		err      error
 	)
 
 	// Error: cannot request an API list the file list one without selecting
@@ -1023,12 +1011,14 @@ func (s *funcTestSuite) serverSelectRepo(t *testing.T) {
 	assert.EqualError(t, err, "invalid response status code: 400")
 
 	// Select the repo
-	repoId, err = selectRequest(map[string]string{
+	response, err = selectRequest(map[string]string{
 		"type": "local",
 		"path": s.dirs[1],
 	})
 	assert.NoError(t, err)
-	assert.NotEmpty(t, repoId)
+	assert.NotNil(t, response)
+	assert.NotEmpty(t, response.RepoID)
+	assert.Equal(t, uint16(5), response.RepoVersion)
 }
 
 // Add, list, test, and remove keys
@@ -1196,6 +1186,38 @@ func (s *funcTestSuite) serverManageKeys(t *testing.T) {
 
 }
 
+// Test the /api/repo/infofile endpoint, which returns the raw info file
+func (s *funcTestSuite) serverGetInfoFile(t *testing.T) {
+	// Send the request, then read the response and parse the JSON response
+	res, err := s.client.Get(s.serverAddr + "/api/repo/infofile")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatal(fmt.Errorf("invalid response status code: %d", res.StatusCode))
+		return
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	data := &infofile.InfoFile{}
+	err = json.Unmarshal(read, data)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// Check the result
+	assert.Equal(t, data.App, "prvt")
+	assert.Equal(t, data.Version, uint16(5))
+	assert.Equal(t, data.DataPath, "data")
+	assert.True(t, len(data.Keys) > 0)
+}
+
 // Internal function that starts the server
 func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 	// Start the server by invoking the command
@@ -1227,8 +1249,14 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 		}
 	}()
 
-	// Wait a couple of seconds to ensure the server has started
-	time.Sleep(2 * time.Second)
+	// Wait until the server has started, max ~10 seconds
+	for i := 0; i < 15; i++ {
+		_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", address, port), 150*time.Millisecond)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 
 	// The caller can stop the server
 	return func() {
@@ -1237,6 +1265,59 @@ func (s *funcTestSuite) startServer(t *testing.T, args ...string) func() {
 		// Wait a couple of seconds to ensure the server has stopped
 		time.Sleep(2 * time.Second)
 	}
+}
+
+// Runs the tests for serverAddLocalFileExisting and serverForceAddLocalFile
+func (s *funcTestSuite) addLocalFile(t *testing.T, force bool) []server.TreeOperationResponse {
+	t.Helper()
+
+	// Create the request body
+	body := &bytes.Buffer{}
+	mpw := multipart.NewWriter(body)
+	err := mpw.WriteField("localpath", filepath.Join(s.fixtures, "photos", "joshua-woroniecki-dyEaBD5uiio-unsplash.jpg"))
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+	if force {
+		err = mpw.WriteField("force", "1")
+		if err != nil {
+			t.Fatal(err)
+			return nil
+		}
+	}
+	err = mpw.Close()
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	// Send the request
+	res, err := s.client.Post(s.serverAddr+"/api/tree/upload/", mpw.FormDataContentType(), body)
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		t.Fatalf("invalid response status code: %d", res.StatusCode)
+		return nil
+	}
+	read, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	// Parse the JSON response
+	data := make([]server.TreeOperationResponse, 0)
+	err = json.Unmarshal(read, &data)
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	return data
 }
 
 // Internal function used to upload individual files
@@ -1383,10 +1464,10 @@ func (s *funcTestSuite) unlockRequest(args *server.UnlockKeyRequest, keyTest boo
 	return data, nil
 }
 
-// Internal function that performs a request to the repo info endpoint
-func (s *funcTestSuite) repoInfoRequest() (*server.RepoInfoResponse, error) {
-	// Send the request
-	res, err := s.client.Get(s.serverAddr + "/api/repo/info")
+// Internal function that performs a request to the info endpoint
+func (s *funcTestSuite) infoRequest() (data *server.InfoResponse, err error) {
+	// Send the request, then read the response and parse the JSON response into a map
+	res, err := s.client.Get(s.serverAddr + "/api/info")
 	if err != nil {
 		return nil, err
 	}
@@ -1394,13 +1475,11 @@ func (s *funcTestSuite) repoInfoRequest() (*server.RepoInfoResponse, error) {
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		return nil, fmt.Errorf("invalid response status code: %d", res.StatusCode)
 	}
-
-	// Read the response and parse the JSON content
 	read, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
-	data := &server.RepoInfoResponse{}
+	data = &server.InfoResponse{}
 	err = json.Unmarshal(read, data)
 	if err != nil {
 		return nil, err

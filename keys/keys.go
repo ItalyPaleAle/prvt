@@ -50,7 +50,9 @@ func GetMasterKeyWithPassphrase(info *infofile.InfoFile, passphrase string) (mas
 	// Check if we have a version 1 key, where the master key is directly derived from the passphrase
 	if len(info.Salt) != 0 && len(info.ConfirmationHash) != 0 {
 		var confirmationHash []byte
-		masterKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, info.Salt)
+		// Default KDF options
+		kdfOptions := crypto.LegacyArgon2Options()
+		masterKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, info.Salt, kdfOptions)
 		if err == nil && subtle.ConstantTimeCompare(info.ConfirmationHash, confirmationHash) == 1 {
 			return masterKey, "LegacyKey", "", nil
 		}
@@ -68,9 +70,23 @@ func GetMasterKeyWithPassphrase(info *infofile.InfoFile, passphrase string) (mas
 			continue
 		}
 
+		// Ensure the key derivation function is "argon2"
+		// For backwards compatibility, accept empty values too
+		if k.KDF != "argon2" && k.KDF != "" {
+			continue
+		}
+		// For backwards compatibility, create the KDF options if empty and set the values to the legacy ones
+		if k.KDFOptions == nil {
+			k.KDFOptions = crypto.LegacyArgon2Options()
+		}
+		// Skip invalid keys
+		if k.KDFOptions.Validate() != nil {
+			continue
+		}
+
 		// Try this key
 		var wrappingKey, confirmationHash []byte
-		wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, k.Salt)
+		wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, k.Salt, k.KDFOptions)
 		if err == nil && subtle.ConstantTimeCompare(k.ConfirmationHash, confirmationHash) == 1 {
 			masterKey, err = crypto.UnwrapKey(wrappingKey, k.MasterKey)
 			if err != nil {
@@ -94,13 +110,20 @@ func AddKeyPassphrase(info *infofile.InfoFile, masterKey []byte, passphrase stri
 		return "", "Key already added", errors.New("This passphrase has already been added to the repository")
 	}
 
+	// Set up parameters for Argon2
+	kdfOptions := &crypto.Argon2Options{}
+	err = kdfOptions.Setup()
+	if err != nil {
+		return "", "Error setting up Argon2 parameters", err
+	}
+
 	// Derive the wrapping key, after generating a new salt
 	salt, err = crypto.NewSalt()
 	if err != nil {
 		return "", "Error generating a new salt", err
 	}
 	var wrappingKey []byte
-	wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, salt)
+	wrappingKey, confirmationHash, err = crypto.KeyFromPassphrase(passphrase, salt, kdfOptions)
 	if err != nil {
 		return "", "Error deriving the wrapping key", err
 	}
@@ -112,7 +135,7 @@ func AddKeyPassphrase(info *infofile.InfoFile, masterKey []byte, passphrase stri
 	}
 
 	// Add the key
-	err = info.AddPassphrase(salt, confirmationHash, wrappedKey)
+	err = info.AddPassphrase(salt, confirmationHash, wrappedKey, kdfOptions)
 	if err != nil {
 		return "", "Error adding the key", err
 	}

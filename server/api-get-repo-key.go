@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/ItalyPaleAle/prvt/keys"
+
 	"github.com/gin-gonic/gin"
 )
 
