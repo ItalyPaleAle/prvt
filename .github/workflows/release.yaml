@@ -74,7 +74,7 @@ jobs:
                 set -e
 
                 echo -e "###\nInstall make, zip, brotli\n"
-                apk add make zip brotli
+                apk add make zip brotli git curl
 
                 echo -e "\n###\nFetching tools\n"
                 make get-tools
