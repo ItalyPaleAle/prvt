@@ -56,7 +56,7 @@ func (s *Server) handleWebUI(router *gin.Engine) error {
 		}
 
 		// Try to return the file (uncompressed) if it exists in the box
-		f, err := assetsBox.Open("app.wasm")
+		f, err := assetsBox.Open("/app.wasm")
 		if err != nil && !os.IsNotExist(err) {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -83,7 +83,7 @@ func (s *Server) handleWebUI(router *gin.Engine) error {
 		}
 
 		// Return the compressed file
-		f, err = assetsBox.Open("app.wasm.br")
+		f, err = assetsBox.Open("/app.wasm.br")
 		if err != nil && !os.IsNotExist(err) {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
