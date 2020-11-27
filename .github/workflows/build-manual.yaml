@@ -73,6 +73,7 @@ jobs:
             ${{env.GO_BUILDER_IMAGE}} \
               sh -c '
                 set -e
+                mkdir -p .out
 
                 echo -e "###\nInstall make, zip, brotli\n"
                 apk add make zip brotli git curl
@@ -98,7 +99,7 @@ jobs:
                     -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64/prvt
                 cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
                 cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
-                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-amd64)
+                (cd .bin && tar -czvf ../.out/prvt-v${{env.BUILD_VERSION}}-linux-amd64.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-amd64)
 
                 echo -e "\n###\nBuilding linux/386\n"
                 mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
@@ -109,7 +110,7 @@ jobs:
                     -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-386/prvt
                 cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
                 cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
-                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-386.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-386)
+                (cd .bin && tar -czvf ../.out/prvt-v${{env.BUILD_VERSION}}-linux-386.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-386)
 
                 echo -e "\n###\nBuilding linux/arm64\n"
                 mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
@@ -120,7 +121,7 @@ jobs:
                     -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64/prvt
                 cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
                 cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
-                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-arm64.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-arm64)
+                (cd .bin && tar -czvf ../.out/prvt-v${{env.BUILD_VERSION}}-linux-arm64.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-arm64)
 
                 echo -e "\n###\nBuilding linux/arm\n"
                 mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
@@ -132,7 +133,7 @@ jobs:
                     -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7/prvt
                 cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
                 cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
-                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-linux-armv7.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-armv7)
+                (cd .bin && tar -czvf ../.out/prvt-v${{env.BUILD_VERSION}}-linux-armv7.tar.gz prvt-v${{env.BUILD_VERSION}}-linux-armv7)
 
                 echo -e "\n###\nBuilding darwin/amd64\n"
                 mkdir .bin/prvt-v${{env.BUILD_VERSION}}-macos
@@ -143,7 +144,7 @@ jobs:
                     -o .bin/prvt-v${{env.BUILD_VERSION}}-macos/prvt
                 cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-macos
                 cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-macos
-                (cd .bin && tar -czvf prvt-v${{env.BUILD_VERSION}}-macos.tar.gz prvt-v${{env.BUILD_VERSION}}-macos)
+                (cd .bin && tar -czvf ../.out/prvt-v${{env.BUILD_VERSION}}-macos.tar.gz prvt-v${{env.BUILD_VERSION}}-macos)
 
                 echo -e "\n###\nBuilding windows/amd64\n"
                 mkdir .bin/prvt-v${{env.BUILD_VERSION}}-win64
@@ -154,7 +155,7 @@ jobs:
                     -o .bin/prvt-v${{env.BUILD_VERSION}}-win64/prvt.exe
                 cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-win64
                 cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-win64
-                (cd .bin && zip -r prvt-v${{env.BUILD_VERSION}}-win64.zip prvt-v${{env.BUILD_VERSION}}-win64)
+                (cd .bin && zip -r ../.out/prvt-v${{env.BUILD_VERSION}}-win64.zip prvt-v${{env.BUILD_VERSION}}-win64)
 
                 echo -e "\n###\nBuilding windows/386\n"
                 mkdir .bin/prvt-v${{env.BUILD_VERSION}}-win32
@@ -165,14 +166,15 @@ jobs:
                     -o .bin/prvt-v${{env.BUILD_VERSION}}-win32/prvt.exe
                 cp LICENSE .bin/prvt-v${{env.BUILD_VERSION}}-win32
                 cp README.md .bin/prvt-v${{env.BUILD_VERSION}}-win32
-                (cd .bin && zip -r prvt-v${{env.BUILD_VERSION}}-win32.zip prvt-v${{env.BUILD_VERSION}}-win32)
+                (cd .bin && zip -r ../.out/prvt-v${{env.BUILD_VERSION}}-win32.zip prvt-v${{env.BUILD_VERSION}}-win32)
                 '
           echo -e "\n###\nCompilation done\n"
           ls -al .bin
-      
+          ls -al .out
+
       # Publish artifacts
       - name: Publish binaries as artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: bin
-          path: .bin
+          name: artifacts
+          path: .out
