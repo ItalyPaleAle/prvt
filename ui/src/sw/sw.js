@@ -28,9 +28,10 @@ self.skipWaiting()
 
 // Automatically pre-cache all assets from Webpack - this will contain auto-generated code
 const precacheController = new PrecacheController()
-if (self.__WB_MANIFEST) {
-    console.log('precached', self.__WB_MANIFEST)
-    precacheController.addToCacheList(self.__WB_MANIFEST)
+const wbManifest = self.__WB_MANIFEST
+if (wbManifest) {
+    console.log('precached', wbManifest)
+    precacheController.addToCacheList(wbManifest)
 }
 
 // Listen to the service worker installation event
