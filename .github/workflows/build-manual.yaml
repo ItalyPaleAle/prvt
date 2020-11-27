@@ -31,10 +31,10 @@ jobs:
           BUILD_VERSION="${{ github.event.inputs.version }}"
           BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%S')
           COMMIT_HASH=$(git rev-parse --short HEAD)
-          echo ::set-env name=BUILD_ID::$BUILD_ID
-          echo ::set-env name=BUILD_VERSION::$BUILD_VERSION
-          echo ::set-env name=BUILD_TIME::$BUILD_TIME
-          echo ::set-env name=COMMIT_HASH::$COMMIT_HASH
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_ENV
+          echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
+          echo "BUILD_TIME=$BUILD_TIME" >> $GITHUB_ENV
+          echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
 
       # Build web UI
       - name: Build web UI
