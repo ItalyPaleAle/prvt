@@ -9,8 +9,8 @@ on:
       - master
 
 env:
-  GO_VERSION: 1.15
-  NODE_BUILDER_IMAGE: "node:12-alpine"
+  GO_VERSION: "1.15"
+  NODE_BUILDER_IMAGE: "node:14-alpine"
   GPGKEY_ID: "0x4C6D7DB1D92F58EE"
   GPGKEY_ID_FULL: "26426A3E380F1D1B67031D3C4C6D7DB1D92F58EE"
   GPGKEY_USER: "prvt CI <ci@prvt>"
@@ -41,6 +41,7 @@ jobs:
             --rm \
             -v "$PWD"/ui:/usr/src/myapp \
             -w /usr/src/myapp \
+            -e APP_VERSION=dev \
             ${{env.NODE_BUILDER_IMAGE}} \
               sh -c '
                 set -e
@@ -49,7 +50,7 @@ jobs:
                 npm ci
 
                 echo -e "\n###\nBuilding UI\n"
-                APP_VERSION="dev" npm run build
+                npm run build
                 '
           echo -e "\n###\nCompilation done\n"
           ls -al ui/dist

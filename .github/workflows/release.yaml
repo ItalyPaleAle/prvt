@@ -8,7 +8,7 @@ on:
 
 env:
   GO_BUILDER_IMAGE: 'golang:1.15-alpine'
-  NODE_BUILDER_IMAGE: 'node:12-alpine'
+  NODE_BUILDER_IMAGE: 'node:14-alpine'
   PKGER_VERSION: 0.17.1
   
 jobs:
@@ -43,6 +43,7 @@ jobs:
           --rm \
           -v "$PWD"/ui:/usr/src/myapp \
           -w /usr/src/myapp \
+          -e APP_VERSION="${{env.BUILD_VERSION}}" \
           ${{env.NODE_BUILDER_IMAGE}} \
             sh -c '
               set -e
@@ -51,7 +52,7 @@ jobs:
               npm ci
 
               echo -e "\n###\nBuilding UI\n"
-              APP_VERSION="${{env.BUILD_VERSION}}" npm run build
+              npm run build
               '
         echo -e "\n###\nCompilation done\n"
         ls -al ui/dist
@@ -61,34 +62,36 @@ jobs:
       run: |
         mkdir -p .bin
         # Build using Docker
+        # Disable CGO so the binary is fully static
         docker run \
           --rm \
           -v "$PWD":/usr/src/myapp \
           -w /usr/src/myapp \
+          -e CGO_ENABLED=0 \
+          -e GO111MODULE=on \
           ${{env.GO_BUILDER_IMAGE}} \
             sh -c '
               set -e
 
-              echo -e "###\nInstall the zip utility\n"
-              apk add zip
+              echo -e "###\nInstall make, zip, brotli\n"
+              apk add make zip brotli
 
-              echo -e "\n###\nFetching pkger\n"
-              wget -qO - https://gobinaries.com/github.com/markbates/pkger/cmd/pkger@v${{env.PKGER_VERSION}} | PREFIX=. sh
+              echo -e "\n###\nFetching tools\n"
+              make get-tools
+
+              echo -e "\n###\nBuild wasm module\n"
+              make build-wasm-prod
 
               echo -e "\n###\nRunning pkger\n"
-              ./pkger
+              make pkger
 
               echo -e "\n###\nFetching modules\n"
-              GO111MODULE=on \
-                go get
+              go get
 
               echo -e "\n###\nBuilding linux/amd64\n"
-              # Disable CGO so the binary is fully static
               mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64
-              CGO_ENABLED=0 \
               GOOS=linux \
               GOARCH=amd64 \
-              GO111MODULE=on \
                 go build \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-amd64/prvt
@@ -98,10 +101,8 @@ jobs:
 
               echo -e "\n###\nBuilding linux/386\n"
               mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-386
-              CGO_ENABLED=0 \
               GOOS=linux \
               GOARCH=386 \
-              GO111MODULE=on \
                 go build \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-386/prvt
@@ -111,10 +112,8 @@ jobs:
 
               echo -e "\n###\nBuilding linux/arm64\n"
               mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64
-              CGO_ENABLED=0 \
               GOOS=linux \
               GOARCH=arm64 \
-              GO111MODULE=on \
                 go build \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-arm64/prvt
@@ -124,11 +123,9 @@ jobs:
 
               echo -e "\n###\nBuilding linux/arm\n"
               mkdir .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7
-              CGO_ENABLED=0 \
               GOOS=linux \
               GOARCH=arm \
               GOARM=7 \
-              GO111MODULE=on \
                 go build \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-linux-armv7/prvt
@@ -138,10 +135,8 @@ jobs:
 
               echo -e "\n###\nBuilding darwin/amd64\n"
               mkdir .bin/prvt-v${{env.BUILD_VERSION}}-macos
-              CGO_ENABLED=0 \
               GOOS=darwin \
               GOARCH=amd64 \
-              GO111MODULE=on \
                 go build \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-macos/prvt
@@ -151,10 +146,8 @@ jobs:
 
               echo -e "\n###\nBuilding windows/amd64\n"
               mkdir .bin/prvt-v${{env.BUILD_VERSION}}-win64
-              CGO_ENABLED=0 \
               GOOS=windows \
               GOARCH=amd64 \
-              GO111MODULE=on \
                 go build \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-win64/prvt.exe
@@ -164,10 +157,8 @@ jobs:
 
               echo -e "\n###\nBuilding windows/386\n"
               mkdir .bin/prvt-v${{env.BUILD_VERSION}}-win32
-              CGO_ENABLED=0 \
               GOOS=windows \
               GOARCH=386 \
-              GO111MODULE=on \
                 go build \
                   -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1 -X github.com/ItalyPaleAle/prvt/buildinfo.AppVersion=${{env.BUILD_VERSION}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildID=${{env.BUILD_ID}} -X github.com/ItalyPaleAle/prvt/buildinfo.BuildTime=${{env.BUILD_TIME}} -X github.com/ItalyPaleAle/prvt/buildinfo.CommitHash=${{env.COMMIT_HASH}}" \
                   -o .bin/prvt-v${{env.BUILD_VERSION}}-win32/prvt.exe
