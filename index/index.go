@@ -18,7 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"strings"
 	"sync"
@@ -31,6 +33,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// Number of files in each chunk of the index
+const ChunkSize = 10
 
 // FolderList contains the result of the ListFolder method
 type FolderList struct {
@@ -52,17 +57,18 @@ type IndexStats struct {
 // Interface for index providers, that interface with the back-end store
 type IndexProvider interface {
 	// Get the index file
-	Get(ctx context.Context) (data []byte, isJSON bool, tag interface{}, err error)
+	Get(ctx context.Context, sequence uint32) (data []byte, isJSON bool, tag interface{}, err error)
 	// Set the index file
-	Set(ctx context.Context, data []byte, cacheTag interface{}) (newTag interface{}, err error)
+	Set(ctx context.Context, data []byte, sequence uint32, tag interface{}) (newTag interface{}, err error)
 }
 
 // Index manages the index for all files and folders
 type Index struct {
-	cache      *pb.IndexFile
+	elements   []*pb.IndexElement
 	cacheFiles map[string]*pb.IndexElement
 	cacheTree  *IndexTreeNode
-	cacheTag   interface{}
+	fileHash   [][]byte
+	fileTag    []interface{}
 	provider   IndexProvider
 	semaphore  sync.Mutex
 }
@@ -75,11 +81,12 @@ func (i *Index) SetProvider(provider IndexProvider) {
 	// Set the new provider object
 	i.provider = provider
 
-	// Reset the cache
-	i.cache = nil
+	// Reset the object
+	i.elements = nil
 	i.cacheFiles = nil
 	i.cacheTree = nil
-	i.cacheTag = nil
+	i.fileHash = make([][]byte, 0)
+	i.fileTag = make([]interface{}, 0)
 
 	i.semaphore.Unlock()
 }
@@ -93,59 +100,94 @@ func (i *Index) Refresh(force bool) error {
 
 	// Semaphore
 	i.semaphore.Lock()
-	defer func() {
-		i.semaphore.Unlock()
-	}()
+	defer i.semaphore.Unlock()
 
 	// Check if we already have the index in cache (unless we're forcing a refresh)
-	if !force && i.cache != nil {
+	if !force && i.elements != nil {
 		// Cache exists and it's fresh
 		return nil
 	}
 
-	// Need to request the index
-	data, isJSON, tag, err := i.provider.Get(context.Background())
-	if err != nil {
-		return err
-	}
-
-	// Empty index
-	if data == nil || len(data) == 0 {
-		i.cache = &pb.IndexFile{
-			Version:  2,
-			Elements: make([]*pb.IndexElement, 0),
-		}
-		// Build the tree
-		i.buildTree()
-		return nil
-	}
-	i.cache = &pb.IndexFile{}
-
-	// Parse a legacy JSON file or a new protobuf-encoded one
-	if isJSON {
-		err = protojson.Unmarshal(data, i.cache)
+	// Need to request the various files in the index
+	done := false
+	i.elements = make([]*pb.IndexElement, 0)
+	i.fileHash = make([][]byte, 0)
+	i.fileTag = make([]interface{}, 0)
+	for j := uint32(0); !done; j++ {
+		data, isJSON, tag, err := i.provider.Get(context.Background(), j)
 		if err != nil {
 			return err
 		}
 
-		// Need to iterate through all Elements and convert the Name from the UUID represented as string to bytes
-		for _, el := range i.cache.Elements {
-			if el.FileIdString != "" && len(el.FileId) == 0 {
-				u, err := uuid.FromString(el.FileIdString)
-				if err != nil {
-					return err
-				}
-				el.FileIdString = ""
-				el.FileId = u.Bytes()
+		// Empty index
+		if j == 0 && len(data) == 0 {
+			i.fileHash = [][]byte{{0}}
+			i.fileTag = []interface{}{nil}
+
+			// No need to continue
+			done = true
+			break
+		}
+
+		// Parse a legacy JSON file or a new protobuf-encoded one
+		if isJSON {
+			// Only the first file can be encoded as JSON
+			if j != 0 {
+				return errors.New("only index file 0 can be JSON-encoded")
 			}
+			file := &pb.IndexFile{}
+			err = protojson.Unmarshal(data, file)
+			if err != nil {
+				return err
+			}
+
+			// Need to iterate through all Elements and convert the Name from the UUID represented as string to bytes
+			for _, el := range file.Elements {
+				if el.FileIdString != "" && len(el.FileId) == 0 {
+					u, err := uuid.FromString(el.FileIdString)
+					if err != nil {
+						return err
+					}
+					el.FileIdString = ""
+					el.FileId = u.Bytes()
+				}
+			}
+
+			// Store in cache
+			i.elements = file.Elements
+
+			// JSON-encoded indexes can not have multiple sequences, so stop here
+			// No need to calculate the hash as we'll definitely need to re-encode this
+			i.fileHash = [][]byte{{0}}
+			i.fileTag = []interface{}{nil}
+			done = true
+			break
 		}
-	} else {
-		err = proto.Unmarshal(data, i.cache)
+
+		// This file is encoded as protobuf
+		// Unmarshal the response
+		file := &pb.IndexFile{}
+		err = proto.Unmarshal(data, file)
 		if err != nil {
 			return err
 		}
+
+		// Sequence number must match
+		if file.Sequence != j {
+			return errors.New("sequence number mismatch")
+		}
+
+		// Add all elements to the cache
+		i.elements = append(i.elements, file.Elements...)
+
+		// Calculate the hash of this file and store that together with the tag
+		h := sha256.Sum256(data)
+		i.fileHash = append(i.fileHash, h[:])
+		i.fileTag = append(i.fileTag, tag)
+
+		// Check if there's another part to get
+		done = !file.HasNext
 	}
-	i.cacheTag = tag
 
 	// Build the tree
 	i.buildTree()
@@ -154,22 +196,72 @@ func (i *Index) Refresh(force bool) error {
 }
 
 // Save an index object
-func (i *Index) save(obj *pb.IndexFile) error {
-	// Encode the data as a protocol buffer message
-	data, err := proto.Marshal(obj)
-	if err != nil {
-		return err
-	}
+func (i *Index) save() error {
+	// Semaphore
+	i.semaphore.Lock()
+	defer i.semaphore.Unlock()
 
-	// Encrypt and save the updated index, if the tag is the same
-	tag, err := i.provider.Set(context.Background(), data, i.cacheTag)
-	if err != nil {
-		return err
-	}
+	fileHashLen := uint32(len(i.fileHash))
+	fileTagLen := uint32(len(i.fileTag))
+	elementsLen := uint32(len(i.elements))
 
-	// Update the index in cache too
-	i.cache = obj
-	i.cacheTag = tag
+	// Split the index into multiple chunks if needed
+	chunks := elementsLen / ChunkSize
+	if (elementsLen % ChunkSize) > 0 {
+		chunks++
+	}
+	for j := uint32(0); j < chunks; j++ {
+		start := (j * ChunkSize)
+		end := ((j + 1) * ChunkSize)
+		if end > elementsLen {
+			end = elementsLen
+		}
+		hasNext := (j < (chunks - 1))
+		obj := &pb.IndexFile{
+			Version:  3,
+			Sequence: j,
+			HasNext:  hasNext,
+			Elements: i.elements[start:end],
+		}
+
+		// Encode as a protocol buffer message
+		data, err := proto.Marshal(obj)
+		if err != nil {
+			return err
+		}
+
+		// Check if the encoded data is any different
+		newH := sha256.Sum256(data)
+		if j < fileHashLen {
+			curH := i.fileHash[j]
+			if bytes.Equal(newH[:], curH) {
+				// data hasn't changed, so move to the next chunk
+				continue
+			}
+		}
+
+		// Encrypt and save the updated index, if the tag is the same
+		var curTag interface{}
+		if j < fileTagLen {
+			curTag = i.fileTag[j]
+		}
+		newTag, err := i.provider.Set(context.Background(), data, j, curTag)
+		if err != nil {
+			return err
+		}
+
+		// Update the cached data
+		if j < fileHashLen {
+			i.fileHash[j] = newH[:]
+		} else {
+			i.fileHash = append(i.fileHash, newH[:])
+		}
+		if j < fileTagLen {
+			i.fileTag[j] = newTag
+		} else {
+			i.fileTag = append(i.fileTag, newTag)
+		}
+	}
 
 	return nil
 }
@@ -228,14 +320,11 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 		Size:     size,
 		Digest:   digest,
 	}
-	elements := append(i.cache.Elements, fileEl)
+	// TODO: LOOK FOR THE FIRST UNUSED SLOT
+	i.elements = append(i.elements, fileEl)
 
 	// Save the updated index
-	updated := &pb.IndexFile{
-		Version:  2,
-		Elements: elements,
-	}
-	if err := i.save(updated); err != nil {
+	if err := i.save(); err != nil {
 		return err
 	}
 
@@ -368,8 +457,9 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 	objectsRemoved := make([]string, 0)
 	pathsRemoved := make([]string, 0)
 	// Output index; see: https://stackoverflow.com/a/20551116/192024
+	// TODO: DO NOT DELETE THE ELEMENT (which causes a shift and so all chunks after this are re-uploaded) BUT RATHER MARK IS AS "REMOVED"
 	j := 0
-	for _, el := range i.cache.Elements {
+	for _, el := range i.elements {
 		// Need to remove
 		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
 			// Add to the result
@@ -381,15 +471,18 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 			pathsRemoved = append(pathsRemoved, el.Path)
 		} else {
 			// Maintain in the list
-			i.cache.Elements[j] = el
+			i.elements[j] = el
 			j++
 		}
 	}
-	i.cache.Elements = i.cache.Elements[:j]
+	i.elements = i.elements[:j]
 
-	// Save
-	if err := i.save(i.cache); err != nil {
-		return nil, nil, err
+	// Save if needed
+	if len(objectsRemoved) > 0 {
+		err := i.save()
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Rebuild the tree and dictionary
@@ -438,7 +531,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 
 	// Get the result list from the node we found
 	// Note that the last character of the string is a / so we certainly have the right node
-	if node == nil || node.Children == nil || len(node.Children) < 1 {
+	if len(node.Children) == 0 {
 		// Nothing found
 		return nil, nil
 	}
@@ -486,14 +579,14 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 // Builds the tree and the dictionary for easier searching
 func (i *Index) buildTree() {
 	// Init the objects
-	i.cacheFiles = make(map[string]*pb.IndexElement, len(i.cache.Elements))
+	i.cacheFiles = make(map[string]*pb.IndexElement, len(i.elements))
 	i.cacheTree = &IndexTreeNode{
 		Name:     "/",
 		Children: make([]*IndexTreeNode, 0),
 	}
 
 	// Iterate through the elements and build the tree
-	for _, el := range i.cache.Elements {
+	for _, el := range i.elements {
 		i.addToTree(el)
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs"
@@ -32,19 +33,24 @@ type IndexProviderFs struct {
 }
 
 // Get the index file
-func (i *IndexProviderFs) Get(ctx context.Context) (data []byte, isJSON bool, tag interface{}, err error) {
-	isJSON = false
-
+func (i *IndexProviderFs) Get(ctx context.Context, sequence uint32) (data []byte, isJSON bool, tag interface{}, err error) {
 	// Abort if no store
 	if i.Store == nil {
 		err = errors.New("store is not initialized")
 		return
 	}
 
+	// File name based on the sequence
+	// The first doesn't have a suffix because of backwards-compatibility
+	name := "_index"
+	if sequence > 0 {
+		name += "." + strconv.FormatUint(uint64(sequence), 10)
+	}
+
 	// Need to request the index
 	buf := &bytes.Buffer{}
 	var found bool
-	found, tag, err = i.Store.Get(ctx, "_index", buf, func(metadata *crypto.Metadata, metadataSize int32) {
+	found, tag, err = i.Store.Get(ctx, name, buf, func(metadata *crypto.Metadata, metadataSize int32) {
 		// Check if we're decoding a legacy JSON file
 		if metadata.ContentType == "application/json" {
 			isJSON = true
@@ -68,7 +74,7 @@ func (i *IndexProviderFs) Get(ctx context.Context) (data []byte, isJSON bool, ta
 }
 
 // Set the index file
-func (i *IndexProviderFs) Set(ctx context.Context, data []byte, cacheTag interface{}) (newTag interface{}, err error) {
+func (i *IndexProviderFs) Set(ctx context.Context, data []byte, sequence uint32, tag interface{}) (newTag interface{}, err error) {
 	// Abort if no store
 	if i.Store == nil {
 		err = errors.New("store is not initialized")
@@ -76,8 +82,14 @@ func (i *IndexProviderFs) Set(ctx context.Context, data []byte, cacheTag interfa
 	}
 
 	// Ensure data is not empty
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return nil, errors.New("data must not be empty")
+	}
+
+	// File name based on the sequence
+	name := "_index"
+	if sequence > 0 {
+		name += "." + strconv.FormatUint(uint64(sequence), 10)
 	}
 
 	// Encrypt and save the updated index, if the tag is the same
@@ -87,5 +99,5 @@ func (i *IndexProviderFs) Set(ctx context.Context, data []byte, cacheTag interfa
 		Size:        int64(len(data)),
 	}
 	buf := bytes.NewBuffer(data)
-	return i.Store.Set(ctx, "_index", buf, cacheTag, metadata)
+	return i.Store.Set(ctx, name, buf, tag, metadata)
 }
