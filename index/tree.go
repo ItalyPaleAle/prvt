@@ -18,7 +18,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
+	"fmt"
+	"strings"
+
 	pb "github.com/ItalyPaleAle/prvt/index/proto"
+	"github.com/gofrs/uuid"
 )
 
 // IndexTreeNode is a node in the tree
@@ -57,4 +61,58 @@ func (n *IndexTreeNode) Add(name string, file *pb.IndexElement) *IndexTreeNode {
 		n.Children = append(n.Children, add)
 	}
 	return add
+}
+
+// Remove a child node by its name and returns it
+func (n *IndexTreeNode) Remove(name string) *IndexTreeNode {
+	if len(n.Children) == 0 {
+		return nil
+	}
+
+	j := 0
+	var removed *IndexTreeNode = nil
+	for i := 0; i < len(n.Children); i++ {
+		if n.Children[i].Name == name {
+			// Remove this
+			removed = n.Children[i]
+		} else {
+			// Maintain this
+			n.Children[j] = n.Children[i]
+			j++
+		}
+	}
+	n.Children = n.Children[:j]
+
+	return removed
+}
+
+// Dump information about this node and all its children
+// Used for debugging
+func (n *IndexTreeNode) Dump() {
+	n.dump(0)
+}
+
+func (n *IndexTreeNode) dump(indent int) {
+	prefix := strings.Repeat(" ", indent*3)
+
+	fmt.Println(prefix+"- Name:", n.Name)
+	if n.File != nil {
+		if n.File.Deleted {
+			fmt.Println(prefix + "  Deleted file")
+		} else {
+			fileId, err := uuid.FromBytes(n.File.FileId)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(prefix+"  File:", n.File.Path, "("+fileId.String()+")")
+		}
+	}
+	if len(n.Children) == 0 {
+		fmt.Println(prefix + "  Leaf node")
+	} else {
+		fmt.Println(prefix + "  Children:")
+		for _, c := range n.Children {
+			c.dump(indent + 1)
+		}
+	}
 }

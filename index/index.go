@@ -35,7 +35,7 @@ import (
 )
 
 // Number of files in each chunk of the index
-const ChunkSize = 10
+var ChunkSize = uint32(10)
 
 // FolderList contains the result of the ListFolder method
 type FolderList struct {
@@ -371,7 +371,7 @@ func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 	node := i.cacheTree
 	for y := 1; y < len(path); y++ {
 		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
-		if path[y] == '/' && (y-start) > 1 {
+		if path[y] == '/' && (y-start) > 0 {
 			part := path[start:y]
 			if found := node.Find(part); found != nil {
 				node = found
@@ -456,9 +456,6 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 	// Iterate through the list of files to find matches
 	objectsRemoved := make([]string, 0)
 	pathsRemoved := make([]string, 0)
-	// Output index; see: https://stackoverflow.com/a/20551116/192024
-	// TODO: DO NOT DELETE THE ELEMENT (which causes a shift and so all chunks after this are re-uploaded) BUT RATHER MARK IS AS "REMOVED"
-	j := 0
 	for _, el := range i.elements {
 		// Need to remove
 		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
@@ -469,13 +466,16 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 			}
 			objectsRemoved = append(objectsRemoved, fileId.String())
 			pathsRemoved = append(pathsRemoved, el.Path)
-		} else {
-			// Maintain in the list
-			i.elements[j] = el
-			j++
+
+			// Remove from the tree
+			i.removeFromTree(el)
+
+			// Mark the field as deleted, but do not remove the record from the list
+			// In fact, doing so would cause a shift that would cause us to re-upload many more chunks than we'd need
+			el.MarkDeleted()
+
 		}
 	}
-	i.elements = i.elements[:j]
 
 	// Save if needed
 	if len(objectsRemoved) > 0 {
@@ -516,7 +516,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 		// Skip the first character, which is a /
 		for y := 1; y < len(path); y++ {
 			// Folder delimiter (and ignore double delimiters)
-			if path[y] == '/' && (y-start) > 1 {
+			if path[y] == '/' && (y-start) > 0 {
 				part := path[start:y]
 				if found := node.Find(part); found != nil {
 					node = found
@@ -587,7 +587,10 @@ func (i *Index) buildTree() {
 
 	// Iterate through the elements and build the tree
 	for _, el := range i.elements {
-		i.addToTree(el)
+		// Ignore deleted elements
+		if !el.Deleted {
+			i.addToTree(el)
+		}
 	}
 }
 
@@ -602,7 +605,8 @@ func (i *Index) addToTree(el *pb.IndexElement) {
 	node := i.cacheTree
 	for y := 1; y < len(el.Path); y++ {
 		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
-		if el.Path[y] == '/' && (y-start) > 1 {
+		//TODO: TEST WITH DOUBLE DELIMITERS AGAIN
+		if el.Path[y] == '/' && (y-start) > 0 {
 			part := el.Path[start:y]
 			if found := node.Find(part); found != nil {
 				// Element exists already
@@ -627,4 +631,56 @@ func (i *Index) addToTree(el *pb.IndexElement) {
 	}
 	key := fileIdObj.String()
 	i.cacheFiles[key] = el
+}
+
+func (i *Index) removeFromTree(el *pb.IndexElement) {
+	// Ensure we have a path and that it begins with /
+	if len(el.Path) == 0 || el.Path[0] != '/' {
+		return
+	}
+
+	// Iterate through the path to get the intermediate folders (skipping the first character which is a / itself)
+	start := 1
+	stack := []*IndexTreeNode{i.cacheTree}
+	node := i.cacheTree
+	for y := 1; y < len(el.Path); y++ {
+		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
+		if el.Path[y] == '/' && (y-start) > 0 {
+			part := el.Path[start:y]
+			node = node.Find(part)
+			// This should never happen, so just return
+			if node == nil {
+				return
+			}
+			stack = append(stack, node)
+			start = y + 1
+		}
+	}
+
+	// Whatever is left is the name of the file
+	fileName := el.Path[start:]
+
+	// Remove the leaf node
+	node.Remove(fileName)
+
+	// Go down the stack and remove all empty elements in-between
+	j := len(stack)
+	// Go until 1 because the first element is the root node
+	for j > 1 {
+		j--
+		// Check if file is nil to ensure this was a folder, and then check if there are other children to see if it's empty
+		// Always exclude the root node
+		if stack[j].File == nil && len(stack[j].Children) == 0 {
+			// Remove this empty non-root node by asking its parent
+			stack[j-1].Remove(stack[j].Name)
+		}
+	}
+
+	// Remove from the dictionary too
+	fileIdObj, err := uuid.FromBytes(el.FileId)
+	if err != nil {
+		return
+	}
+	key := fileIdObj.String()
+	delete(i.cacheFiles, key)
 }
