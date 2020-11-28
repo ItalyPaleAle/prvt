@@ -17,20 +17,12 @@ export function JSONResponse(data: any, status?: number): Response {
     )
 }
 
-/** Message to be broadcast to all clients */
-interface BroadcastMessageData {
-    /** Name of the message */
-    message: string
-    /** Other key-value pairs */
-    [other: string]: any
-}
-
 /**
  * Sends a message to every client connected to this service worker
  *
  * @param data Message to send
  */
-export async function BroadcastMessage(data: BroadcastMessageData): Promise<void> {
+export async function BroadcastMessage(data: ServiceWorkerMessage): Promise<void> {
     const list = await self.clients.matchAll()
     list.forEach(c => {
         c.postMessage(data)

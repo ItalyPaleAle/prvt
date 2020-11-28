@@ -36,7 +36,7 @@ const pageList = {
         dist: 'app.html',
         chunks: ['shared', 'vendor', 'app'],
         html: path.resolve(__dirname, 'src/app/index.html'),
-        entry: [path.resolve(__dirname, 'src/app/main.js')]
+        entry: [path.resolve(__dirname, 'src/app/main.ts')]
     },
 }
 

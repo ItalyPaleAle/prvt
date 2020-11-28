@@ -1,13 +1,22 @@
+declare var URL_PREFIX: string
+
 import {timeoutPromise, TimeoutError} from './utils'
 
 const requestTimeout = 5000 // 5s
 
-/* global URL_PREFIX */
+interface RequestOptions {
+    method?: any
+    headers?: any
+    body?: any
+    postData?: any
+    timeout?: any
+    rawResponse?: any
+}
 
 /**
  * Performs API requests.
  */
-export async function Request(url, options) {
+export async function Request(url: string, options?: RequestOptions) {
     if (!options) {
         options = {}
     }
@@ -18,12 +27,12 @@ export async function Request(url, options) {
     }
 
     // Set the options
-    const reqOptions = {
+    const reqOptions: RequestInit = {
         method: 'GET',
         cache: 'no-store',
         credentials: 'omit',
-        headers: new Headers()
     }
+    const headers = new Headers()
 
     // HTTP method
     if (options.method) {
@@ -34,9 +43,10 @@ export async function Request(url, options) {
     if (options.headers && typeof options.headers == 'object') {
         for (const key in options.headers) {
             if (Object.prototype.hasOwnProperty.call(options.headers, key)) {
-                reqOptions.headers.set(key, options.headers[key])
+                headers.set(key, options.headers[key])
             }
         }
+        reqOptions.headers = headers
     }
 
     // Request body
@@ -49,9 +59,10 @@ export async function Request(url, options) {
     if (options.postData) {
         // Ensure method is POST
         reqOptions.method = 'POST'
-        reqOptions.headers.set('Content-Type', 'application/json')
         reqOptions.body = JSON.stringify(options.postData)
+        headers.set('Content-Type', 'application/json')
     }
+    reqOptions.headers = headers
 
     // Make the request
     try {
@@ -67,7 +78,8 @@ export async function Request(url, options) {
         }
     
         // We're expecting a JSON document
-        if (!response.headers.get('content-type').match(/application\/json/i)) {
+        const ct = response.headers.get('content-type')
+        if (!ct?.match(/application\/json/i)) {
             throw Error('Response was not JSON')
         }
     
@@ -75,8 +87,8 @@ export async function Request(url, options) {
         const body = await response.json()
 
         // Check if we have a response with status code 200-299
-        if (!response || !response.ok) {
-            if (body && body.error) {
+        if (!response.ok) {
+            if (body?.error) {
                 // eslint-disable-next-line no-console
                 console.error('Invalid response status code')
                 throw Error(body.error)

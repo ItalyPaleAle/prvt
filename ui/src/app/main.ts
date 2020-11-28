@@ -5,6 +5,7 @@ import '../css/style.css'
 import theme from './lib/theme'
 
 // Libraries
+import {SvelteComponent} from 'svelte'
 import {push, location} from 'svelte-spa-router'
 import {get} from 'svelte/store'
 import controlled from './lib/sw-controlled'
@@ -17,8 +18,8 @@ import AppInfo from './lib/appinfo'
 import App from './App.svelte'
 import LoadingApp from './LoadingApp.svelte'
 
-let app = null
-let wasmCb = null
+let app: SvelteComponent | null = null
+let wasmCb: ((value?: boolean) => void) | null = null
 
 ;(async function main() {
     // Show the LoadingApp component while the app is initializing
@@ -49,19 +50,25 @@ let wasmCb = null
     // Listen to messages coming from the service worker
     navigator.serviceWorker.addEventListener('message', swMessage)
 
+    const controller = navigator.serviceWorker.controller
+    if (!controller) {
+        // Should never happen
+        throw Error('navigator.serviceWorker.controller is empty')
+    }
+
     // Request the current theme from the service worker
     // Initially, the theme is loaded from localStorage, but that might be out of sync
-    navigator.serviceWorker.controller.postMessage({
+    controller.postMessage({
         message: 'get-theme'
-    })
+    } as ServiceWorkerMessage)
 
     // Request wasm status
     await new Promise((resolve) => {
         wasmCb = resolve
         // Send the request
-        navigator.serviceWorker.controller.postMessage({
+        controller.postMessage({
             message: 'get-wasm'
-        })
+        } as ServiceWorkerMessage)
     })
 
     // Remove the loading component
@@ -73,8 +80,8 @@ let wasmCb = null
     })
 })()
 
-async function swMessage(event) {
-    if (!event || !event.data) {
+async function swMessage(event: MessageEvent<ServiceWorkerMessage>) {
+    if (!event?.data) {
         return
     }
 
@@ -105,7 +112,7 @@ async function swMessage(event) {
 
                 // 2. …If the repo is now locked, redirect users to unlock
                 // Otherwise, if we're in the /unlock route already, go to the main view
-                if (!info || !info.repoUnlocked) {
+                if (!info?.repoUnlocked) {
                     push('/unlock')
                 }
                 else {
@@ -117,7 +124,7 @@ async function swMessage(event) {
 
             // Invoke the callback if any
             if (wasmCb) {
-                wasmCb(event.data.enabled)
+                wasmCb(event.data.enabled as boolean)
                 wasmCb = null
             }
             break

@@ -1,4 +1,4 @@
-import {push} from 'svelte-spa-router'
+import {push, RouteDefinition} from 'svelte-spa-router'
 import {wrap} from 'svelte-spa-router/wrap'
 
 import AppInfo from './lib/appinfo'
@@ -63,13 +63,13 @@ export default {
         
     // Catch-all, must be last
     '*': NotFound,
-}
+} as RouteDefinition
 
 // Allow a route only if a repo is selected (but not necessarily unlocked);
 // otherwise, redirects to /repo to select a repo
-async function requireRepo() {
+async function requireRepo(): Promise<boolean> {
     const info = await AppInfo.get()
-    if (!info || !info.repoSelected) {
+    if (!info?.repoSelected) {
         push('/repo')
         return false
     }
@@ -78,9 +78,9 @@ async function requireRepo() {
 
 // Allow a route only if the repo is unlocked;
 // otherwise, redirects to /unlock to unlock the pre-selected repo
-async function requireUnlocked() {
+async function requireUnlocked(): Promise<boolean> {
     const info = await AppInfo.get()
-    if (!info || !info.repoUnlocked) {
+    if (!info?.repoUnlocked) {
         push('/unlock')
         return false
     }
@@ -88,7 +88,7 @@ async function requireUnlocked() {
 }
 
 // Allow a route only in non read-only mode
-async function noReadOnly() {
+async function noReadOnly(): Promise<boolean> {
     const isReadOnly = await AppInfo.isReadOnly()
     return !isReadOnly
 }
