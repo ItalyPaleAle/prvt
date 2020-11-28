@@ -35,6 +35,7 @@ import (
 )
 
 // Number of files in each chunk of the index
+// TODO: SET THIS TO A BETTER VALUE
 var ChunkSize = uint32(10)
 
 // FolderList contains the result of the ListFolder method
@@ -63,8 +64,10 @@ type IndexProvider interface {
 }
 
 // Index manages the index for all files and folders
+// TODO: IMPLEMENT THE "Compact" METHOD THAT REMOVES ALL DELETED RECORDS AND RE-UPLOADS THE ENTIRE INDEX IF NEEDED
 type Index struct {
 	elements   []*pb.IndexElement
+	deleted    []int
 	cacheFiles map[string]*pb.IndexElement
 	cacheTree  *IndexTreeNode
 	fileHash   [][]byte
@@ -82,7 +85,8 @@ func (i *Index) SetProvider(provider IndexProvider) {
 	i.provider = provider
 
 	// Reset the object
-	i.elements = nil
+	i.elements = make([]*pb.IndexElement, 0)
+	i.deleted = make([]int, 0)
 	i.cacheFiles = nil
 	i.cacheTree = nil
 	i.fileHash = make([][]byte, 0)
@@ -320,8 +324,18 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 		Size:     size,
 		Digest:   digest,
 	}
-	// TODO: LOOK FOR THE FIRST UNUSED SLOT
-	i.elements = append(i.elements, fileEl)
+
+	// Check if we have any unused slot
+	if len(i.deleted) > 0 {
+		// Pop from the start of the slice
+		idx := i.deleted[0]
+		i.deleted = i.deleted[1:]
+		// Use that slot
+		i.elements[idx] = fileEl
+	} else {
+		// Just append at the end
+		i.elements = append(i.elements, fileEl)
+	}
 
 	// Save the updated index
 	if err := i.save(); err != nil {
@@ -473,7 +487,6 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 			// Mark the field as deleted, but do not remove the record from the list
 			// In fact, doing so would cause a shift that would cause us to re-upload many more chunks than we'd need
 			el.MarkDeleted()
-
 		}
 	}
 
@@ -484,10 +497,6 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 			return nil, nil, err
 		}
 	}
-
-	// Rebuild the tree and dictionary
-	// TODO: Eventually, this should just update the existing tree without having to rebuild it!
-	i.buildTree()
 
 	return objectsRemoved, pathsRemoved, nil
 }
@@ -579,6 +588,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 // Builds the tree and the dictionary for easier searching
 func (i *Index) buildTree() {
 	// Init the objects
+	i.deleted = make([]int, 0)
 	i.cacheFiles = make(map[string]*pb.IndexElement, len(i.elements))
 	i.cacheTree = &IndexTreeNode{
 		Name:     "/",
@@ -586,10 +596,12 @@ func (i *Index) buildTree() {
 	}
 
 	// Iterate through the elements and build the tree
-	for _, el := range i.elements {
+	for j, el := range i.elements {
 		// Ignore deleted elements
 		if !el.Deleted {
 			i.addToTree(el)
+		} else {
+			i.deleted = append(i.deleted, j)
 		}
 	}
 }
