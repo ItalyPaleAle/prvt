@@ -1,45 +1,33 @@
+import {Readable} from 'svelte/store'
 import {Request} from '../../shared/request'
 
-/**
- * @typedef {Object} AppInfoObject
- * @property {string} [name] - Server app name
- * @property {string} [version] - Server app version
- * @property {string} [buildId] - Server app build ID
- * @property {string} [buildTime] - Server app build time
- * @property {string} [commitHash] - Server app build source commit hash
- * @property {string} [runtime] - Server runtime (Go version)
- * @property {string} [info] - Info message
- * @property {boolean} [readOnly] - If true, the repository is in read-only mode
- * @property {boolean} [repoSelected] - If true, a repository has been selected (but not necessarily unlocked)
- * @property {boolean} [repoUnlocked] - If true, the selected repository has been unlocked
- * @property {string} [storeType] - Type of the store used
- * @property {string} [storeAccount] - Account of the store used
- * @property {boolean} [repoId] - ID of the repository selected
- * @property {number} [repoVersion] - Version of the repository
- * @property {number} [files] - Number of files
- * @property {boolean} [gpgUnlock] - If true, repository can be unlocked with a GPG key
- */
+// From Svelte, here because they're not exported
+declare type Subscriber<T> = (value: T) => void
+declare type Unsubscriber = () => void
 
 /**
  * Offers mechanisms to access info about the application and server
  * Implements the Svelte readable store contracts
  */
-export class AppInfo {
+export class AppInfo implements Readable<APIRepoInfoResponse> {
+    _cached?: APIRepoInfoResponse
+    _requesting?: Promise<APIRepoInfoResponse|undefined>
+    _subscriptions: Subscriber<APIRepoInfoResponse>[]
+
     /**
      * Initializes the object
      */
     constructor() {
-        this._cached = null
+        this._cached = undefined
         this._subscriptions = []
-        this._requesting = null
+        this._requesting = undefined
     }
 
     /**
      * Returns the app info object, using the cached one if available
-     * @returns {AppInfoObject} App info
-     * @async
+     * @returns App info
      */
-    async get() {
+    async get(): Promise<APIRepoInfoResponse> {
         // If there's a request pending, wait for it
         if (this._requesting) {
             await this._requesting
@@ -48,7 +36,7 @@ export class AppInfo {
         // If the data is already in cache
         if (this._cached) {
             // Clone the object before returning it
-            return this._cached ? Object.assign({}, this._cached) : {}
+            return Object.assign({}, this._cached)
         }
 
         // Request data
@@ -58,25 +46,24 @@ export class AppInfo {
 
     /**
      * Forces an update of the cached app info object and returns it
-     * @returns {Promise<AppInfoObject|null>} App info
-     * @async
+     * @returns App info
      */
-    update() {
+    update(): Promise<APIRepoInfoResponse|undefined> {
         this._requesting = (async () => {
-            let val
+            let val: APIRepoInfoResponse|undefined
             try {
-                val = await Request('/api/info')
+                val = await Request('/api/info') as APIRepoInfoResponse
             }
             catch (err) {
                 // Log the error, but don't halt the execution
                 // eslint-disable-next-line no-console
                 console.error('Error while requesting app info', err)
-                val = null
+                val = undefined
             }
             this._cached = val
 
             // Remove the pending request semaphore
-            this._requesting = null
+            this._requesting = undefined
 
             // Notify al subscribers
             this._notify()
@@ -88,37 +75,38 @@ export class AppInfo {
     }
     
     /**
-     * Resets the acached app info object if present
+     * Resets the cached app info object if present
      */
     reset() {
         // Append to the pending request
         // If there's no pending request, just add a promise
-        this._requesting = (this._requesting || Promise.resolve())
+        this._requesting = (this._requesting || Promise.resolve(undefined))
             .then(() => {
                 // Reset the cache
-                this._cached = null
+                this._cached = undefined
             
                 // Notify al subscribers
                 this._notify()
+
+                return undefined
             })
     }
 
     /**
      * Returns true if the repository is open in read-only mode
-     * @returns {boolean} True if the repository is open in read-only mode
-     * @async
+     * @returns True if the repository is open in read-only mode
      */
-    async isReadOnly() {
+    async isReadOnly(): Promise<boolean> {
         const info = await this.get()
-        return info && info.readOnly
+        return !!(info?.readOnly)
     }
 
     /**
      * Subscription function for implementing the Svelte store contract
-     * @param {Function} handler - Subscription function, as per the Svelte store contract
-     * @returns {Function} Unsubscribe function, as per the Svelte store contract
+     * @param handler - Subscription function, as per the Svelte store contract
+     * @returns Unsubscribe function, as per the Svelte store contract
      */
-    subscribe(handler) {
+    subscribe(handler: Subscriber<APIRepoInfoResponse>): Unsubscriber {
         // Record the new handler as subscriber
         this._subscriptions.push(handler)
 

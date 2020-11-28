@@ -2,7 +2,7 @@
  * Response from GET /api/info
  */
 interface APIRepoInfoResponse {
-    name: string
+    name?: string
     version?: string
     buildId?: string
     buildTime?: string
