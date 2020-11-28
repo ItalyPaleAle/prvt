@@ -23,6 +23,7 @@ export function cloneObject(obj) {
     return JSON.parse(JSON.stringify(obj))
 }
 
+// Enables or disables Wasm
 export function enableWasm(enabled) {
     navigator.serviceWorker.controller.postMessage({
         message: 'set-wasm',

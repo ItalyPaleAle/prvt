@@ -13,13 +13,18 @@ found at http://polymer.github.io/PATENTS.txt
 // Provides an equivalent to navigator.serviceWorker.ready that waits for the
 // page to be controlled, as opposed to waiting for the active service worker.
 // See https://github.com/slightlyoff/ServiceWorker/issues/799
-export default new Promise((resolve) => {
+export default new Promise<ServiceWorkerRegistration>((resolve, reject) => {
     // Resolve with the registration, to match the .ready promise's behavior.
     const resolveWithRegistration = () => {
         navigator.serviceWorker
             .getRegistration()
             .then((registration) => {
-                resolve(registration)
+                if (registration) {
+                    resolve(registration)
+                }
+                else {
+                    reject(new Error('Empty registration received'))
+                }
             })
     }
   

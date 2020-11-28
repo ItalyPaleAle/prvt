@@ -5,7 +5,7 @@ import '../css/style.css'
 import theme from './lib/theme'
 
 // Libraries
-import {SvelteComponent} from 'svelte'
+import {SvelteComponent, tick} from 'svelte'
 import {push, location} from 'svelte-spa-router'
 import {get} from 'svelte/store'
 import controlled from './lib/sw-controlled'
@@ -98,12 +98,15 @@ async function swMessage(event: MessageEvent<ServiceWorkerMessage>) {
             break
 
         // Wasm was enabled or disabled
-        case 'wasm':                
+        case 'wasm':
             // Set the value in the wasm store
             wasm.set(event.data.enabled)
 
             // eslint-disable-next-line no-console
-            console.log(event.data.enabled ? 'Wasm enabled' : 'Wasm disabled')
+            console.info(event.data.enabled ? 'Wasm enabled' : 'Wasm disabled')
+
+            // Wait for the next tick
+            await tick()
 
             // If there's an app mounted, that means this is not the startup sequence, so…
             if (app) {

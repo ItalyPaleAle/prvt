@@ -78,7 +78,6 @@ registerRoute(
 )
 
 // Handle the events to turn on and off in-browser E2EE via Wasm
-let go = null
 self.addEventListener('message', async (event) => {
     if (!(event?.data) || !(event?.source)) {
         return
@@ -97,7 +96,7 @@ self.addEventListener('message', async (event) => {
         // Message 'set-wasm' is for enabling or disabling Wasm
         case 'set-wasm':
             // Enable or disable wasm
-            enableWasm(!!(event.data && event.data.enabled))
+            await enableWasm(!!(event.data && event.data.enabled))
 
             // Notify all clients
             // No need to await on this, just let it run in background
