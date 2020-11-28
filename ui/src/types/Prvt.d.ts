@@ -74,14 +74,14 @@ interface ListItem {
     isDir?: boolean
     /** ID of the file (for files only) */
     fileId?: string
-    /** Date the file was added to the repo (for files only) */
-    date?: Date
+    /** Date the file was added to the repo (for files only) - note this is already encoded as ISO string */
+    date?: string
     /** Mime type of the file (for files only) */
     mimeType?: string
     /** File size (for files only) */
     size?: number
-    /** SHA-256 checksum (for files only */
-    digest?: Uint8Array
+    /** SHA-256 checksum (for files only) - this is encoded in base64 */
+    digest?: string
 }
 
 /** File metadata, as returned by Prvt.getFileMetadata */

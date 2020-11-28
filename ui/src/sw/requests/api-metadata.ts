@@ -1,5 +1,5 @@
 // Utils
-import {JSONResponse, IsUUID, BytesToHex} from '../lib/utils'
+import {JSONResponse, IsUUID} from '../lib/utils'
 
 // Stores
 import stores from '../stores'
@@ -64,12 +64,10 @@ export default async function(req: Request): Promise<Response> {
         fileId: indexEl.fileId,
         folder: indexEl.path.substr(pos),
         name: metadata.name,
-        // Encode to string for consistency with the REST API
-        date: indexEl.date?.toISOString(),
+        date: indexEl.date,
         mimeType: metadata.mimeType,
         size: metadata.size,
-        // Encode to hex because Uint8Array doesn't survive the JSON encoding
-        digest: indexEl.digest ? BytesToHex(indexEl.digest) : undefined,
+        digest: indexEl.digest,
     }
 
     // Return a Response object with the list of files

@@ -31,7 +31,7 @@ export default async function(req: Request): Promise<Response> {
     if (!reqPath || !reqPath.startsWith('/api/tree')) {
         throw Error('Invalid request path')
     }
-    let path = reqPath.substr(9) || '/'
+    let path = decodeURIComponent(reqPath.substr(9) || '/')
 
     // Ensure path starts with /
     if (path.charAt(0) != '/') {

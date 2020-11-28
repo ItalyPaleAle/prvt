@@ -55,16 +55,3 @@ export function idbPromisify<T>(req: IDBRequest<T>): Promise<T> {
         }
     })
 }
-
-/** 
- * Encodes a Uint8Array to hex string
- * 
- * @param data Data to encode
- * @returns Hex representation of the data
- */
-export function BytesToHex(data: Uint8Array): string {
-    return [...data]
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('')
-}
-

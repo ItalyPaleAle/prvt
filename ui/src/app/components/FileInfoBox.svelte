@@ -40,6 +40,7 @@
         <span class="sr-only">SHA-256 checksum</span>
       </span>
       <span class="ml-1 p-1 flex-grow-1 text-xs font-mono overflow-x-scroll whitespace-no-wrap">
+        <!-- metadata.digest is encoded as base64 -->
         {metadata.digest}
       </span>
     </div>
