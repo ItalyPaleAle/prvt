@@ -25,15 +25,11 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var sanitizePathRegexp *regexp.Regexp
+var sanitizePathRegexp = regexp.MustCompile("[#%&{}<>*\\$:!'\"+@\x60|=]")
+var slashConsolidateRegexp = regexp.MustCompile("/{2,}")
 
 // SanitizePath removes certain problematic characters from path names
 func SanitizePath(path string) string {
-	// Compile the regular expression if necessary
-	if sanitizePathRegexp == nil {
-		sanitizePathRegexp = regexp.MustCompile("[#%&{}<>*\\$:!'\"+@\x60|=]")
-	}
-
 	// Unicode normalization
 	path = norm.NFKC.String(path)
 
@@ -42,6 +38,9 @@ func SanitizePath(path string) string {
 
 	// Sanitize the string
 	path = sanitizePathRegexp.ReplaceAllString(path, "")
+
+	// Replace all consecutive slashes with a single one
+	path = slashConsolidateRegexp.ReplaceAllString(path, "/")
 
 	return path
 }

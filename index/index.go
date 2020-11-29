@@ -39,6 +39,10 @@ import (
 // TODO: SET THIS TO A BETTER VALUE
 var ChunkSize = uint32(10)
 
+// Threshold for compacting the index
+// After deleting files, if the % of the deleted files is higher than this, the index will be compacted automatically
+var CompactThreshold = 0.25
+
 // FolderList contains the result of the ListFolder method
 type FolderList struct {
 	Path      string     `json:"path"`
@@ -65,7 +69,6 @@ type IndexProvider interface {
 }
 
 // Index manages the index for all files and folders
-// TODO: IMPLEMENT THE "Compact" METHOD THAT REMOVES ALL DELETED RECORDS AND RE-UPLOADS THE ENTIRE INDEX IF NEEDED
 type Index struct {
 	elements   []*pb.IndexElement
 	deleted    []int
@@ -385,7 +388,7 @@ func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 	start := 1
 	node := i.cacheTree
 	for y := 1; y < len(path); y++ {
-		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
+		// There's a delimiter, so we have an intermediate folder
 		if path[y] == '/' && (y-start) > 0 {
 			part := path[start:y]
 			if found := node.Find(part); found != nil {
@@ -493,6 +496,13 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 
 	// Save if needed
 	if len(objectsRemoved) > 0 {
+		// Check if we need to compact the index first
+		del := float64(len(i.deleted)) / float64(len(i.elements))
+		if del > CompactThreshold {
+			i.compact()
+		}
+
+		// Save
 		err := i.save()
 		if err != nil {
 			return nil, nil, err
@@ -525,7 +535,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	if path != "/" {
 		// Skip the first character, which is a /
 		for y := 1; y < len(path); y++ {
-			// Folder delimiter (and ignore double delimiters)
+			// Folder delimiter
 			if path[y] == '/' && (y-start) > 0 {
 				part := path[start:y]
 				if found := node.Find(part); found != nil {
@@ -617,8 +627,7 @@ func (i *Index) addToTree(el *pb.IndexElement) {
 	start := 1
 	node := i.cacheTree
 	for y := 1; y < len(el.Path); y++ {
-		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
-		//TODO: TEST WITH DOUBLE DELIMITERS AGAIN
+		// There's a delimiter, so we have an intermediate folder
 		if el.Path[y] == '/' && (y-start) > 0 {
 			part := el.Path[start:y]
 			if found := node.Find(part); found != nil {
@@ -657,7 +666,7 @@ func (i *Index) removeFromTree(el *pb.IndexElement) {
 	stack := []*IndexTreeNode{i.cacheTree}
 	node := i.cacheTree
 	for y := 1; y < len(el.Path); y++ {
-		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
+		// There's a delimiter, so we have an intermediate folder
 		if el.Path[y] == '/' && (y-start) > 0 {
 			part := el.Path[start:y]
 			node = node.Find(part)
@@ -696,6 +705,42 @@ func (i *Index) removeFromTree(el *pb.IndexElement) {
 	}
 	key := fileIdObj.String()
 	delete(i.cacheFiles, key)
+}
+
+// Compact the index by purging all deleted records
+func (i *Index) Compact() error {
+	// Refresh the index if needed
+	if err := i.Refresh(false); err != nil {
+		return err
+	}
+
+	// Perform the compacting
+	i.compact()
+
+	// Deleted elements were already not in the tree, so no need to rebuild that
+	// Instead, just save the updated index
+	if err := i.save(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Performs the index compacting (without locks or saving the data)
+func (i *Index) compact() {
+	// First, empty the deleted slice
+	i.deleted = make([]int, 0)
+
+	// Iterate through the elements and remove the deleted ones
+	j := 0
+	for y := 0; y < len(i.elements); y++ {
+		// Keep non-deleted elements only
+		if !i.elements[y].Deleted {
+			i.elements[j] = i.elements[y]
+			j++
+		}
+	}
+	i.elements = i.elements[:j]
 }
 
 // DumpState prints the state of the object
