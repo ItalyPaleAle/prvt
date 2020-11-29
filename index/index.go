@@ -22,6 +22,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -107,7 +108,7 @@ func (i *Index) Refresh(force bool) error {
 	defer i.semaphore.Unlock()
 
 	// Check if we already have the index in cache (unless we're forcing a refresh)
-	if !force && i.elements != nil {
+	if !force && len(i.elements) > 0 {
 		// Cache exists and it's fresh
 		return nil
 	}
@@ -695,4 +696,39 @@ func (i *Index) removeFromTree(el *pb.IndexElement) {
 	}
 	key := fileIdObj.String()
 	delete(i.cacheFiles, key)
+}
+
+// DumpState prints the state of the object
+// Used for development/debugging
+func (i *Index) DumpState() {
+	fmt.Println("############Index state:\n############")
+
+	if i.elements != nil {
+		fmt.Println("Elements:")
+		for _, v := range i.elements {
+			fmt.Println(v.Path)
+		}
+	} else {
+		fmt.Println("Elements is nil")
+	}
+	fmt.Println("#####")
+
+	if i.cacheTree != nil {
+		fmt.Println("Tree:")
+		i.cacheTree.Dump()
+	} else {
+		fmt.Println("Tree is nil")
+	}
+	fmt.Println("#####")
+
+	if i.cacheFiles != nil {
+		fmt.Println("Cache files:")
+		for k, v := range i.cacheFiles {
+			fmt.Println(k, " - ", v.Path)
+		}
+	} else {
+		fmt.Println("Cache files is nil")
+	}
+
+	fmt.Print("############\n\n")
 }
