@@ -49,6 +49,10 @@ func TestIndex(t *testing.T) {
 	// Set ChunkSize to a very small value for testing
 	ChunkSize = 5
 
+	// Increase the CompactThreshold because we are working with not a lot of entries
+	// Setting this to 1 effectively disables it
+	CompactThreshold = 1
+
 	// Init the objects
 	i = &Index{}
 	provider = &testIndexProvider{}
@@ -74,7 +78,7 @@ func TestIndex(t *testing.T) {
 	provider.changeTrackStart()
 	addFile(t, "/file2.txt")
 	addFile(t, "/sub/file.txt")
-	addFile(t, "/sub2/file.txt")
+	addFile(t, "/folder/file.txt")
 	addFile(t, "/sub/sub/file.txt")
 	checkIndex(t)
 	checkSaved(t, []int{0})
@@ -89,8 +93,77 @@ func TestIndex(t *testing.T) {
 	// Adding more files again, should only affect chunk 1
 	provider.changeTrackStart()
 	addFile(t, "/foo/bar/foo2.txt")
+	addFile(t, "/folder/hello.txt")
+	addFile(t, "/hello/hello-world.txt")
+	addFile(t, "/hello/ciao-mondo.txt")
 	checkIndex(t)
 	checkSaved(t, []int{1})
+
+	// List files in folders
+	listFiles(t, "/hello/")
+	listFiles(t, "/folder")
+	listFiles(t, "/")
+	listFiles(t, "/not-found")
+
+	// Delete a file from the first chunk
+	provider.changeTrackStart()
+	deleteFile(t, "/sub/sub/file.txt")
+	checkIndex(t)
+	checkSaved(t, []int{0})
+
+	// Delete two files from the second chunk
+	provider.changeTrackStart()
+	deleteFile(t, "/foo/bar/*")
+	checkIndex(t)
+	checkSaved(t, []int{1})
+
+	// Delete files in both the first and second chunk
+	provider.changeTrackStart()
+	deleteFile(t, "/folder/*")
+	checkIndex(t)
+	checkSaved(t, []int{0, 1})
+
+	// Add more files which should use the slots of deleted ones
+	provider.changeTrackStart()
+	addFile(t, "/added/1.txt")
+	addFile(t, "/added/2.txt")
+	addFile(t, "/added/3.txt")
+	checkIndex(t)
+	checkSaved(t, []int{0, 1})
+
+	// Get a file by its ID
+	el, err := i.GetFileById("00000009-0000-49ba-0000-000000000000")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, el)
+	assert.Equal(t, "/hello/hello-world.txt", el.Path)
+
+	// Get a file by its path
+	el, err = i.GetFileByPath("/hello/hello-world.txt")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, el)
+	assert.Equal(t, "/hello/hello-world.txt", el.Path)
+
+	// Add more files; these will use the slot of deleted ones, plus more
+	provider.changeTrackStart()
+	addFile(t, "/added/4.txt")
+	addFile(t, "/added/5.txt")
+	addFile(t, "/added/6.txt")
+	checkIndex(t)
+	checkSaved(t, []int{1, 2})
+
+	// List again
+	listFiles(t, "/added/")
+
+	// Set CompactThreshold to a lower number for testing it
+	CompactThreshold = 0.2
+
+	// Delete a large enough number of files to trigger compacting
+	// Because we'll have only 5 items at the end, only chunk 0 will be saved
+	provider.changeTrackStart()
+	deleteFile(t, "/added/*")
+	compactTestExpect(t)
+	checkIndex(t)
+	checkSaved(t, []int{0})
 }
 
 // Helper function that adds a file
@@ -104,12 +177,97 @@ func addFile(t *testing.T, path string) {
 	assert.NoError(t, err)
 	err = i.AddFile(path, u.Bytes(), "text/plain", 100, nil, false)
 	assert.NoError(t, err)
-	expect = append(expect, &pb.IndexElement{
+	add := &pb.IndexElement{
 		// Only store the file ID and path (and the Deleted flag)
 		FileId:  u.Bytes(),
 		Path:    path,
 		Deleted: false,
-	})
+	}
+
+	// If we have a spot from a deleted file, use that
+	added := false
+	for j := 0; j < len(expect); j++ {
+		if expect[j].Deleted {
+			expect[j] = add
+			added = true
+			break
+		}
+	}
+	if !added {
+		expect = append(expect, add)
+	}
+}
+
+// Helper function that deletes a file
+func deleteFile(t *testing.T, path string) {
+	t.Helper()
+
+	// Delete the file from the index
+	objectsRemoved, _, err := i.DeleteFile(path)
+	assert.NoError(t, err)
+
+	// Remove from the expected list
+	removed := 0
+	for _, obj := range objectsRemoved {
+		// Convert the UUID to a byte slice
+		u, err := uuid.FromString(obj)
+		assert.NoError(t, err)
+
+		// Remove
+		for j := 0; j < len(expect); j++ {
+			if bytes.Equal(u[:], expect[j].FileId) {
+				expect[j].Deleted = true
+				expect[j].FileId = nil
+				expect[j].Path = ""
+				removed++
+				break
+			}
+		}
+	}
+	assert.Equal(t, len(objectsRemoved), removed)
+}
+
+// Helper function that lists files in a folder
+func listFiles(t *testing.T, path string) {
+	t.Helper()
+
+	// Get the list
+	list, err := i.ListFolder(path)
+	assert.NoError(t, err)
+
+	// Get the list of expected results
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+	exp := make([]string, 0)
+	for j := 0; j < len(expect); j++ {
+		if expect[j].Deleted {
+			continue
+		}
+		if strings.HasPrefix(expect[j].Path, path) {
+			e := expect[j].Path[len(path):]
+			// Only get up to the slash
+			pos := strings.IndexRune(e, '/')
+			if pos > 0 {
+				e = e[:pos]
+			}
+			if !StringInSlice(exp, e) {
+				exp = append(exp, e)
+			}
+		}
+	}
+
+	// Get the list of paths found
+	res := make([]string, len(list))
+	for j, el := range list {
+		res[j] = el.Path
+	}
+
+	// Sort the slices
+	sort.Strings(exp)
+	sort.Strings(res)
+
+	assert.True(t, reflect.DeepEqual(exp, res))
 }
 
 // Helper function that checks the index based on what we expect
@@ -130,29 +288,30 @@ func checkIndex(t *testing.T) {
 	}
 	d := 0
 	for j := 0; j < len(expect); j++ {
-		// File ID as string
-		u, err := uuid.FromBytes(expect[j].FileId)
-		assert.NoError(t, err)
-		fileId := u.String()
-
-		// Elements slice
-		assert.NotEmpty(t, i.elements[j])
 		assert.Equal(t, expect[j].Deleted, i.elements[j].Deleted)
-		assert.Equal(t, expect[j].Path, i.elements[j].Path)
-		assert.True(t, bytes.Equal(expect[j].FileId, i.elements[j].FileId))
 
-		// If this is deleted, check the deleted slice
-		if expect[j].Deleted {
-			if assert.LessOrEqual(t, d, len(i.deleted)) {
+		if !expect[j].Deleted {
+			// File ID as string
+			u, err := uuid.FromBytes(expect[j].FileId)
+			assert.NoError(t, err)
+			fileId := u.String()
+
+			// Elements slice
+			assert.NotEmpty(t, i.elements[j])
+			assert.Equal(t, expect[j].Path, i.elements[j].Path)
+			assert.True(t, bytes.Equal(expect[j].FileId, i.elements[j].FileId))
+
+			// cacheFiles map
+			cached, found := i.cacheFiles[fileId]
+			assert.True(t, found)
+			assert.Equal(t, cached, i.elements[j])
+		} else {
+			// If this is deleted, check the deleted slice
+			if assert.Less(t, d, len(i.deleted)) {
 				assert.Equal(t, j, i.deleted[d])
 			}
 			d++
 		}
-
-		// cacheFiles map
-		cached, found := i.cacheFiles[fileId]
-		assert.True(t, found)
-		assert.Equal(t, cached, i.elements[j])
 	}
 
 	// Check stats
@@ -211,7 +370,22 @@ func checkSaved(t *testing.T, expect []int) {
 	}
 }
 
-// IndexProvider for the test
+// Purges deleted elements from the tests' state
+func compactTestExpect(t *testing.T) {
+	t.Helper()
+
+	z := 0
+	for j := 0; j < len(expect); j++ {
+		if !expect[j].Deleted {
+			expect[z] = expect[j]
+			z++
+		}
+	}
+	expect = expect[:z]
+}
+
+/* IndexProvider for the test */
+
 type testIndexProvider struct {
 	files   map[uint32][]byte
 	tags    map[uint32]int
@@ -302,6 +476,7 @@ func (p *testIndexProvider) getSequenceContents(sequence uint32) (res *pb.IndexF
 }
 
 /* Extra methods added to the object */
+
 // DumpState prints the state of the object
 // Used for development/debugging
 func (i *Index) DumpState() {
@@ -315,6 +490,7 @@ func (i *Index) DumpState() {
 	} else {
 		fmt.Println("Elements is nil")
 	}
+
 	fmt.Println("#####")
 
 	if i.cacheTree != nil {
@@ -323,6 +499,7 @@ func (i *Index) DumpState() {
 	} else {
 		fmt.Println("Tree is nil")
 	}
+
 	fmt.Println("#####")
 
 	if i.cacheFiles != nil {
@@ -332,6 +509,17 @@ func (i *Index) DumpState() {
 		}
 	} else {
 		fmt.Println("Cache files is nil")
+	}
+
+	fmt.Println("#####")
+
+	if len(i.deleted) > 0 {
+		fmt.Println("Deleted:")
+		for k, v := range i.deleted {
+			fmt.Printf("#%d: %d\n", k, v)
+		}
+	} else {
+		fmt.Println("Deleted is nil")
 	}
 
 	fmt.Print("############\n\n")
@@ -366,4 +554,16 @@ func (n *IndexTreeNode) dump(indent int) {
 			c.dump(indent + 1)
 		}
 	}
+}
+
+/* Utils */
+
+// StringInSlice checks if a string is contained inside a slice of strings
+func StringInSlice(list []string, a string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }

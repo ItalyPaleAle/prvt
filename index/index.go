@@ -468,7 +468,7 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 	// Iterate through the list of files to find matches
 	objectsRemoved := make([]string, 0)
 	pathsRemoved := make([]string, 0)
-	for _, el := range i.elements {
+	for j, el := range i.elements {
 		// Need to remove
 		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
 			// Add to the result
@@ -481,6 +481,19 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 
 			// Remove from the tree
 			i.removeFromTree(el)
+
+			// Add to the list of deleted files, preserving the order
+			var k = 0
+			for k < len(i.deleted) {
+				// The == case should not happen
+				if j < i.deleted[k] {
+					break
+				}
+				k++
+			}
+			i.deleted = append(i.deleted, 0)
+			copy(i.deleted[(k+1):], i.deleted[k:])
+			i.deleted[k] = j
 
 			// Mark the field as deleted, but do not remove the record from the list
 			// In fact, doing so would cause a shift that would cause us to re-upload many more chunks than we'd need
