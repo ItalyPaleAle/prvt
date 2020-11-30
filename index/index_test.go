@@ -188,9 +188,8 @@ func TestIndex(t *testing.T) {
 	checkSaved(t, []int{0}, 1)
 	tx = 0
 
-	// Re-set the provider and trigger a refresh to have the index re-built
-	i.SetProvider(provider)
-	err = i.Refresh(0)
+	// Trigger a forced refresh to have the index re-built
+	err = i.Refresh(0, true)
 	assert.NoError(t, err)
 	checkIndex(t)
 

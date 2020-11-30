@@ -104,7 +104,7 @@ func (i *RepoIndex) Refresh() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				err := i.index.Refresh(force)
+				err := i.index.Refresh(0, force)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -150,7 +150,7 @@ func (i *RepoIndex) Stat() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				stats, err := i.index.Stat()
+				stats, err := i.index.Stat(0)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -187,7 +187,7 @@ func (i *RepoIndex) GetFileByPath() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				file, err := i.index.GetFileByPath(path)
+				file, err := i.index.GetFileByPath(0, path)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -225,7 +225,7 @@ func (i *RepoIndex) GetFileById() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				file, err := i.index.GetFileById(fileId)
+				file, err := i.index.GetFileById(0, fileId)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -307,7 +307,7 @@ func (i *RepoIndex) ListFolder() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				list, err := i.index.ListFolder(path)
+				list, err := i.index.ListFolder(0, path)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return

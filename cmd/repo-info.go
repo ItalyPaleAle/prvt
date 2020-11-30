@@ -80,7 +80,7 @@ func NewRepoInfoCmd() *cobra.Command {
 				idx.SetProvider(indexProvider)
 
 				// Get stats
-				stat, err = idx.Stat()
+				stat, err = idx.Stat(0)
 				if err != nil {
 					return NewExecError(ErrorApp, "Could not get the stats from the repository", err)
 				}

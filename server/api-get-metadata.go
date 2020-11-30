@@ -47,10 +47,10 @@ func (s *Server) GetMetadataHandler(c *gin.Context) {
 	fileIdUUID, err := uuid.FromString(file)
 	// Check if we have a file ID
 	if err == nil && fileIdUUID.Version() == 4 {
-		el, err = s.Repo.Index.GetFileById(file)
+		el, err = s.Repo.Index.GetFileById(0, file)
 	} else {
 		// Re-add the leading /
-		el, err = s.Repo.Index.GetFileByPath("/" + file)
+		el, err = s.Repo.Index.GetFileByPath(0, "/"+file)
 	}
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)

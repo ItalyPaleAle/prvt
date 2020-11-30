@@ -130,15 +130,20 @@ func (i *Index) CommitTransaction(tx IndexTxId) error {
 }
 
 // Refresh an index if necessary
-func (i *Index) Refresh(tx IndexTxId) error {
+func (i *Index) Refresh(tx IndexTxId, force bool) error {
 	// Semaphore - can be skipped if we're in the transaction
 	if i.tx == 0 || i.tx != tx {
 		i.semaphore.Lock()
 		defer i.semaphore.Unlock()
 	}
 
-	err := i.refresh()
-	return err
+	// We can force a refresh by deleting the cache first
+	if force {
+		i.elements = make([]*pb.IndexElement, 0)
+	}
+
+	// Do the refresh
+	return i.refresh()
 }
 
 // Internal function that performs the refresh

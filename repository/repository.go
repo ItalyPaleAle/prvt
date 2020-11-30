@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package repository
 
 import (
+	"errors"
+
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/index"
 )
@@ -38,16 +40,41 @@ const (
 	RepositoryStatusUserError
 )
 
-// Repository is the object that manages the repository
-type Repository struct {
-	Store fs.Fs
-	Index *index.Index
-}
-
 // PathResultMessage is the message passed to the res channel in AddPath/RemovePath
 type PathResultMessage struct {
 	Path   string
 	Status int
 	Err    error
 	FileId string
+}
+
+// Repository is the object that manages the repository
+type Repository struct {
+	Store fs.Fs
+	Index *index.Index
+
+	tx index.IndexTxId
+}
+
+// BeginTransaction starts a transaction to add or remove multiple files at once
+func (repo *Repository) BeginTransaction() error {
+	if repo.Index == nil {
+		return errors.New("index is not defined")
+	}
+
+	// Begin a transaction with the index
+	repo.tx = repo.Index.BeginTransaction()
+	return nil
+}
+
+// CommitTransaction commits a transaction and saves pending changes
+func (repo *Repository) CommitTransaction() error {
+	if repo.tx == 0 {
+		return errors.New("no active transaction")
+	}
+
+	// Begin a transaction with the index
+	err := repo.Index.CommitTransaction(repo.tx)
+	repo.tx = 0
+	return err
 }
