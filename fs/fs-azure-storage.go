@@ -601,6 +601,14 @@ func (f *AzureStorage) Delete(ctx context.Context, name string, tag interface{})
 	return
 }
 
+func (f *AzureStorage) AcquireLock(ctx context.Context) (err error) {
+	return nil
+}
+
+func (f *AzureStorage) ReleaseLock() (err error) {
+	return nil
+}
+
 // Internal function that returns the URL object for a blob
 func (f *AzureStorage) blobUrl(name string) (blockBlobURL azblob.BlockBlobURL, err error) {
 	if name == "" {

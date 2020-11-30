@@ -18,7 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/fs/fsindex"
@@ -92,6 +94,15 @@ You can use the optional "--address" and "--port" flags to control what address 
 				if err != nil || store == nil {
 					return NewExecError(ErrorUser, "Could not initialize store", err)
 				}
+
+				// Acquire a lock
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				err = store.AcquireLock(ctx)
+				cancel()
+				if err != nil {
+					return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
+				}
+				defer store.ReleaseLock()
 
 				// Request the info file
 				info, err = store.GetInfoFile()

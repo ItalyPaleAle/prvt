@@ -168,6 +168,12 @@ type Fs interface {
 	// Delete a file from the filesystem
 	// If you pass a tag, the implementation might use that to ensure that the file on the filesystem hasn't been changed since it was read (optional)
 	Delete(ctx context.Context, name string, tag interface{}) (err error)
+
+	// AcquireLock acquires an exclusive lock, to help making sure that no other process is using the same repository
+	AcquireLock(ctx context.Context) (err error)
+
+	// ReleaseLock releases the lock
+	ReleaseLock() (err error)
 }
 
 // Base class for filesystems, which contains the key and data path

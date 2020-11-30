@@ -495,6 +495,14 @@ func (f *S3) Delete(ctx context.Context, name string, tag interface{}) (err erro
 	return
 }
 
+func (f *S3) AcquireLock(ctx context.Context) (err error) {
+	return nil
+}
+
+func (f *S3) ReleaseLock() (err error) {
+	return nil
+}
+
 // Internal function that returns the path to the file on storage
 func (f *S3) filePath(name string) (path string, err error) {
 	if name == "" {

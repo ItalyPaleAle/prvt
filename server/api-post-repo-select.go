@@ -18,8 +18,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/utils"
@@ -69,6 +71,23 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	if err != nil || store == nil {
 		c.Error(err)
 		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{"Could not initialize the store"})
+		return
+	}
+
+	// If there's an existing store object, release locks (if any)
+	if s.Store != nil {
+		err = s.Store.ReleaseLock()
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	// Acquire a lock
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	err = store.AcquireLock(ctx)
+	cancel()
+	if err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusConflict, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.")
 		return
 	}
 

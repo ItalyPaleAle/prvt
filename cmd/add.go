@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/fs/fsindex"
@@ -82,6 +83,15 @@ You must specify a destination, which is a folder inside the repository where yo
 				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
 
+			// Acquire a lock
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			err = store.AcquireLock(ctx)
+			cancel()
+			if err != nil {
+				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
+			}
+			defer store.ReleaseLock()
+
 			// Request the info file
 			info, err := store.GetInfoFile()
 			if err != nil {
@@ -121,7 +131,6 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 
 			// Iterate through the args and add them all
-			ctx := context.Background()
 			res := make(chan repository.PathResultMessage)
 			go func() {
 				var err error
@@ -140,7 +149,7 @@ You must specify a destination, which is a folder inside the repository where yo
 					folder := filepath.Dir(expanded)
 					target := filepath.Base(expanded)
 
-					repo.AddPath(ctx, folder, target, flagDestination, flagForce, res)
+					repo.AddPath(context.Background(), folder, target, flagDestination, flagForce, res)
 				}
 
 				close(res)

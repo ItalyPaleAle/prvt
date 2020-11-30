@@ -29,12 +29,14 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
 
+	"github.com/gofrs/flock"
 	homedir "github.com/mitchellh/go-homedir"
 )
 
@@ -53,6 +55,7 @@ type Local struct {
 	basePath string
 	cache    *fsutils.MetadataCache
 	mux      sync.Mutex
+	lock     *flock.Flock
 }
 
 func (f *Local) OptionsList() *FsOptionsList {
@@ -490,6 +493,33 @@ func (f *Local) Delete(ctx context.Context, name string, tag interface{}) (err e
 	// Delete the file
 	err = os.Remove(path)
 	return
+}
+
+func (f *Local) AcquireLock(ctx context.Context) (err error) {
+	// For the Local implementation, locks are created on a local file using flock and contain no text
+	f.lock = flock.New(f.basePath + "_lock")
+
+	// Gain an exclusive lock
+	locked, err := f.lock.TryLockContext(ctx, 400*time.Millisecond)
+	if err != nil {
+		return err
+	}
+	if !locked {
+		return errors.New("could not acquire lock")
+	}
+
+	return nil
+}
+
+func (f *Local) ReleaseLock() (err error) {
+	// Silently short-circuit
+	if f.lock == nil || !f.lock.Locked() {
+		return nil
+	}
+
+	// Release the lock
+	// We won't try to delete the file to avoid race conditions with another instance trying to acquire a lock
+	return f.lock.Unlock()
 }
 
 // Internal function that returns the path to the file on disk
