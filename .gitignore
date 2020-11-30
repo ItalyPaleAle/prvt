@@ -11,6 +11,7 @@ pkged.go
 
 # Test results
 coverage.txt
+coverage-filtered.txt
 
 # Development
 .env
