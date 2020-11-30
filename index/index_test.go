@@ -155,12 +155,32 @@ func TestIndex(t *testing.T) {
 	listFiles(t, "/added/")
 
 	// Set CompactThreshold to a lower number for testing it
-	CompactThreshold = 0.2
+	CompactThreshold = 0.25
 
 	// Delete a large enough number of files to trigger compacting
 	// Because we'll have only 5 items at the end, only chunk 0 will be saved
 	provider.changeTrackStart()
 	deleteFile(t, "/added/*")
+	compactTestExpect(t)
+	checkIndex(t)
+	checkSaved(t, []int{0})
+
+	// Delete one more file
+	provider.changeTrackStart()
+	deleteFile(t, "/hello/hello-world.txt")
+	checkIndex(t)
+	checkSaved(t, []int{0})
+
+	// Re-set the provider and trigger a refresh to have the index re-built
+	i.SetProvider(provider)
+	err = i.Refresh()
+	assert.NoError(t, err)
+	checkIndex(t)
+
+	// Compact the index manually
+	provider.changeTrackStart()
+	err = i.Compact()
+	assert.NoError(t, err)
 	compactTestExpect(t)
 	checkIndex(t)
 	checkSaved(t, []int{0})

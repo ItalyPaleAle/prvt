@@ -80,8 +80,9 @@ type Index struct {
 
 // SetProvider sets the providerobject to use
 func (i *Index) SetProvider(provider IndexProvider) {
-	// Do not alter this if there's a refresh running
+	// Semaphore
 	i.semaphore.Lock()
+	defer i.semaphore.Unlock()
 
 	// Set the new provider object
 	i.provider = provider
@@ -93,23 +94,25 @@ func (i *Index) SetProvider(provider IndexProvider) {
 	i.cacheTree = nil
 	i.fileHash = make([][]byte, 0)
 	i.fileTag = make([]interface{}, 0)
-
-	i.semaphore.Unlock()
 }
 
 // Refresh an index if necessary
-func (i *Index) Refresh(force bool) error {
+func (i *Index) Refresh() error {
+	i.semaphore.Lock()
+	err := i.refresh()
+	i.semaphore.Unlock()
+	return err
+}
+
+// Internal function that performs the refresh
+func (i *Index) refresh() error {
 	// Abort if no provider
 	if i.provider == nil {
 		return errors.New("provider is not initialized")
 	}
 
-	// Semaphore
-	i.semaphore.Lock()
-	defer i.semaphore.Unlock()
-
-	// Check if we already have the index in cache (unless we're forcing a refresh)
-	if !force && len(i.elements) > 0 {
+	// Check if we already have the index in cache
+	if len(i.elements) > 0 {
 		// Cache exists and it's fresh
 		return nil
 	}
@@ -201,12 +204,8 @@ func (i *Index) Refresh(force bool) error {
 	return nil
 }
 
-// Save an index object
+// Save the index
 func (i *Index) save() error {
-	// Semaphore
-	i.semaphore.Lock()
-	defer i.semaphore.Unlock()
-
 	fileHashLen := uint32(len(i.fileHash))
 	fileTagLen := uint32(len(i.fileTag))
 	elementsLen := uint32(len(i.elements))
@@ -274,6 +273,10 @@ func (i *Index) save() error {
 
 // AddFile adds a file to the index
 func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64, digest []byte, force bool) error {
+	// Semaphore
+	i.semaphore.Lock()
+	defer i.semaphore.Unlock()
+
 	// path must be at least 2 characters and start with /
 	if len(path) < 2 || !strings.HasPrefix(path, "/") {
 		return errors.New("path must start with /")
@@ -291,14 +294,14 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 		digest = nil
 	}
 
-	// Force a refresh of the index
-	if err := i.Refresh(true); err != nil {
+	// Refresh the index if needed
+	if err := i.refresh(); err != nil {
 		return err
 	}
 
 	// Check if the file already exists (unless we're forcing this)
 	if !force {
-		exists, err := i.GetFileByPath(path)
+		exists, err := i.getFileByPath(path)
 		if err != nil {
 			return err
 		}
@@ -349,8 +352,12 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 // Stat returns the stats for the repo, by reading the index
 // For now, this is just the number of files
 func (i *Index) Stat() (stats *IndexStats, err error) {
+	// Semaphore
+	i.semaphore.Lock()
+	defer i.semaphore.Unlock()
+
 	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
+	if err := i.refresh(); err != nil {
 		return nil, err
 	}
 
@@ -363,6 +370,17 @@ func (i *Index) Stat() (stats *IndexStats, err error) {
 
 // GetFileByPath returns the list item object for a file, searching by its path
 func (i *Index) GetFileByPath(path string) (*FolderList, error) {
+	// Refresh the index if needed
+	// Uses the public method, which is safe for concurrent use
+	if err := i.Refresh(); err != nil {
+		return nil, err
+	}
+
+	return i.getFileByPath(path)
+}
+
+// Internal function that actually performs the lookup
+func (i *Index) getFileByPath(path string) (*FolderList, error) {
 	// Remove the trailing / if present
 	if len(path) > 1 && strings.HasSuffix(path, "/") {
 		path = path[:len(path)-1]
@@ -370,11 +388,6 @@ func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
 		return nil, errors.New("path must start with /")
-	}
-
-	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
-		return nil, err
 	}
 
 	// Iterate through the path to find the element in the tree
@@ -403,7 +416,7 @@ func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 		if err != nil {
 			return nil, err
 		}
-		return i.GetFileById(fileId.String())
+		return i.getFileById(fileId.String())
 	}
 
 	return nil, nil
@@ -412,10 +425,16 @@ func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 // GetFileById returns the list item object for a file, searching by its id
 func (i *Index) GetFileById(fileId string) (*FolderList, error) {
 	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
+	// Uses the public method, which is safe for concurrent use
+	if err := i.Refresh(); err != nil {
 		return nil, err
 	}
 
+	return i.getFileById(fileId)
+}
+
+// Internal function that actually performs the lookup
+func (i *Index) getFileById(fileId string) (*FolderList, error) {
 	// Do a lookup in the dictionary
 	el, found := i.cacheFiles[fileId]
 	if !found || el == nil {
@@ -444,13 +463,17 @@ func (i *Index) GetFileById(fileId string) (*FolderList, error) {
 // It returns the list of objects to remove as first argument, and their paths as second
 // To remove a folder, make sure the path ends with /*
 func (i *Index) DeleteFile(path string) ([]string, []string, error) {
+	// Semaphore
+	i.semaphore.Lock()
+	defer i.semaphore.Unlock()
+
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
 		return nil, nil, errors.New("path must start with /")
 	}
 
-	// Force a refresh of the index
-	if err := i.Refresh(true); err != nil {
+	// Refresh the index if needed
+	if err := i.refresh(); err != nil {
 		return nil, nil, err
 	}
 
@@ -532,7 +555,8 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	}
 
 	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
+	// Uses the public method, which is safe for concurrent use
+	if err := i.Refresh(); err != nil {
 		return nil, err
 	}
 
@@ -601,6 +625,29 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	}
 
 	return result, nil
+}
+
+// Compact the index by purging all deleted records
+func (i *Index) Compact() error {
+	// Semaphore
+	i.semaphore.Lock()
+	defer i.semaphore.Unlock()
+
+	// Refresh the index if needed
+	if err := i.refresh(); err != nil {
+		return err
+	}
+
+	// Perform the compacting
+	i.compact()
+
+	// Deleted elements were already not in the tree, so no need to rebuild that
+	// Instead, just save the updated index
+	if err := i.save(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Builds the tree and the dictionary for easier searching
@@ -709,25 +756,6 @@ func (i *Index) removeFromTree(el *pb.IndexElement) {
 	}
 	key := fileIdObj.String()
 	delete(i.cacheFiles, key)
-}
-
-// Compact the index by purging all deleted records
-func (i *Index) Compact() error {
-	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
-		return err
-	}
-
-	// Perform the compacting
-	i.compact()
-
-	// Deleted elements were already not in the tree, so no need to rebuild that
-	// Instead, just save the updated index
-	if err := i.save(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Performs the index compacting (without locks or saving the data)
