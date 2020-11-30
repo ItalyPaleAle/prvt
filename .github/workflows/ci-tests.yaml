@@ -133,11 +133,13 @@ jobs:
             -- \
               -v \
               -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1"
+          # Remove generated (.pb.go ones) files from coverage report
+          cat coverage.txt| grep -v ".pb.go:" > coverage-filtered.txt
 
       - name: Send coverage
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./goveralls -coverprofile=coverage.txt -service=github
+        run: ./goveralls -coverprofile=coverage-filtered.txt -service=github
 
   test-windows:
     name: Test on Windows

@@ -64,6 +64,8 @@ test: get-tools
 	GPGKEY_ID="0x4C6D7DB1D92F58EE" \
 	GPGKEY_USER="prvt CI <ci@prvt>" \
 	  .bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1"
+	# Remove generated (.pb.go ones) files from coverage report
+	cat coverage.txt| grep -v ".pb.go:" > coverage-filtered.txt
 
 # Run the shorter test suite
 test-short: get-tools
@@ -71,3 +73,5 @@ test-short: get-tools
 	GPGKEY_ID="0x4C6D7DB1D92F58EE" \
 	GPGKEY_USER="prvt CI <ci@prvt>" \
 	  .bin/go-acc $(shell go list ./... | grep -v prvt/wasm) -- -v -ldflags "-X github.com/ItalyPaleAle/prvt/buildinfo.Production=1" -short
+	# Remove generated (.pb.go ones) files from coverage report
+	cat coverage.txt| grep -v ".pb.go:" > coverage-filtered.txt
