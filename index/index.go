@@ -66,6 +66,9 @@ type IndexProvider interface {
 	Set(ctx context.Context, data []byte, sequence uint32, tag interface{}) (newTag interface{}, err error)
 }
 
+// Type for transaction ID
+type IndexTxId int64
+
 // Index manages the index for all files and folders
 type Index struct {
 	elements   []*pb.IndexElement
@@ -76,6 +79,7 @@ type Index struct {
 	fileTag    []interface{}
 	provider   IndexProvider
 	semaphore  sync.Mutex
+	tx         IndexTxId
 }
 
 // SetProvider sets the providerobject to use
@@ -96,11 +100,44 @@ func (i *Index) SetProvider(provider IndexProvider) {
 	i.fileTag = make([]interface{}, 0)
 }
 
-// Refresh an index if necessary
-func (i *Index) Refresh() error {
+// BeginTransaction starts a transaction, acquiring a lock, and returns the transaction ID
+func (i *Index) BeginTransaction() IndexTxId {
+	// Acquire the lock
 	i.semaphore.Lock()
-	err := i.refresh()
+
+	// Generate a transaction ID, which is the current time
+	i.tx = IndexTxId(time.Now().Unix())
+	return i.tx
+}
+
+// CommitTransaction commits the changes (saving them to disk) and releases the lock
+func (i *Index) CommitTransaction(tx IndexTxId) error {
+	if i.tx == 0 {
+		return errors.New("no transaction is currently open")
+	}
+	if i.tx != tx {
+		return errors.New("invalid transaction id")
+	}
+
+	// Save changes
+	err := i.save()
+
+	// Release the lock at the end and delete the transaction ID
+	i.tx = 0
 	i.semaphore.Unlock()
+
+	return err
+}
+
+// Refresh an index if necessary
+func (i *Index) Refresh(tx IndexTxId) error {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
+	err := i.refresh()
 	return err
 }
 
@@ -272,10 +309,12 @@ func (i *Index) save() error {
 }
 
 // AddFile adds a file to the index
-func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64, digest []byte, force bool) error {
-	// Semaphore
-	i.semaphore.Lock()
-	defer i.semaphore.Unlock()
+func (i *Index) AddFile(tx IndexTxId, path string, fileId []byte, mimeType string, size int64, digest []byte, force bool) error {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
 
 	// path must be at least 2 characters and start with /
 	if len(path) < 2 || !strings.HasPrefix(path, "/") {
@@ -338,9 +377,11 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 		i.elements = append(i.elements, fileEl)
 	}
 
-	// Save the updated index
-	if err := i.save(); err != nil {
-		return err
+	// Save the updated index, unless we're in a transaction
+	if i.tx == 0 || i.tx != tx {
+		if err := i.save(); err != nil {
+			return err
+		}
 	}
 
 	// Add the file to the tree and dictionary too
@@ -351,10 +392,12 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 
 // Stat returns the stats for the repo, by reading the index
 // For now, this is just the number of files
-func (i *Index) Stat() (stats *IndexStats, err error) {
-	// Semaphore
-	i.semaphore.Lock()
-	defer i.semaphore.Unlock()
+func (i *Index) Stat(tx IndexTxId) (stats *IndexStats, err error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
 
 	// Refresh the index if needed
 	if err := i.refresh(); err != nil {
@@ -369,10 +412,15 @@ func (i *Index) Stat() (stats *IndexStats, err error) {
 }
 
 // GetFileByPath returns the list item object for a file, searching by its path
-func (i *Index) GetFileByPath(path string) (*FolderList, error) {
+func (i *Index) GetFileByPath(tx IndexTxId, path string) (*FolderList, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
 	// Refresh the index if needed
-	// Uses the public method, which is safe for concurrent use
-	if err := i.Refresh(); err != nil {
+	if err := i.refresh(); err != nil {
 		return nil, err
 	}
 
@@ -423,10 +471,15 @@ func (i *Index) getFileByPath(path string) (*FolderList, error) {
 }
 
 // GetFileById returns the list item object for a file, searching by its id
-func (i *Index) GetFileById(fileId string) (*FolderList, error) {
+func (i *Index) GetFileById(tx IndexTxId, fileId string) (*FolderList, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
 	// Refresh the index if needed
-	// Uses the public method, which is safe for concurrent use
-	if err := i.Refresh(); err != nil {
+	if err := i.refresh(); err != nil {
 		return nil, err
 	}
 
@@ -462,10 +515,12 @@ func (i *Index) getFileById(fileId string) (*FolderList, error) {
 // DeleteFile removes a file or folder from the index
 // It returns the list of objects to remove as first argument, and their paths as second
 // To remove a folder, make sure the path ends with /*
-func (i *Index) DeleteFile(path string) ([]string, []string, error) {
-	// Semaphore
-	i.semaphore.Lock()
-	defer i.semaphore.Unlock()
+func (i *Index) DeleteFile(tx IndexTxId, path string) ([]string, []string, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
 
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
@@ -532,10 +587,12 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 			i.compact()
 		}
 
-		// Save
-		err := i.save()
-		if err != nil {
-			return nil, nil, err
+		// Save the updated index, unless we're in a transaction
+		if i.tx == 0 || i.tx != tx {
+			err := i.save()
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -543,7 +600,13 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 }
 
 // ListFolder returns the list of elements in a folder
-func (i *Index) ListFolder(path string) ([]FolderList, error) {
+func (i *Index) ListFolder(tx IndexTxId, path string) ([]FolderList, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
 		return nil, errors.New("path must start with /")
@@ -555,8 +618,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	}
 
 	// Refresh the index if needed
-	// Uses the public method, which is safe for concurrent use
-	if err := i.Refresh(); err != nil {
+	if err := i.refresh(); err != nil {
 		return nil, err
 	}
 
@@ -628,10 +690,12 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 }
 
 // Compact the index by purging all deleted records
-func (i *Index) Compact() error {
-	// Semaphore
-	i.semaphore.Lock()
-	defer i.semaphore.Unlock()
+func (i *Index) Compact(tx IndexTxId) error {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
 
 	// Refresh the index if needed
 	if err := i.refresh(); err != nil {
@@ -642,9 +706,11 @@ func (i *Index) Compact() error {
 	i.compact()
 
 	// Deleted elements were already not in the tree, so no need to rebuild that
-	// Instead, just save the updated index
-	if err := i.save(); err != nil {
-		return err
+	// Instead, just save the updated index (unless we're in a transaction)
+	if i.tx == 0 || i.tx != tx {
+		if err := i.save(); err != nil {
+			return err
+		}
 	}
 
 	return nil

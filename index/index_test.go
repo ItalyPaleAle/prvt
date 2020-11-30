@@ -40,6 +40,7 @@ var i *Index
 var provider *testIndexProvider
 var expect []*pb.IndexElement
 var fileNum = 0
+var tx IndexTxId
 
 // Base UUID format
 const baseUUID = "%08d-0000-49ba-0000-000000000000"
@@ -72,7 +73,7 @@ func TestIndex(t *testing.T) {
 	provider.changeTrackStart()
 	addFile(t, "/file1.txt")
 	checkIndex(t)
-	checkSaved(t, []int{0})
+	checkSaved(t, []int{0}, 1)
 
 	// Add more files (still in a single chunk)
 	provider.changeTrackStart()
@@ -81,23 +82,27 @@ func TestIndex(t *testing.T) {
 	addFile(t, "/folder/file.txt")
 	addFile(t, "/sub/sub/file.txt")
 	checkIndex(t)
-	checkSaved(t, []int{0})
+	checkSaved(t, []int{0}, 4)
 
 	// Adding more files; this should create another chunk
 	// Chunk 0 should be changed too because it is not the last anymore
 	provider.changeTrackStart()
 	addFile(t, "/foo/bar/foo.txt")
 	checkIndex(t)
-	checkSaved(t, []int{0, 1})
+	checkSaved(t, []int{0, 1}, 2)
 
 	// Adding more files again, should only affect chunk 1
+	// This time, use a transaction
+	tx = i.BeginTransaction()
 	provider.changeTrackStart()
 	addFile(t, "/foo/bar/foo2.txt")
 	addFile(t, "/folder/hello.txt")
 	addFile(t, "/hello/hello-world.txt")
 	addFile(t, "/hello/ciao-mondo.txt")
+	i.CommitTransaction(tx)
 	checkIndex(t)
-	checkSaved(t, []int{1})
+	checkSaved(t, []int{1}, 1)
+	tx = 0
 
 	// List files in folders
 	listFiles(t, "/hello/")
@@ -109,19 +114,19 @@ func TestIndex(t *testing.T) {
 	provider.changeTrackStart()
 	deleteFile(t, "/sub/sub/file.txt")
 	checkIndex(t)
-	checkSaved(t, []int{0})
+	checkSaved(t, []int{0}, 1)
 
 	// Delete two files from the second chunk
 	provider.changeTrackStart()
 	deleteFile(t, "/foo/bar/*")
 	checkIndex(t)
-	checkSaved(t, []int{1})
+	checkSaved(t, []int{1}, 1)
 
 	// Delete files in both the first and second chunk
 	provider.changeTrackStart()
 	deleteFile(t, "/folder/*")
 	checkIndex(t)
-	checkSaved(t, []int{0, 1})
+	checkSaved(t, []int{0, 1}, 2)
 
 	// Add more files which should use the slots of deleted ones
 	provider.changeTrackStart()
@@ -129,27 +134,31 @@ func TestIndex(t *testing.T) {
 	addFile(t, "/added/2.txt")
 	addFile(t, "/added/3.txt")
 	checkIndex(t)
-	checkSaved(t, []int{0, 1})
+	checkSaved(t, []int{0, 1}, 3)
 
 	// Get a file by its ID
-	el, err := i.GetFileById("00000009-0000-49ba-0000-000000000000")
+	el, err := i.GetFileById(0, "00000009-0000-49ba-0000-000000000000")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, el)
 	assert.Equal(t, "/hello/hello-world.txt", el.Path)
 
 	// Get a file by its path
-	el, err = i.GetFileByPath("/hello/hello-world.txt")
+	el, err = i.GetFileByPath(0, "/hello/hello-world.txt")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, el)
 	assert.Equal(t, "/hello/hello-world.txt", el.Path)
 
 	// Add more files; these will use the slot of deleted ones, plus more
+	// Use a transaction this time
+	tx = i.BeginTransaction()
 	provider.changeTrackStart()
 	addFile(t, "/added/4.txt")
 	addFile(t, "/added/5.txt")
 	addFile(t, "/added/6.txt")
+	i.CommitTransaction(tx)
 	checkIndex(t)
-	checkSaved(t, []int{1, 2})
+	checkSaved(t, []int{1, 2}, 2)
+	tx = 0
 
 	// List again
 	listFiles(t, "/added/")
@@ -163,27 +172,35 @@ func TestIndex(t *testing.T) {
 	deleteFile(t, "/added/*")
 	compactTestExpect(t)
 	checkIndex(t)
-	checkSaved(t, []int{0})
+	checkSaved(t, []int{0}, 1)
 
-	// Delete one more file
+	// Set CompactThreshold to 1 to disable automatic compacting again
+	CompactThreshold = 1
+
+	// Delete two more files
+	// This time use a transaction
+	tx = i.BeginTransaction()
 	provider.changeTrackStart()
 	deleteFile(t, "/hello/hello-world.txt")
+	deleteFile(t, "/hello/ciao-mondo.txt")
+	i.CommitTransaction(tx)
 	checkIndex(t)
-	checkSaved(t, []int{0})
+	checkSaved(t, []int{0}, 1)
+	tx = 0
 
 	// Re-set the provider and trigger a refresh to have the index re-built
 	i.SetProvider(provider)
-	err = i.Refresh()
+	err = i.Refresh(0)
 	assert.NoError(t, err)
 	checkIndex(t)
 
 	// Compact the index manually
 	provider.changeTrackStart()
-	err = i.Compact()
+	err = i.Compact(0)
 	assert.NoError(t, err)
 	compactTestExpect(t)
 	checkIndex(t)
-	checkSaved(t, []int{0})
+	checkSaved(t, []int{0}, 1)
 }
 
 // Helper function that adds a file
@@ -195,7 +212,7 @@ func addFile(t *testing.T, path string) {
 	fileId := fmt.Sprintf(baseUUID, fileNum)
 	u, err := uuid.FromString(fileId)
 	assert.NoError(t, err)
-	err = i.AddFile(path, u.Bytes(), "text/plain", 100, nil, false)
+	err = i.AddFile(tx, path, u.Bytes(), "text/plain", 100, nil, false)
 	assert.NoError(t, err)
 	add := &pb.IndexElement{
 		// Only store the file ID and path (and the Deleted flag)
@@ -223,7 +240,7 @@ func deleteFile(t *testing.T, path string) {
 	t.Helper()
 
 	// Delete the file from the index
-	objectsRemoved, _, err := i.DeleteFile(path)
+	objectsRemoved, _, err := i.DeleteFile(tx, path)
 	assert.NoError(t, err)
 
 	// Remove from the expected list
@@ -252,7 +269,7 @@ func listFiles(t *testing.T, path string) {
 	t.Helper()
 
 	// Get the list
-	list, err := i.ListFolder(path)
+	list, err := i.ListFolder(0, path)
 	assert.NoError(t, err)
 
 	// Get the list of expected results
@@ -336,7 +353,7 @@ func checkIndex(t *testing.T) {
 
 	// Check stats
 	existing := len(expect) - d // Number of non-deleted files
-	stat, err := i.Stat()
+	stat, err := i.Stat(0)
 	assert.NoError(t, err)
 	assert.NotNil(t, stat)
 	assert.Equal(t, existing, stat.FileCount)
@@ -375,19 +392,18 @@ func checkIndex(t *testing.T) {
 }
 
 // Ensures that the right chunks were saved only
-func checkSaved(t *testing.T, expect []int) {
+func checkSaved(t *testing.T, expectChunks []int, expectInvoked int) {
 	t.Helper()
 
-	saved := provider.changeTrackStop()
+	chunks, invoked := provider.changeTrackStop()
 
 	// Sort
-	sort.Ints(expect)
-	sort.Ints(saved)
+	sort.Ints(expectChunks)
+	sort.Ints(chunks)
 
 	// Check
-	if !assert.True(t, reflect.DeepEqual(expect, saved)) {
-		fmt.Println(expect, saved)
-	}
+	assert.True(t, reflect.DeepEqual(expectChunks, chunks), "stored chunks are different")
+	assert.Equal(t, expectInvoked, invoked, "wrong number of invocations")
 }
 
 // Purges deleted elements from the tests' state
@@ -410,6 +426,7 @@ type testIndexProvider struct {
 	files   map[uint32][]byte
 	tags    map[uint32]int
 	changed map[uint32]bool
+	invoked int
 }
 
 func (p *testIndexProvider) Init() {
@@ -460,6 +477,7 @@ func (p *testIndexProvider) Set(ctx context.Context, data []byte, sequence uint3
 	// Set that this chunk was saved
 	if p.changed != nil {
 		p.changed[sequence] = true
+		p.invoked++
 	}
 
 	return newTag, nil
@@ -468,16 +486,19 @@ func (p *testIndexProvider) Set(ctx context.Context, data []byte, sequence uint3
 // Starts recording which chunks are saved
 func (p *testIndexProvider) changeTrackStart() {
 	p.changed = map[uint32]bool{}
+	p.invoked = 0
 }
 
-// Stops recording which chunks are saved and returns the list of saved chunks
-func (p *testIndexProvider) changeTrackStop() []int {
+// Stops recording which chunks are saved and returns the list of saved chunks and number of invocations
+func (p *testIndexProvider) changeTrackStop() ([]int, int) {
 	changed := make([]int, 0)
 	for c := range p.changed {
 		changed = append(changed, int(c))
 	}
+	invoked := p.invoked
 	p.changed = nil
-	return changed
+	p.invoked = 0
+	return changed, invoked
 }
 
 // Returns the contents of a given sequence
