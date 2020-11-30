@@ -51,7 +51,7 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	mimeType = utils.SanitizeMimeType(mimeType)
 
 	// Check if the file exists in the index already
-	existing, err := repo.Index.GetFileByPath(sanitizedPath)
+	existing, err := repo.Index.GetFileByPath(repo.tx, sanitizedPath)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}
@@ -85,7 +85,7 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	if existing != nil {
 		// Remove it from the index
 		var objs []string
-		objs, _, err = repo.Index.DeleteFile(sanitizedPath)
+		objs, _, err = repo.Index.DeleteFile(repo.tx, sanitizedPath)
 		if err != nil {
 			return "", RepositoryStatusInternalError, err
 		}
@@ -100,7 +100,7 @@ func (repo *Repository) AddStream(ctx context.Context, in io.ReadCloser, filenam
 	}
 
 	// Add to the index
-	err = repo.Index.AddFile(sanitizedPath, fileId.Bytes(), mimeType, size, digest, force)
+	err = repo.Index.AddFile(repo.tx, sanitizedPath, fileId.Bytes(), mimeType, size, digest, force)
 	if err != nil {
 		return "", RepositoryStatusInternalError, err
 	}

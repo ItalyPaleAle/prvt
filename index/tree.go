@@ -21,6 +21,14 @@ import (
 	pb "github.com/ItalyPaleAle/prvt/index/proto"
 )
 
+// NewIndexRootNode returns a new root node
+func NewIndexRootNode() *IndexTreeNode {
+	return &IndexTreeNode{
+		Name:     "/",
+		Children: make([]*IndexTreeNode, 0),
+	}
+}
+
 // IndexTreeNode is a node in the tree
 type IndexTreeNode struct {
 	Name     string
@@ -51,10 +59,29 @@ func (n *IndexTreeNode) Add(name string, file *pb.IndexElement) *IndexTreeNode {
 		Name:     name,
 		File:     file,
 	}
-	if n.Children == nil {
-		n.Children = []*IndexTreeNode{add}
-	} else {
-		n.Children = append(n.Children, add)
-	}
+	n.Children = append(n.Children, add)
 	return add
+}
+
+// Remove a child node by its name and returns it
+func (n *IndexTreeNode) Remove(name string) *IndexTreeNode {
+	if len(n.Children) == 0 {
+		return nil
+	}
+
+	j := 0
+	var removed *IndexTreeNode = nil
+	for i := 0; i < len(n.Children); i++ {
+		if n.Children[i].Name == name {
+			// Remove this
+			removed = n.Children[i]
+		} else {
+			// Maintain this
+			n.Children[j] = n.Children[i]
+			j++
+		}
+	}
+	n.Children = n.Children[:j]
+
+	return removed
 }

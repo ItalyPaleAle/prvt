@@ -50,39 +50,54 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 		path += "/"
 	}
 
+	// Get the data from the request body, which must be a multipart/form-data
+	mpf, err := c.MultipartForm()
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	// Check if we're forcing the request
+	force := false
+	forceVal, ok := mpf.Value["force"]
+	if ok && len(forceVal) > 0 {
+		force = utils.IsTruthy(forceVal[0])
+	}
+
 	// Create a channel to listen to the responses
 	res := make(chan repository.PathResultMessage)
-	go func() {
-		defer close(res)
 
-		// Get the data from the request body, which must be a multipart/form-data
-		mpf, err := c.MultipartForm()
-		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
-			return
-		}
-
-		// Check if we're forcing the request
-		force := false
-		forceVal, ok := mpf.Value["force"]
-		if ok && len(forceVal) > 0 {
-			force = utils.IsTruthy(forceVal[0])
-		}
-
-		// Check if we have a path from the local filesystem or a file uploaded
-		uploadFiles := mpf.File["file"]
-		localPaths := mpf.Value["localpath"]
-		if localPaths != nil && len(localPaths) > 0 && (uploadFiles == nil || len(uploadFiles) == 0) {
+	// Check if we have a path from the local filesystem or a file uploaded
+	uploadFiles := mpf.File["file"]
+	localPaths := mpf.Value["localpath"]
+	var method func()
+	if localPaths != nil && len(localPaths) > 0 && (uploadFiles == nil || len(uploadFiles) == 0) {
+		method = func() {
 			s.addLocalPath(ctx, localPaths, path, force, res)
-		} else if uploadFiles != nil && len(uploadFiles) > 0 && (localPaths == nil || len(localPaths) == 0) {
-			s.addUploadedFiles(ctx, uploadFiles, path, force, res)
-		} else {
-			c.AbortWithError(http.StatusBadRequest, errors.New("need to specify one and only one of 'file' or 'localpath' form fields"))
-			return
 		}
+	} else if uploadFiles != nil && len(uploadFiles) > 0 && (localPaths == nil || len(localPaths) == 0) {
+		method = func() {
+			s.addUploadedFiles(ctx, uploadFiles, path, force, res)
+		}
+	} else {
+		c.AbortWithError(http.StatusBadRequest, errors.New("need to specify one and only one of 'file' or 'localpath' form fields"))
+		return
+	}
+
+	// Start a transaction
+	err = s.Repo.BeginTransaction()
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	// Add the file(s) in a goroutine
+	go func() {
+		method()
+		close(res)
 	}()
 
-	// Response
+	// Read each response from the channel
 	response := make([]TreeOperationResponse, 0)
 	for el := range res {
 		r := TreeOperationResponse{
@@ -104,6 +119,13 @@ func (s *Server) PostTreeHandler(c *gin.Context) {
 			r.Error = el.Err.Error()
 		}
 		response = append(response, r)
+	}
+
+	// Commit the transaction
+	err = s.Repo.CommitTransaction()
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -38,6 +38,8 @@ import "google/protobuf/timestamp.proto";
 // Go package name
 option go_package = "github.com/ItalyPaleAle/index/proto";
 
+// All json_name options are for compatibility with version 1 of the format, which was JSON-based only
+
 // IndexElement message
 message IndexElement {
     // File's full path (directory + name)
@@ -53,12 +55,21 @@ message IndexElement {
     // File digest as SHA-256
     bytes digest = 10;
 
+    // If true, this element was deleted (but we still need it to keep its place)
+    bool deleted = 100;
+
     // This is added for compatibility with the version 1 JSON format
     string file_id_string = 102 [json_name="n",deprecated=true];
 }
   
 // IndexFile message
 message IndexFile {
+    // Index file version
     uint32 version = 1 [json_name="v"];
+    // List of elements
     repeated IndexElement elements = 2 [json_name="e"];
+    // Sequence number (starts from 0)
+    uint32 sequence = 10;
+    // Has next
+    bool has_next = 11;
 }

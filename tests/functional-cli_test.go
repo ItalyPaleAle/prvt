@@ -397,7 +397,7 @@ func (s *funcTestSuite) cmdAdd(t *testing.T) {
 			actual := strings.Split(stdout, "\n")
 			sort.Strings(actual)
 			if !reflect.DeepEqual(expected, actual) {
-				t.Error("output does not match", stdout)
+				t.Error("output does not match\n", stdout)
 			}
 		},
 		nil,

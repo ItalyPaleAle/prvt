@@ -26,7 +26,7 @@ import (
 // RemovePath removes a path by its prefix, and reports each element removed in the res channel
 func (repo *Repository) RemovePath(ctx context.Context, path string, res chan<- PathResultMessage) {
 	// Remove from the index and get the list of objects to delete
-	objects, paths, err := repo.Index.DeleteFile(path)
+	objects, paths, err := repo.Index.DeleteFile(repo.tx, path)
 	if err != nil {
 		status := RepositoryStatusInternalError
 		errStr := err.Error()

@@ -92,6 +92,12 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 			}
 			repo.Index.SetProvider(indexProvider)
 
+			// Start a transaction with the index to remove all files
+			err = repo.BeginTransaction()
+			if err != nil {
+				return NewExecError(ErrorApp, "Error starting a transaction", err)
+			}
+
 			// Iterate through the args and remove all files
 			res := make(chan repository.PathResultMessage)
 			go func() {
@@ -114,6 +120,12 @@ To remove a file, specify its exact path. To remove a folder recursively, specif
 				case repository.RepositoryStatusUserError:
 					fmt.Fprintf(cmd.OutOrStdout(), "Error removing path '%s': %s\n", el.Path, el.Err)
 				}
+			}
+
+			// End the transaction
+			err = repo.CommitTransaction()
+			if err != nil {
+				return NewExecError(ErrorApp, "Error committing a transaction", err)
 			}
 
 			return nil

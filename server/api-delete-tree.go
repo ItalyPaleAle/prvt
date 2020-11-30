@@ -37,6 +37,13 @@ func (s *Server) DeleteTreeHandler(c *gin.Context) {
 		path = "/" + path
 	}
 
+	// Start a transaction
+	err := s.Repo.BeginTransaction()
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
 	// Remove the path
 	res := make(chan repository.PathResultMessage)
 	go func() {
@@ -64,6 +71,13 @@ func (s *Server) DeleteTreeHandler(c *gin.Context) {
 			r.Error = el.Err.Error()
 		}
 		response = append(response, r)
+	}
+
+	// Commit the transaction
+	err = s.Repo.CommitTransaction()
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
 
 	c.JSON(http.StatusOK, response)

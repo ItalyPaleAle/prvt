@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"syscall/js"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
@@ -103,7 +104,7 @@ func (i *RepoIndex) Refresh() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				err := i.index.Refresh(force)
+				err := i.index.Refresh(0, force)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -149,7 +150,7 @@ func (i *RepoIndex) Stat() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				stats, err := i.index.Stat()
+				stats, err := i.index.Stat(0)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -186,7 +187,7 @@ func (i *RepoIndex) GetFileByPath() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				file, err := i.index.GetFileByPath(path)
+				file, err := i.index.GetFileByPath(0, path)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -224,7 +225,7 @@ func (i *RepoIndex) GetFileById() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				file, err := i.index.GetFileById(fileId)
+				file, err := i.index.GetFileById(0, fileId)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -306,7 +307,7 @@ func (i *RepoIndex) ListFolder() js.Func {
 
 			// Run in a goroutine because this might make a blocking call
 			go func() {
-				list, err := i.index.ListFolder(path)
+				list, err := i.index.ListFolder(0, path)
 				if err != nil {
 					reject.Invoke(jsError(err.Error()))
 					return
@@ -349,7 +350,7 @@ func (i *IndexProviderHTTP) Init(baseURL string, masterKey []byte) {
 }
 
 // Get the index file
-func (i *IndexProviderHTTP) Get(ctx context.Context) (data []byte, isJSON bool, tag interface{}, err error) {
+func (i *IndexProviderHTTP) Get(ctx context.Context, sequence uint32) (data []byte, isJSON bool, tag interface{}, err error) {
 	isJSON = false
 
 	// Abort if no client
@@ -358,9 +359,16 @@ func (i *IndexProviderHTTP) Get(ctx context.Context) (data []byte, isJSON bool, 
 		return
 	}
 
+	// File name based on the sequence
+	// The first doesn't have a suffix because of backwards-compatibility
+	name := "/rawfile/_index"
+	if sequence > 0 {
+		name += "." + strconv.FormatUint(uint64(sequence), 10)
+	}
+
 	// Request the index file by making a HTTP call
 	var httpReq *http.Request
-	httpReq, err = http.NewRequestWithContext(ctx, "GET", i.baseURL+"/rawfile/_index", nil)
+	httpReq, err = http.NewRequestWithContext(ctx, "GET", i.baseURL+name, nil)
 	if err != nil {
 		return
 	}
@@ -409,7 +417,7 @@ func (i *IndexProviderHTTP) Get(ctx context.Context) (data []byte, isJSON bool, 
 }
 
 // Set the index file
-func (i *IndexProviderHTTP) Set(ctx context.Context, data []byte, cacheTag interface{}) (newTag interface{}, err error) {
+func (i *IndexProviderHTTP) Set(ctx context.Context, data []byte, sequence uint32, tag interface{}) (newTag interface{}, err error) {
 	// This is not yet implemented
 	return nil, errors.New("IndexProviderHTTP.Set has not been implemented yet")
 }

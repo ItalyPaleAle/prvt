@@ -18,7 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"strings"
 	"sync"
@@ -31,6 +33,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// Number of files in each chunk of the index
+var ChunkSize = uint32(200)
+
+// Threshold for compacting the index
+// After deleting files, if the % of the deleted files is higher than this, the index will be compacted automatically
+var CompactThreshold = 0.25
 
 // FolderList contains the result of the ListFolder method
 type FolderList struct {
@@ -52,100 +61,184 @@ type IndexStats struct {
 // Interface for index providers, that interface with the back-end store
 type IndexProvider interface {
 	// Get the index file
-	Get(ctx context.Context) (data []byte, isJSON bool, tag interface{}, err error)
+	Get(ctx context.Context, sequence uint32) (data []byte, isJSON bool, tag interface{}, err error)
 	// Set the index file
-	Set(ctx context.Context, data []byte, cacheTag interface{}) (newTag interface{}, err error)
+	Set(ctx context.Context, data []byte, sequence uint32, tag interface{}) (newTag interface{}, err error)
 }
+
+// Type for transaction ID
+type IndexTxId int64
 
 // Index manages the index for all files and folders
 type Index struct {
-	cache      *pb.IndexFile
+	elements   []*pb.IndexElement
+	deleted    []int
 	cacheFiles map[string]*pb.IndexElement
 	cacheTree  *IndexTreeNode
-	cacheTag   interface{}
+	fileHash   [][]byte
+	fileTag    []interface{}
 	provider   IndexProvider
 	semaphore  sync.Mutex
+	tx         IndexTxId
 }
 
 // SetProvider sets the providerobject to use
 func (i *Index) SetProvider(provider IndexProvider) {
-	// Do not alter this if there's a refresh running
+	// Semaphore
 	i.semaphore.Lock()
+	defer i.semaphore.Unlock()
 
 	// Set the new provider object
 	i.provider = provider
 
-	// Reset the cache
-	i.cache = nil
+	// Reset the object
+	i.elements = make([]*pb.IndexElement, 0)
+	i.deleted = make([]int, 0)
 	i.cacheFiles = nil
 	i.cacheTree = nil
-	i.cacheTag = nil
+	i.fileHash = make([][]byte, 0)
+	i.fileTag = make([]interface{}, 0)
+}
 
+// BeginTransaction starts a transaction, acquiring a lock, and returns the transaction ID
+func (i *Index) BeginTransaction() IndexTxId {
+	// Acquire the lock
+	i.semaphore.Lock()
+
+	// Generate a transaction ID, which is the current time
+	i.tx = IndexTxId(time.Now().Unix())
+	return i.tx
+}
+
+// CommitTransaction commits the changes (saving them to disk) and releases the lock
+func (i *Index) CommitTransaction(tx IndexTxId) error {
+	if i.tx == 0 {
+		return errors.New("no transaction is currently open")
+	}
+	if i.tx != tx {
+		return errors.New("invalid transaction id")
+	}
+
+	// Save changes
+	err := i.save()
+
+	// Release the lock at the end and delete the transaction ID
+	i.tx = 0
 	i.semaphore.Unlock()
+
+	return err
 }
 
 // Refresh an index if necessary
-func (i *Index) Refresh(force bool) error {
+func (i *Index) Refresh(tx IndexTxId, force bool) error {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
+	// We can force a refresh by deleting the cache first
+	if force {
+		i.elements = make([]*pb.IndexElement, 0)
+	}
+
+	// Do the refresh
+	return i.refresh()
+}
+
+// Internal function that performs the refresh
+func (i *Index) refresh() error {
 	// Abort if no provider
 	if i.provider == nil {
 		return errors.New("provider is not initialized")
 	}
 
-	// Semaphore
-	i.semaphore.Lock()
-	defer func() {
-		i.semaphore.Unlock()
-	}()
-
-	// Check if we already have the index in cache (unless we're forcing a refresh)
-	if !force && i.cache != nil {
+	// Check if we already have the index in cache
+	if len(i.elements) > 0 {
 		// Cache exists and it's fresh
 		return nil
 	}
 
-	// Need to request the index
-	data, isJSON, tag, err := i.provider.Get(context.Background())
-	if err != nil {
-		return err
-	}
-
-	// Empty index
-	if data == nil || len(data) == 0 {
-		i.cache = &pb.IndexFile{
-			Version:  2,
-			Elements: make([]*pb.IndexElement, 0),
-		}
-		// Build the tree
-		i.buildTree()
-		return nil
-	}
-	i.cache = &pb.IndexFile{}
-
-	// Parse a legacy JSON file or a new protobuf-encoded one
-	if isJSON {
-		err = protojson.Unmarshal(data, i.cache)
+	// Need to request the various files in the index
+	done := false
+	i.elements = make([]*pb.IndexElement, 0)
+	i.fileHash = make([][]byte, 0)
+	i.fileTag = make([]interface{}, 0)
+	for j := uint32(0); !done; j++ {
+		data, isJSON, tag, err := i.provider.Get(context.Background(), j)
 		if err != nil {
 			return err
 		}
 
-		// Need to iterate through all Elements and convert the Name from the UUID represented as string to bytes
-		for _, el := range i.cache.Elements {
-			if el.FileIdString != "" && len(el.FileId) == 0 {
-				u, err := uuid.FromString(el.FileIdString)
-				if err != nil {
-					return err
-				}
-				el.FileIdString = ""
-				el.FileId = u.Bytes()
+		// Empty index
+		if j == 0 && len(data) == 0 {
+			i.fileHash = [][]byte{{0}}
+			i.fileTag = []interface{}{nil}
+
+			// No need to continue
+			done = true
+			break
+		}
+
+		// Parse a legacy JSON file or a new protobuf-encoded one
+		if isJSON {
+			// Only the first file can be encoded as JSON
+			if j != 0 {
+				return errors.New("only index file 0 can be JSON-encoded")
 			}
+			file := &pb.IndexFile{}
+			err = protojson.Unmarshal(data, file)
+			if err != nil {
+				return err
+			}
+
+			// Need to iterate through all Elements and convert the Name from the UUID represented as string to bytes
+			for _, el := range file.Elements {
+				if el.FileIdString != "" && len(el.FileId) == 0 {
+					u, err := uuid.FromString(el.FileIdString)
+					if err != nil {
+						return err
+					}
+					el.FileIdString = ""
+					el.FileId = u.Bytes()
+				}
+			}
+
+			// Store in cache
+			i.elements = file.Elements
+
+			// JSON-encoded indexes can not have multiple sequences, so stop here
+			// No need to calculate the hash as we'll definitely need to re-encode this
+			i.fileHash = [][]byte{{0}}
+			i.fileTag = []interface{}{nil}
+			done = true
+			break
 		}
-	} else {
-		err = proto.Unmarshal(data, i.cache)
+
+		// This file is encoded as protobuf
+		// Unmarshal the response
+		file := &pb.IndexFile{}
+		err = proto.Unmarshal(data, file)
 		if err != nil {
 			return err
 		}
+
+		// Sequence number must match
+		if file.Sequence != j {
+			return errors.New("sequence number mismatch")
+		}
+
+		// Add all elements to the cache
+		i.elements = append(i.elements, file.Elements...)
+
+		// Calculate the hash of this file and store that together with the tag
+		h := sha256.Sum256(data)
+		i.fileHash = append(i.fileHash, h[:])
+		i.fileTag = append(i.fileTag, tag)
+
+		// Check if there's another part to get
+		done = !file.HasNext
 	}
-	i.cacheTag = tag
 
 	// Build the tree
 	i.buildTree()
@@ -153,35 +246,83 @@ func (i *Index) Refresh(force bool) error {
 	return nil
 }
 
-// Save an index object
-func (i *Index) save(obj *pb.IndexFile) error {
-	// Encode the data as a protocol buffer message
-	data, err := proto.Marshal(obj)
-	if err != nil {
-		return err
-	}
+// Save the index
+func (i *Index) save() error {
+	fileHashLen := uint32(len(i.fileHash))
+	fileTagLen := uint32(len(i.fileTag))
+	elementsLen := uint32(len(i.elements))
 
-	// Encrypt and save the updated index, if the tag is the same
-	tag, err := i.provider.Set(context.Background(), data, i.cacheTag)
-	if err != nil {
-		return err
+	// Split the index into multiple chunks if needed
+	chunks := elementsLen / ChunkSize
+	if (elementsLen % ChunkSize) > 0 {
+		chunks++
 	}
+	for j := uint32(0); j < chunks; j++ {
+		start := (j * ChunkSize)
+		end := ((j + 1) * ChunkSize)
+		if end > elementsLen {
+			end = elementsLen
+		}
+		hasNext := (j < (chunks - 1))
+		obj := &pb.IndexFile{
+			Version:  3,
+			Sequence: j,
+			HasNext:  hasNext,
+			Elements: i.elements[start:end],
+		}
 
-	// Update the index in cache too
-	i.cache = obj
-	i.cacheTag = tag
+		// Encode as a protocol buffer message
+		data, err := proto.Marshal(obj)
+		if err != nil {
+			return err
+		}
+
+		// Check if the encoded data is any different
+		newH := sha256.Sum256(data)
+		if j < fileHashLen {
+			curH := i.fileHash[j]
+			if bytes.Equal(newH[:], curH) {
+				// data hasn't changed, so move to the next chunk
+				continue
+			}
+		}
+
+		// Encrypt and save the updated index, if the tag is the same
+		var curTag interface{}
+		if j < fileTagLen {
+			curTag = i.fileTag[j]
+		}
+		newTag, err := i.provider.Set(context.Background(), data, j, curTag)
+		if err != nil {
+			return err
+		}
+
+		// Update the cached data
+		if j < fileHashLen {
+			i.fileHash[j] = newH[:]
+		} else {
+			i.fileHash = append(i.fileHash, newH[:])
+		}
+		if j < fileTagLen {
+			i.fileTag[j] = newTag
+		} else {
+			i.fileTag = append(i.fileTag, newTag)
+		}
+	}
 
 	return nil
 }
 
 // AddFile adds a file to the index
-func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64, digest []byte, force bool) error {
-	// path must be at least 2 characters (with / being one)
-	if len(path) < 2 {
-		return errors.New("path name is too short")
+func (i *Index) AddFile(tx IndexTxId, path string, fileId []byte, mimeType string, size int64, digest []byte, force bool) error {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
 	}
-	// Ensure the path starts with a /
-	if !strings.HasPrefix(path, "/") {
+
+	// path must be at least 2 characters and start with /
+	if len(path) < 2 || !strings.HasPrefix(path, "/") {
 		return errors.New("path must start with /")
 	}
 	// Ensure the path does not end with /
@@ -197,14 +338,14 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 		digest = nil
 	}
 
-	// Force a refresh of the index
-	if err := i.Refresh(true); err != nil {
+	// Refresh the index if needed
+	if err := i.refresh(); err != nil {
 		return err
 	}
 
 	// Check if the file already exists (unless we're forcing this)
 	if !force {
-		exists, err := i.GetFileByPath(path)
+		exists, err := i.getFileByPath(path)
 		if err != nil {
 			return err
 		}
@@ -228,15 +369,24 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 		Size:     size,
 		Digest:   digest,
 	}
-	elements := append(i.cache.Elements, fileEl)
 
-	// Save the updated index
-	updated := &pb.IndexFile{
-		Version:  2,
-		Elements: elements,
+	// Check if we have any unused slot
+	if len(i.deleted) > 0 {
+		// Pop from the start of the slice
+		idx := i.deleted[0]
+		i.deleted = i.deleted[1:]
+		// Use that slot
+		i.elements[idx] = fileEl
+	} else {
+		// Just append at the end
+		i.elements = append(i.elements, fileEl)
 	}
-	if err := i.save(updated); err != nil {
-		return err
+
+	// Save the updated index, unless we're in a transaction
+	if i.tx == 0 || i.tx != tx {
+		if err := i.save(); err != nil {
+			return err
+		}
 	}
 
 	// Add the file to the tree and dictionary too
@@ -247,21 +397,43 @@ func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64,
 
 // Stat returns the stats for the repo, by reading the index
 // For now, this is just the number of files
-func (i *Index) Stat() (stats *IndexStats, err error) {
+func (i *Index) Stat(tx IndexTxId) (stats *IndexStats, err error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
 	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
+	if err := i.refresh(); err != nil {
 		return nil, err
 	}
 
 	// Count the number of files
 	stats = &IndexStats{
-		FileCount: len(i.cacheFiles),
+		FileCount: len(i.cacheFiles), // Use cacheFiles because it doesn't include delete files
 	}
 	return
 }
 
 // GetFileByPath returns the list item object for a file, searching by its path
-func (i *Index) GetFileByPath(path string) (*FolderList, error) {
+func (i *Index) GetFileByPath(tx IndexTxId, path string) (*FolderList, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
+	// Refresh the index if needed
+	if err := i.refresh(); err != nil {
+		return nil, err
+	}
+
+	return i.getFileByPath(path)
+}
+
+// Internal function that actually performs the lookup
+func (i *Index) getFileByPath(path string) (*FolderList, error) {
 	// Remove the trailing / if present
 	if len(path) > 1 && strings.HasSuffix(path, "/") {
 		path = path[:len(path)-1]
@@ -271,18 +443,13 @@ func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 		return nil, errors.New("path must start with /")
 	}
 
-	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
-		return nil, err
-	}
-
 	// Iterate through the path to find the element in the tree
 	// Skip the first character, which is a /
 	start := 1
 	node := i.cacheTree
 	for y := 1; y < len(path); y++ {
-		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
-		if path[y] == '/' && (y-start) > 1 {
+		// There's a delimiter, so we have an intermediate folder
+		if path[y] == '/' && (y-start) > 0 {
 			part := path[start:y]
 			if found := node.Find(part); found != nil {
 				node = found
@@ -302,19 +469,30 @@ func (i *Index) GetFileByPath(path string) (*FolderList, error) {
 		if err != nil {
 			return nil, err
 		}
-		return i.GetFileById(fileId.String())
+		return i.getFileById(fileId.String())
 	}
 
 	return nil, nil
 }
 
 // GetFileById returns the list item object for a file, searching by its id
-func (i *Index) GetFileById(fileId string) (*FolderList, error) {
+func (i *Index) GetFileById(tx IndexTxId, fileId string) (*FolderList, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
 	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
+	if err := i.refresh(); err != nil {
 		return nil, err
 	}
 
+	return i.getFileById(fileId)
+}
+
+// Internal function that actually performs the lookup
+func (i *Index) getFileById(fileId string) (*FolderList, error) {
 	// Do a lookup in the dictionary
 	el, found := i.cacheFiles[fileId]
 	if !found || el == nil {
@@ -342,14 +520,20 @@ func (i *Index) GetFileById(fileId string) (*FolderList, error) {
 // DeleteFile removes a file or folder from the index
 // It returns the list of objects to remove as first argument, and their paths as second
 // To remove a folder, make sure the path ends with /*
-func (i *Index) DeleteFile(path string) ([]string, []string, error) {
+func (i *Index) DeleteFile(tx IndexTxId, path string) ([]string, []string, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
 		return nil, nil, errors.New("path must start with /")
 	}
 
-	// Force a refresh of the index
-	if err := i.Refresh(true); err != nil {
+	// Refresh the index if needed
+	if err := i.refresh(); err != nil {
 		return nil, nil, err
 	}
 
@@ -367,9 +551,7 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 	// Iterate through the list of files to find matches
 	objectsRemoved := make([]string, 0)
 	pathsRemoved := make([]string, 0)
-	// Output index; see: https://stackoverflow.com/a/20551116/192024
-	j := 0
-	for _, el := range i.cache.Elements {
+	for j, el := range i.elements {
 		// Need to remove
 		if el.Path == path || (matchPrefix && strings.HasPrefix(el.Path, path)) {
 			// Add to the result
@@ -379,28 +561,57 @@ func (i *Index) DeleteFile(path string) ([]string, []string, error) {
 			}
 			objectsRemoved = append(objectsRemoved, fileId.String())
 			pathsRemoved = append(pathsRemoved, el.Path)
-		} else {
-			// Maintain in the list
-			i.cache.Elements[j] = el
-			j++
+
+			// Remove from the tree
+			i.removeFromTree(el)
+
+			// Add to the list of deleted files, preserving the order
+			var k = 0
+			for k < len(i.deleted) {
+				// The == case should not happen
+				if j < i.deleted[k] {
+					break
+				}
+				k++
+			}
+			i.deleted = append(i.deleted, 0)
+			copy(i.deleted[(k+1):], i.deleted[k:])
+			i.deleted[k] = j
+
+			// Mark the field as deleted, but do not remove the record from the list
+			// In fact, doing so would cause a shift that would cause us to re-upload many more chunks than we'd need
+			el.MarkDeleted()
 		}
 	}
-	i.cache.Elements = i.cache.Elements[:j]
 
-	// Save
-	if err := i.save(i.cache); err != nil {
-		return nil, nil, err
+	// Save if needed
+	if len(objectsRemoved) > 0 {
+		// Check if we need to compact the index first
+		del := float64(len(i.deleted)) / float64(len(i.elements))
+		if del > CompactThreshold {
+			i.compact()
+		}
+
+		// Save the updated index, unless we're in a transaction
+		if i.tx == 0 || i.tx != tx {
+			err := i.save()
+			if err != nil {
+				return nil, nil, err
+			}
+		}
 	}
-
-	// Rebuild the tree and dictionary
-	// TODO: Eventually, this should just update the existing tree without having to rebuild it!
-	i.buildTree()
 
 	return objectsRemoved, pathsRemoved, nil
 }
 
 // ListFolder returns the list of elements in a folder
-func (i *Index) ListFolder(path string) ([]FolderList, error) {
+func (i *Index) ListFolder(tx IndexTxId, path string) ([]FolderList, error) {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
 	// Ensure the path starts with a /
 	if !strings.HasPrefix(path, "/") {
 		return nil, errors.New("path must start with /")
@@ -412,7 +623,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	}
 
 	// Refresh the index if needed
-	if err := i.Refresh(false); err != nil {
+	if err := i.refresh(); err != nil {
 		return nil, err
 	}
 
@@ -422,8 +633,8 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	if path != "/" {
 		// Skip the first character, which is a /
 		for y := 1; y < len(path); y++ {
-			// Folder delimiter (and ignore double delimiters)
-			if path[y] == '/' && (y-start) > 1 {
+			// Folder delimiter
+			if path[y] == '/' && (y-start) > 0 {
 				part := path[start:y]
 				if found := node.Find(part); found != nil {
 					node = found
@@ -438,7 +649,7 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 
 	// Get the result list from the node we found
 	// Note that the last character of the string is a / so we certainly have the right node
-	if node == nil || node.Children == nil || len(node.Children) < 1 {
+	if len(node.Children) == 0 {
 		// Nothing found
 		return nil, nil
 	}
@@ -483,18 +694,48 @@ func (i *Index) ListFolder(path string) ([]FolderList, error) {
 	return result, nil
 }
 
+// Compact the index by purging all deleted records
+func (i *Index) Compact(tx IndexTxId) error {
+	// Semaphore - can be skipped if we're in the transaction
+	if i.tx == 0 || i.tx != tx {
+		i.semaphore.Lock()
+		defer i.semaphore.Unlock()
+	}
+
+	// Refresh the index if needed
+	if err := i.refresh(); err != nil {
+		return err
+	}
+
+	// Perform the compacting
+	i.compact()
+
+	// Deleted elements were already not in the tree, so no need to rebuild that
+	// Instead, just save the updated index (unless we're in a transaction)
+	if i.tx == 0 || i.tx != tx {
+		if err := i.save(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Builds the tree and the dictionary for easier searching
 func (i *Index) buildTree() {
 	// Init the objects
-	i.cacheFiles = make(map[string]*pb.IndexElement, len(i.cache.Elements))
-	i.cacheTree = &IndexTreeNode{
-		Name:     "/",
-		Children: make([]*IndexTreeNode, 0),
-	}
+	i.deleted = make([]int, 0)
+	i.cacheFiles = make(map[string]*pb.IndexElement, len(i.elements))
+	i.cacheTree = NewIndexRootNode()
 
 	// Iterate through the elements and build the tree
-	for _, el := range i.cache.Elements {
-		i.addToTree(el)
+	for j, el := range i.elements {
+		// Ignore deleted elements
+		if !el.Deleted {
+			i.addToTree(el)
+		} else {
+			i.deleted = append(i.deleted, j)
+		}
 	}
 }
 
@@ -508,8 +749,8 @@ func (i *Index) addToTree(el *pb.IndexElement) {
 	start := 1
 	node := i.cacheTree
 	for y := 1; y < len(el.Path); y++ {
-		// There's a delimiter, so we have an intermediate folder (and ignore double delimiters)
-		if el.Path[y] == '/' && (y-start) > 1 {
+		// There's a delimiter, so we have an intermediate folder
+		if el.Path[y] == '/' && (y-start) > 0 {
 			part := el.Path[start:y]
 			if found := node.Find(part); found != nil {
 				// Element exists already
@@ -534,4 +775,73 @@ func (i *Index) addToTree(el *pb.IndexElement) {
 	}
 	key := fileIdObj.String()
 	i.cacheFiles[key] = el
+}
+
+func (i *Index) removeFromTree(el *pb.IndexElement) {
+	// Ensure we have a path and that it begins with /
+	if len(el.Path) == 0 || el.Path[0] != '/' {
+		return
+	}
+
+	// Iterate through the path to get the intermediate folders (skipping the first character which is a / itself)
+	start := 1
+	stack := []*IndexTreeNode{i.cacheTree}
+	node := i.cacheTree
+	for y := 1; y < len(el.Path); y++ {
+		// There's a delimiter, so we have an intermediate folder
+		if el.Path[y] == '/' && (y-start) > 0 {
+			part := el.Path[start:y]
+			node = node.Find(part)
+			// This should never happen, so just return
+			if node == nil {
+				return
+			}
+			stack = append(stack, node)
+			start = y + 1
+		}
+	}
+
+	// Whatever is left is the name of the file
+	fileName := el.Path[start:]
+
+	// Remove the leaf node
+	node.Remove(fileName)
+
+	// Go down the stack and remove all empty elements in-between
+	j := len(stack)
+	// Go until 1 because the first element is the root node
+	for j > 1 {
+		j--
+		// Check if file is nil to ensure this was a folder, and then check if there are other children to see if it's empty
+		// Always exclude the root node
+		if stack[j].File == nil && len(stack[j].Children) == 0 {
+			// Remove this empty non-root node by asking its parent
+			stack[j-1].Remove(stack[j].Name)
+		}
+	}
+
+	// Remove from the dictionary too
+	fileIdObj, err := uuid.FromBytes(el.FileId)
+	if err != nil {
+		return
+	}
+	key := fileIdObj.String()
+	delete(i.cacheFiles, key)
+}
+
+// Performs the index compacting (without locks or saving the data)
+func (i *Index) compact() {
+	// First, empty the deleted slice
+	i.deleted = make([]int, 0)
+
+	// Iterate through the elements and remove the deleted ones
+	j := 0
+	for y := 0; y < len(i.elements); y++ {
+		// Keep non-deleted elements only
+		if !i.elements[y].Deleted {
+			i.elements[j] = i.elements[y]
+			j++
+		}
+	}
+	i.elements = i.elements[:j]
 }

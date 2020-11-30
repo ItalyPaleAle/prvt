@@ -49,7 +49,7 @@ func (s *Server) GetInfoHandler(c *gin.Context) {
 
 		// If the repo is unlocked, add stats too
 		if res.RepoUnlocked {
-			stat, err := s.Repo.Index.Stat()
+			stat, err := s.Repo.Index.Stat(0)
 			if err != nil {
 				c.AbortWithError(http.StatusInternalServerError, err)
 				return

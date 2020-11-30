@@ -91,7 +91,7 @@ Shows the list of all files and folders contained in the repository at a given p
 			}
 
 			// Get the list of files in the folder
-			list, err := idx.ListFolder(path)
+			list, err := idx.ListFolder(0, path)
 			if err != nil {
 				return NewExecError(ErrorApp, "Error listing the contents of the folder", err)
 			}

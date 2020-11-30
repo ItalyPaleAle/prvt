@@ -114,6 +114,12 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 			repo.Index.SetProvider(indexProvider)
 
+			// Start a transaction with the index to add all files
+			err = repo.BeginTransaction()
+			if err != nil {
+				return NewExecError(ErrorApp, "Error starting a transaction", err)
+			}
+
 			// Iterate through the args and add them all
 			ctx := context.Background()
 			res := make(chan repository.PathResultMessage)
@@ -154,6 +160,12 @@ You must specify a destination, which is a folder inside the repository where yo
 				case repository.RepositoryStatusUserError:
 					fmt.Fprintf(cmd.OutOrStdout(), "Error adding file '%s': %s\n", el.Path, el.Err)
 				}
+			}
+
+			// End the transaction
+			err = repo.CommitTransaction()
+			if err != nil {
+				return NewExecError(ErrorApp, "Error committing a transaction", err)
 			}
 
 			return nil
