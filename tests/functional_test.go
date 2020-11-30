@@ -26,10 +26,15 @@ import (
 	"time"
 
 	"github.com/ItalyPaleAle/prvt/cmd"
+	"github.com/ItalyPaleAle/prvt/index"
 )
 
 // TestFunctional performs a series of functional tests on the CLI and on the server
 func TestFunctional(t *testing.T) {
+	// Set some environmental variables
+	// Lower the threshold for splitting the index into multiple chunks
+	index.ChunkSize = 5
+
 	// Run the test suite
 	suite := funcTestSuite{}
 	suite.Run(t)
