@@ -18,12 +18,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package index
 
 import (
-	"fmt"
-	"strings"
-
 	pb "github.com/ItalyPaleAle/prvt/index/proto"
-	"github.com/gofrs/uuid"
 )
+
+// NewIndexRootNode returns a new root node
+func NewIndexRootNode() *IndexTreeNode {
+	return &IndexTreeNode{
+		Name:     "/",
+		Children: make([]*IndexTreeNode, 0),
+	}
+}
 
 // IndexTreeNode is a node in the tree
 type IndexTreeNode struct {
@@ -55,11 +59,7 @@ func (n *IndexTreeNode) Add(name string, file *pb.IndexElement) *IndexTreeNode {
 		Name:     name,
 		File:     file,
 	}
-	if n.Children == nil {
-		n.Children = []*IndexTreeNode{add}
-	} else {
-		n.Children = append(n.Children, add)
-	}
+	n.Children = append(n.Children, add)
 	return add
 }
 
@@ -84,35 +84,4 @@ func (n *IndexTreeNode) Remove(name string) *IndexTreeNode {
 	n.Children = n.Children[:j]
 
 	return removed
-}
-
-// Dump information about this node and all its children
-// Used for debugging
-func (n *IndexTreeNode) Dump() {
-	n.dump(0)
-}
-
-func (n *IndexTreeNode) dump(indent int) {
-	prefix := strings.Repeat(" ", indent*3)
-
-	fmt.Println(prefix+"- Name:", n.Name)
-	if n.File != nil {
-		if n.File.Deleted {
-			fmt.Println(prefix + "  Deleted file")
-		} else {
-			fileId, err := uuid.FromBytes(n.File.FileId)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Println(prefix+"  File:", n.File.Path, "("+fileId.String()+")")
-		}
-	}
-	if len(n.Children) == 0 {
-		fmt.Println(prefix + "  Leaf node")
-	} else {
-		fmt.Println(prefix + "  Children:")
-		for _, c := range n.Children {
-			c.dump(indent + 1)
-		}
-	}
 }

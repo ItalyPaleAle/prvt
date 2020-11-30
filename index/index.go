@@ -22,7 +22,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -36,8 +35,7 @@ import (
 )
 
 // Number of files in each chunk of the index
-// TODO: SET THIS TO A BETTER VALUE
-var ChunkSize = uint32(10)
+var ChunkSize = uint32(200)
 
 // Threshold for compacting the index
 // After deleting files, if the % of the deleted files is higher than this, the index will be compacted automatically
@@ -276,12 +274,8 @@ func (i *Index) save() error {
 
 // AddFile adds a file to the index
 func (i *Index) AddFile(path string, fileId []byte, mimeType string, size int64, digest []byte, force bool) error {
-	// path must be at least 2 characters (with / being one)
-	if len(path) < 2 {
-		return errors.New("path name is too short")
-	}
-	// Ensure the path starts with a /
-	if !strings.HasPrefix(path, "/") {
+	// path must be at least 2 characters and start with /
+	if len(path) < 2 || !strings.HasPrefix(path, "/") {
 		return errors.New("path must start with /")
 	}
 	// Ensure the path does not end with /
@@ -362,7 +356,7 @@ func (i *Index) Stat() (stats *IndexStats, err error) {
 
 	// Count the number of files
 	stats = &IndexStats{
-		FileCount: len(i.cacheFiles),
+		FileCount: len(i.cacheFiles), // Use cacheFiles because it doesn't include delete files
 	}
 	return
 }
@@ -601,10 +595,7 @@ func (i *Index) buildTree() {
 	// Init the objects
 	i.deleted = make([]int, 0)
 	i.cacheFiles = make(map[string]*pb.IndexElement, len(i.elements))
-	i.cacheTree = &IndexTreeNode{
-		Name:     "/",
-		Children: make([]*IndexTreeNode, 0),
-	}
+	i.cacheTree = NewIndexRootNode()
 
 	// Iterate through the elements and build the tree
 	for j, el := range i.elements {
@@ -741,39 +732,4 @@ func (i *Index) compact() {
 		}
 	}
 	i.elements = i.elements[:j]
-}
-
-// DumpState prints the state of the object
-// Used for development/debugging
-func (i *Index) DumpState() {
-	fmt.Println("############Index state:\n############")
-
-	if i.elements != nil {
-		fmt.Println("Elements:")
-		for _, v := range i.elements {
-			fmt.Println(v.Path)
-		}
-	} else {
-		fmt.Println("Elements is nil")
-	}
-	fmt.Println("#####")
-
-	if i.cacheTree != nil {
-		fmt.Println("Tree:")
-		i.cacheTree.Dump()
-	} else {
-		fmt.Println("Tree is nil")
-	}
-	fmt.Println("#####")
-
-	if i.cacheFiles != nil {
-		fmt.Println("Cache files:")
-		for k, v := range i.cacheFiles {
-			fmt.Println(k, " - ", v.Path)
-		}
-	} else {
-		fmt.Println("Cache files is nil")
-	}
-
-	fmt.Print("############\n\n")
 }
