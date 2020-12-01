@@ -67,7 +67,7 @@ Shows the list of all files and folders contained in the repository at a given p
 			if err != nil {
 				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
 			}
-			defer store.ReleaseLock()
+			defer store.ReleaseLock(context.Background())
 
 			// Request the info file
 			info, err := store.GetInfoFile()

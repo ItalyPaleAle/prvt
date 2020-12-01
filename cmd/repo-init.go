@@ -67,7 +67,7 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			if err != nil {
 				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
 			}
-			defer store.ReleaseLock()
+			defer store.ReleaseLock(context.Background())
 
 			// Create the info file after generating a new master key
 			info, errMessage, err := NewInfoFile(flagGPGKey)

@@ -173,7 +173,7 @@ type Fs interface {
 	AcquireLock(ctx context.Context) (err error)
 
 	// ReleaseLock releases the lock
-	ReleaseLock() (err error)
+	ReleaseLock(ctx context.Context) (err error)
 }
 
 // Base class for filesystems, which contains the key and data path

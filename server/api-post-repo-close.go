@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -28,7 +29,7 @@ import (
 func (s *Server) PostRepoCloseHandler(c *gin.Context) {
 	// If there's an existing store object, release locks (if any)
 	if s.Store != nil {
-		err := s.Store.ReleaseLock()
+		err := s.Store.ReleaseLock(context.Background())
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}

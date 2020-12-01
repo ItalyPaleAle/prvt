@@ -496,6 +496,11 @@ func (f *Local) Delete(ctx context.Context, name string, tag interface{}) (err e
 }
 
 func (f *Local) AcquireLock(ctx context.Context) (err error) {
+	// If we already have a lock, short-circuit
+	if f.lock != nil && f.lock.Locked() {
+		return nil
+	}
+
 	// For the Local implementation, locks are created on a local file using flock and contain no text
 	f.lock = flock.New(f.basePath + "_lock")
 
@@ -511,15 +516,23 @@ func (f *Local) AcquireLock(ctx context.Context) (err error) {
 	return nil
 }
 
-func (f *Local) ReleaseLock() (err error) {
+func (f *Local) ReleaseLock(ctx context.Context) (err error) {
 	// Silently short-circuit
 	if f.lock == nil || !f.lock.Locked() {
 		return nil
 	}
 
 	// Release the lock
-	// We won't try to delete the file to avoid race conditions with another instance trying to acquire a lock
-	return f.lock.Unlock()
+	err = f.lock.Unlock()
+	if err != nil {
+		return err
+	}
+	f.lock = nil
+
+	// Try to delete the file
+	// Note that this might fail if another instance is acquiring a lock at the same time, so just ignore errors
+	_ = os.Remove(f.basePath + "_lock")
+	return nil
 }
 
 // Internal function that returns the path to the file on disk

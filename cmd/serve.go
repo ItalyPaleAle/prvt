@@ -102,7 +102,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 				if err != nil {
 					return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
 				}
-				defer store.ReleaseLock()
+				defer store.ReleaseLock(context.Background())
 
 				// Request the info file
 				info, err = store.GetInfoFile()

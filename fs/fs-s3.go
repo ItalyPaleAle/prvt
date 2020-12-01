@@ -499,7 +499,7 @@ func (f *S3) AcquireLock(ctx context.Context) (err error) {
 	return nil
 }
 
-func (f *S3) ReleaseLock() (err error) {
+func (f *S3) ReleaseLock(ctx context.Context) (err error) {
 	return nil
 }
 

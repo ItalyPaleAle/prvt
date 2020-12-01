@@ -57,6 +57,7 @@ type AzureStorage struct {
 	storageURL         string
 	cache              *fsutils.MetadataCache
 	mux                sync.Mutex
+	lockLeaseId        string
 }
 
 func (f *AzureStorage) OptionsList() *FsOptionsList {
@@ -602,10 +603,81 @@ func (f *AzureStorage) Delete(ctx context.Context, name string, tag interface{})
 }
 
 func (f *AzureStorage) AcquireLock(ctx context.Context) (err error) {
+	return f.acquireLock(ctx, true)
+}
+
+func (f *AzureStorage) acquireLock(ctx context.Context, first bool) (err error) {
+	// If we already have a lock, short-circuit
+	if f.lockLeaseId != "" {
+		return nil
+	}
+
+	// Create the blob URL
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl("_lock")
+	if err != nil {
+		return
+	}
+
+	// Acquire a lease
+	res, err := blockBlobURL.AcquireLease(ctx, "", -1, azblob.ModifiedAccessConditions{})
+	if err != nil {
+		if stgErr, ok := err.(azblob.StorageError); !ok {
+			err = fmt.Errorf("network error while acquiring a lock: %s", err.Error())
+		} else {
+			// Blob not found, so we need to create an empty blob first and retry
+			if first && stgErr.Response().StatusCode == http.StatusNotFound {
+				// First, create an empty blob
+				_, err = azblob.UploadBufferToBlockBlob(ctx, []byte{}, blockBlobURL, azblob.UploadToBlockBlobOptions{})
+				if err != nil {
+					if stgErr, ok := err.(azblob.StorageError); !ok {
+						err = fmt.Errorf("network error while creating a lock file: %s", err.Error())
+					} else {
+						err = fmt.Errorf("Azure Storage error while creating a lock file: %s", stgErr.Response().Status)
+					}
+					return
+				}
+
+				// After creating the file, invoke this method again
+				return f.acquireLock(ctx, false)
+			}
+			err = fmt.Errorf("Azure Storage error while acquiring a lock: %s", stgErr.Response().Status)
+		}
+		return
+	}
+
+	// Get the lock ID
+	f.lockLeaseId = res.LeaseID()
+
 	return nil
 }
 
-func (f *AzureStorage) ReleaseLock() (err error) {
+func (f *AzureStorage) ReleaseLock(ctx context.Context) (err error) {
+	// Silently short-circuit
+	if f.lockLeaseId == "" {
+		return nil
+	}
+
+	// Create the blob URL
+	var blockBlobURL azblob.BlockBlobURL
+	blockBlobURL, err = f.blobUrl("_lock")
+	if err != nil {
+		return
+	}
+
+	// Release the lock
+	_, err = blockBlobURL.ReleaseLease(ctx, f.lockLeaseId, azblob.ModifiedAccessConditions{})
+	if err != nil {
+		if stgErr, ok := err.(azblob.StorageError); !ok {
+			err = fmt.Errorf("network error while releaing the lock: %s", err.Error())
+		} else {
+			err = fmt.Errorf("Azure Storage error while releaing the lock: %s", stgErr.Response().Status)
+		}
+		return
+	}
+
+	f.lockLeaseId = ""
+
 	return nil
 }
 
