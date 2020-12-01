@@ -174,6 +174,9 @@ type Fs interface {
 
 	// ReleaseLock releases the lock
 	ReleaseLock(ctx context.Context) (err error)
+
+	// BreakLock breaks the lock that another process might be holding
+	BreakLock(ctx context.Context) (err error)
 }
 
 // Base class for filesystems, which contains the key and data path

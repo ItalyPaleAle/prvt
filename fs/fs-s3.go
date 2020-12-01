@@ -503,6 +503,10 @@ func (f *S3) ReleaseLock(ctx context.Context) (err error) {
 	return nil
 }
 
+func (f *S3) BreakLock(ctx context.Context) (err error) {
+	return nil
+}
+
 // Internal function that returns the path to the file on storage
 func (f *S3) filePath(name string) (path string, err error) {
 	if name == "" {
