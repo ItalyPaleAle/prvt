@@ -51,7 +51,7 @@ build-wasm:
 	rm ui/assets/*.wasm || true
 	rm ui/assets/*.wasm.br || true
 	# Build the wasm file
-	( cd wasm; GOOS=js GOARCH=wasm go build -o ../ui/assets/app.wasm )
+	( cd wasm; GOOS=js GOARCH=wasm go build -ldflags "-s -w" -o ../ui/assets/app.wasm )
 
 # Build the wasm binary for production (compressed
 build-wasm-prod: build-wasm
