@@ -42,6 +42,7 @@ services:
       - 'AZURE_STORAGE_ACCESS_KEY=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=='
       - 'AZURE_STORAGE_CUSTOM_ENDPOINT=azurite:10000'
       - 'AZURE_STORAGE_TLS=false'
+      - 'AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1'
       - 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE'
       - 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
       - 'PRVT_STORE=local:/home/vscode/prvt-data'
