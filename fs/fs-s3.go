@@ -22,21 +22,28 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
+	"github.com/gofrs/uuid"
 
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+// Duration (in minutes) for locks (don't set this to lower than 5!)
+const S3LockDuration = 30
 
 // Register the fs
 func init() {
@@ -50,10 +57,12 @@ func init() {
 type S3 struct {
 	fsBase
 
-	client     *minio.Core
-	bucketName string
-	cache      *fsutils.MetadataCache
-	mux        sync.Mutex
+	client          *minio.Core
+	bucketName      string
+	cache           *fsutils.MetadataCache
+	mux             sync.Mutex
+	lockId          string
+	lockRefreshStop context.CancelFunc
 }
 
 func (f *S3) OptionsList() *FsOptionsList {
@@ -496,14 +505,122 @@ func (f *S3) Delete(ctx context.Context, name string, tag interface{}) (err erro
 }
 
 func (f *S3) AcquireLock(ctx context.Context) (err error) {
+	// If we already have a lock, short-circuit
+	if f.lockId != "" {
+		return nil
+	}
+
+	// Adding a semaphore here to prevent multiple operations on a lock
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
+	// Request the list of existing locks and check if there's already one that is valid
+	curLocks := make([]string, 0)
+	listCh := f.client.Client.ListObjects(ctx, f.bucketName, minio.ListObjectsOptions{
+		Prefix: "/_locks/",
+	})
+	for el := range listCh {
+		curLocks = append(curLocks, el.Key)
+
+		// Check if this lock is still active
+		if f.lockActive(&el) {
+			return errors.New("repository contains another active lock")
+		}
+	}
+
+	// If we're here, so far no one has obtained a lock, so we can request one by creating a lock file
+	lockUUID, err := uuid.NewV4()
+	if err != nil {
+		return err
+	}
+	f.lockId = lockUUID.String()
+	err = f.putLockFile(ctx, f.lockId)
+	if err != nil {
+		return err
+	}
+
+	// We have acquired a lock, but someone else might have requested a lock at the same time
+	// So, we need to check if anyone else got a lock in the meanwhile. If they did, then fail
+	// Note: as of 2020-12-01, S3 offers strong read-after-write consistency so this is not a risk anymore!
+	listCh = f.client.Client.ListObjects(ctx, f.bucketName, minio.ListObjectsOptions{
+		Prefix: "/_locks/",
+	})
+	for el := range listCh {
+		// Check if the same object already existed (or if it's the one we just created)
+		if el.Key != "/_locks/"+f.lockId && !utils.StringInSlice(curLocks, el.Key) {
+			// We have a new object that wasn't there before (and we didn't create it), which means we had a race with another client
+			// Clean up our lock before returning
+			_ = f.deleteLockFile(context.Background(), f.lockId)
+			return errors.New("conflict: another lock was added at the same time")
+		}
+	}
+
+	// In background, we need to periodically renew the lock while the app is running
+	go f.refreshLockFile()
+
+	// If we have expired locks, clean them up in background
+	if len(curLocks) > 0 {
+		for _, e := range curLocks {
+			go func(e string) {
+				err := f.deleteLockFile(context.Background(), e)
+				if err != nil {
+					fmt.Println("[Warn] Failed to remove expired lock:", err)
+				}
+			}(e)
+		}
+	}
+
 	return nil
 }
 
 func (f *S3) ReleaseLock(ctx context.Context) (err error) {
-	return nil
+	// Silently short-circuit
+	if f.lockId == "" {
+		return nil
+	}
+
+	// Adding a semaphore here to prevent multiple operations on a lock
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
+	// Stop the refresher, if any
+	if f.lockRefreshStop != nil {
+		f.lockRefreshStop()
+		f.lockRefreshStop = nil
+	}
+
+	// Delete the lock file
+	return f.deleteLockFile(ctx, f.lockId)
 }
 
 func (f *S3) BreakLock(ctx context.Context) (err error) {
+	// Silently short-circuit
+	if f.lockId == "" {
+		return nil
+	}
+
+	// Adding a semaphore here to prevent multiple operations on a lock
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
+	// Stop the refresher, if any
+	if f.lockRefreshStop != nil {
+		f.lockRefreshStop()
+		f.lockRefreshStop = nil
+	}
+
+	// Delete all locks
+	objectsCh := f.client.Client.ListObjects(ctx, f.bucketName, minio.ListObjectsOptions{
+		Prefix:    "/_locks/",
+		Recursive: true,
+	})
+	deleteCh := f.client.Client.RemoveObjects(ctx, f.bucketName, objectsCh, minio.RemoveObjectsOptions{})
+	for e := range deleteCh {
+		if e.Err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -522,4 +639,81 @@ func (f *S3) filePath(name string) (path string, err error) {
 
 	path = folder + name
 	return
+}
+
+// Internal function that checks if a lock is still active
+func (f *S3) lockActive(lock *minio.ObjectInfo) bool {
+	if lock == nil {
+		return false
+	}
+
+	// Check the last modified date
+	if lock.LastModified.Before(time.Now().Add(-1 * time.Duration(S3LockDuration) * time.Minute)) {
+		return false
+	}
+
+	return true
+}
+
+// Internal function that puts a lock file (potentially replacing existing ones)
+func (f *S3) putLockFile(ctx context.Context, lockId string) (err error) {
+	content := bytes.NewBufferString(lockId)
+	size := int64(len(lockId))
+	_, err = f.client.Client.PutObject(ctx, f.bucketName, "_locks/"+lockId, content, size, minio.PutObjectOptions{
+		DisableMultipart: true,
+	})
+	return err
+}
+
+// Internal function that deletes a lock file
+func (f *S3) deleteLockFile(ctx context.Context, lockId string) (err error) {
+	return f.client.Client.RemoveObject(ctx, f.bucketName, "_locks/"+lockId, minio.RemoveObjectOptions{})
+}
+
+// Internal function that periodically refreshes the lock file
+// This must be invoked as a background goroutine: `go refreshLockFile()`
+func (f *S3) refreshLockFile() {
+	if f.lockRefreshStop != nil {
+		// Stop prior refresher
+		f.lockRefreshStop()
+		f.lockRefreshStop = nil
+	}
+
+	if f.lockId == "" {
+		return
+	}
+
+	// Context to cancel the execution
+	var ctx context.Context
+	ctx, f.lockRefreshStop = context.WithCancel(context.Background())
+
+	// Interval
+	// Refresh 3 minutes before the lock expires
+	tick := time.NewTicker(time.Duration(S3LockDuration) - 3)
+
+	// Loop and block until stopped
+	for {
+		select {
+		// Stop
+		case <-ctx.Done():
+			if f.lockRefreshStop != nil {
+				// Stop the refresher
+				f.lockRefreshStop()
+				f.lockRefreshStop = nil
+			}
+			tick.Stop()
+			return
+		case <-tick.C:
+			// Should never happen, but…
+			if f.lockId == "" {
+				tick.Stop()
+				return
+			}
+			err := f.putLockFile(ctx, f.lockId)
+			if err != nil {
+				log.Fatalln("Failed to renew lock file", err)
+				return
+			}
+		}
+	}
 }

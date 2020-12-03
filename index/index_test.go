@@ -30,6 +30,7 @@ import (
 	"time"
 
 	pb "github.com/ItalyPaleAle/prvt/index/proto"
+	"github.com/ItalyPaleAle/prvt/utils"
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -287,7 +288,7 @@ func listFiles(t *testing.T, path string) {
 			if pos > 0 {
 				e = e[:pos]
 			}
-			if !StringInSlice(exp, e) {
+			if !utils.StringInSlice(exp, e) {
 				exp = append(exp, e)
 			}
 		}
@@ -594,16 +595,4 @@ func (n *IndexTreeNode) dump(indent int) {
 			c.dump(indent + 1)
 		}
 	}
-}
-
-/* Utils */
-
-// StringInSlice checks if a string is contained inside a slice of strings
-func StringInSlice(list []string, a string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }
