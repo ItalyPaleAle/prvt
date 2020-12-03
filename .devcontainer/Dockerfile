@@ -19,14 +19,13 @@ RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc \
 
 # Install a set of tools
 RUN curl -sf https://gobinaries.com/github.com/ory/go-acc@v0.2.6 | PREFIX=/usr/local/bin sh \
-  && curl -sf https://gobinaries.com/github.com/gobuffalo/packr/packr2@v2.7.1 | PREFIX=/usr/local/bin sh \
   && curl -sf https://gobinaries.com/github.com/markbates/pkger/cmd/pkger@v0.17.1 | PREFIX=/usr/local/bin sh \
   && curl -sf https://gobinaries.com/github.com/axw/gocov/gocov | PREFIX=/usr/local/bin sh \
   # Fork of github.com/matm/gocov-html but with tags so it works with gobinaries.com
   && curl -sf https://gobinaries.com/github.com/ItalyPaleAle/gocov-html | PREFIX=/usr/local/bin sh \
   && curl -sf https://gobinaries.com/github.com/golang/protobuf/protoc-gen-go@v1.4.3 | PREFIX=/usr/local/bin sh \
   # Minio client (for S3)
-  && curl https://dl.min.io/client/mc/release/linux-amd64/mc > /usr/local/bin/mc \
+  && curl -L https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc \
   && chmod +x /usr/local/bin/mc \
   # Protobuf compiler
   && export PROTOC_VERSION="3.14.0" \
