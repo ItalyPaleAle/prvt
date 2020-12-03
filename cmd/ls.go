@@ -18,11 +18,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/ItalyPaleAle/prvt/fs"
 	"github.com/ItalyPaleAle/prvt/fs/fsindex"
@@ -55,19 +53,11 @@ Shows the list of all files and folders contained in the repository at a given p
 			}
 
 			// Create the store object
+			// No need for a lock for this command
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
 				return NewExecError(ErrorUser, "Could not initialize store", err)
 			}
-
-			// Acquire a lock
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			err = store.AcquireLock(ctx)
-			cancel()
-			if err != nil {
-				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
-			}
-			defer store.ReleaseLock(context.Background())
 
 			// Request the info file
 			info, err := store.GetInfoFile()
