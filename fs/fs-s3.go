@@ -43,7 +43,10 @@ import (
 )
 
 // Duration (in minutes) for locks (don't set this to lower than 5!)
-const S3LockDuration = 30
+const S3LockDuration = 20
+
+// Renew a lock 3 minutes before its expiration
+const S3LockRenewal = 2
 
 // Register the fs
 func init() {
@@ -562,7 +565,7 @@ func (f *S3) AcquireLock(ctx context.Context) (err error) {
 	if len(curLocks) > 0 {
 		for _, e := range curLocks {
 			go func(e string) {
-				err := f.deleteLockFile(context.Background(), e)
+				err := f.deleteLockFile(context.Background(), strings.TrimPrefix(e, "/_locks/"))
 				if err != nil {
 					fmt.Println("[Warn] Failed to remove expired lock:", err)
 				}
@@ -657,8 +660,8 @@ func (f *S3) lockActive(lock *minio.ObjectInfo) bool {
 
 // Internal function that puts a lock file (potentially replacing existing ones)
 func (f *S3) putLockFile(ctx context.Context, lockId string) (err error) {
-	content := bytes.NewBufferString(lockId)
-	size := int64(len(lockId))
+	content := bytes.NewBufferString(lockId + " " + time.Now().Format(time.RFC3339) + "\n")
+	size := int64(content.Len())
 	_, err = f.client.Client.PutObject(ctx, f.bucketName, "_locks/"+lockId, content, size, minio.PutObjectOptions{
 		DisableMultipart: true,
 	})
@@ -688,8 +691,7 @@ func (f *S3) refreshLockFile() {
 	ctx, f.lockRefreshStop = context.WithCancel(context.Background())
 
 	// Interval
-	// Refresh 3 minutes before the lock expires
-	tick := time.NewTicker(time.Duration(S3LockDuration) - 3)
+	tick := time.NewTicker(time.Duration(S3LockDuration-S3LockRenewal) * time.Minute)
 
 	// Loop and block until stopped
 	for {
