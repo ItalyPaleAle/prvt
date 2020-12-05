@@ -61,7 +61,7 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 			}
 
 			// Acquire a lock
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			err = store.AcquireLock(ctx)
 			cancel()
 			if err != nil {

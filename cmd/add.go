@@ -84,7 +84,7 @@ You must specify a destination, which is a folder inside the repository where yo
 			}
 
 			// Acquire a lock
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			err = store.AcquireLock(ctx)
 			cancel()
 			if err != nil {

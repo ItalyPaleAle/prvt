@@ -58,7 +58,7 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			}
 
 			// Acquire a lock
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			err = store.AcquireLock(ctx)
 			cancel()
 			if err != nil {

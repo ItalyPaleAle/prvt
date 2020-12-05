@@ -82,7 +82,7 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	}
 
 	// Acquire a lock
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	err = store.AcquireLock(ctx)
 	cancel()
 	if err != nil {
