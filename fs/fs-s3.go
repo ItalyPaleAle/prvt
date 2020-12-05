@@ -42,11 +42,11 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// Duration (in minutes) for locks (don't set this to lower than 5!)
-const S3LockDuration = 20
+// Duration (in seconds) for locks (don't set this to lower than 5!)
+var S3LockDuration = 1200
 
-// Renew a lock 3 minutes before its expiration
-const S3LockRenewal = 2
+// Renew a lock 3 minutes (in seconds) before its expiration
+var S3LockRenewal = 180
 
 // Register the fs
 func init() {
@@ -593,15 +593,15 @@ func (f *S3) ReleaseLock(ctx context.Context) (err error) {
 	}
 
 	// Delete the lock file
-	return f.deleteLockFile(ctx, f.lockId)
+	err = f.deleteLockFile(ctx, f.lockId)
+	if err != nil {
+		return err
+	}
+	f.lockId = ""
+	return nil
 }
 
 func (f *S3) BreakLock(ctx context.Context) (err error) {
-	// Silently short-circuit
-	if f.lockId == "" {
-		return nil
-	}
-
 	// Adding a semaphore here to prevent multiple operations on a lock
 	f.mux.Lock()
 	defer f.mux.Unlock()
@@ -611,6 +611,9 @@ func (f *S3) BreakLock(ctx context.Context) (err error) {
 		f.lockRefreshStop()
 		f.lockRefreshStop = nil
 	}
+
+	// Delete the lock id
+	f.lockId = ""
 
 	// Delete all locks
 	objectsCh := f.client.Client.ListObjects(ctx, f.bucketName, minio.ListObjectsOptions{
@@ -651,7 +654,7 @@ func (f *S3) lockActive(lock *minio.ObjectInfo) bool {
 	}
 
 	// Check the last modified date
-	if lock.LastModified.Before(time.Now().Add(-1 * time.Duration(S3LockDuration) * time.Minute)) {
+	if lock.LastModified.Before(time.Now().Add(-1 * time.Duration(S3LockDuration) * time.Second)) {
 		return false
 	}
 
@@ -691,7 +694,7 @@ func (f *S3) refreshLockFile() {
 	ctx, f.lockRefreshStop = context.WithCancel(context.Background())
 
 	// Interval
-	tick := time.NewTicker(time.Duration(S3LockDuration-S3LockRenewal) * time.Minute)
+	tick := time.NewTicker(time.Duration(S3LockDuration-S3LockRenewal) * time.Second)
 
 	// Loop and block until stopped
 	for {

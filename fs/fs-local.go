@@ -544,11 +544,6 @@ func (f *Local) ReleaseLock(ctx context.Context) (err error) {
 }
 
 func (f *Local) BreakLock(ctx context.Context) (err error) {
-	// Silently short-circuit
-	if f.lock == nil || !f.lock.Locked() {
-		return nil
-	}
-
 	return errors.New("filesystem-based locks cannot be broken; please terminate the process that owns the lock instead")
 }
 

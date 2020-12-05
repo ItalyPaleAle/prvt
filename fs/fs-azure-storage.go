@@ -690,11 +690,6 @@ func (f *AzureStorage) ReleaseLock(ctx context.Context) (err error) {
 }
 
 func (f *AzureStorage) BreakLock(ctx context.Context) (err error) {
-	// Silently short-circuit
-	if f.lockLeaseId == "" {
-		return nil
-	}
-
 	// Adding a semaphore here to prevent multiple operations on a lock
 	f.mux.Lock()
 	defer f.mux.Unlock()

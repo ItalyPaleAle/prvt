@@ -35,7 +35,7 @@ func TestFsLocal(t *testing.T) {
 		return
 	}
 
-	// Init the object
+	// Init the store object
 	store := &Local{}
 	opts := map[string]string{
 		"type": "local",
