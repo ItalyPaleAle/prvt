@@ -1,9 +1,10 @@
 paths-ignore:
   # Ignore the wasm folder which requires compiling for wasm, not supported by CodeQL
   - wasm/
-  # node_modules and compiled ui
+  # node_modules, compiled UI, and the WASM runtime from Go
   - ui/node_modules
   - ui/dist
+  - ui/src/sw/wasm_exec.js
 
 # Adding other queries
 queries:
