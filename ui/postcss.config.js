@@ -13,6 +13,7 @@ module.exports = {
                 './src/**/*.svelte',
                 './src/**/*.html',
                 './src/**/*.js',
+                './src/**/*.ts',
             ],
 
             // Include any special characters you're using in this regular expression
