@@ -3,3 +3,7 @@ paths-ignore:
   - wasm/
   # node_modules folder
   - ui/node_modules
+
+# Adding other queries
+queries:
+  - uses: security-and-quality
