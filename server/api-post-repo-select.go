@@ -75,8 +75,8 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	}
 
 	// If there's an existing store object, release locks (if any)
-	if s.Store != nil {
-		err = s.Store.ReleaseLock(context.Background())
+	err = s.releaseRepoLock()
+	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}

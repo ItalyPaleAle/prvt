@@ -82,9 +82,6 @@ You can use the optional "--address" and "--port" flags to control what address 
 				return NewExecError(ErrorApp, "Cannot get flag 'read-only'", err)
 			}
 
-			// Release all store locks at the end, in case there's any
-			defer store.ReleaseLock(context.Background())
-
 			// Check if we have a store flag
 			if !flagNoRepo {
 				// Ensure the connection string is set
@@ -99,6 +96,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 				}
 
 				// Acquire a lock
+				// The Server object will remove locks at the end, if any
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				err = store.AcquireLock(ctx)
 				cancel()

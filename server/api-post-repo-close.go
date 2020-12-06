@@ -18,7 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package server
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -28,8 +27,8 @@ import (
 // PostRepoCloseHandler is the handler for POST /api/repo/close, which closes any open repository
 func (s *Server) PostRepoCloseHandler(c *gin.Context) {
 	// If there's an existing store object, release locks (if any)
-	if s.Store != nil {
-		err := s.Store.ReleaseLock(context.Background())
+	err := s.releaseRepoLock()
+	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}

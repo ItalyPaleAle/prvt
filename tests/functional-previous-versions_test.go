@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/infofile"
 
@@ -71,6 +72,9 @@ func (s *funcTestSuite) RunPreviousVersions(t *testing.T) {
 	t.Run("prvt 0.5-gpg", func(t *testing.T) {
 		s.previousVersion_0_5(t, true)
 	})
+
+	// Sleep for 10 seconds to see if all locks are removd
+	time.Sleep(10 * time.Second)
 }
 
 // Tests for working with repositories created by version 0.2
