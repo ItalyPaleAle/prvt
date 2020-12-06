@@ -12,12 +12,17 @@ jobs:
       fail-fast: false
 
     # CodeQL runs on ubuntu-latest and windows-latest
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
 
     steps:
       #Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v2
+
+      # Delete the wasm folder
+      # Wasm requires compiling for the wasm target which isn't supported by GraphQL
+      - run: |
+          rm -rvf wasm
 
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
