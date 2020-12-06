@@ -26,6 +26,13 @@ import (
 
 // PostRepoCloseHandler is the handler for POST /api/repo/close, which closes any open repository
 func (s *Server) PostRepoCloseHandler(c *gin.Context) {
+	// If there's an existing store object, release locks (if any)
+	err := s.releaseRepoLock()
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
 	// Reset the store, infofile, and repo variables
 	s.Store = nil
 	s.Infofile = nil

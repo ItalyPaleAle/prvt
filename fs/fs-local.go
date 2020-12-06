@@ -29,12 +29,14 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ItalyPaleAle/prvt/crypto"
 	"github.com/ItalyPaleAle/prvt/fs/fsutils"
 	"github.com/ItalyPaleAle/prvt/infofile"
 	"github.com/ItalyPaleAle/prvt/utils"
 
+	"github.com/gofrs/flock"
 	homedir "github.com/mitchellh/go-homedir"
 )
 
@@ -53,6 +55,7 @@ type Local struct {
 	basePath string
 	cache    *fsutils.MetadataCache
 	mux      sync.Mutex
+	lock     *flock.Flock
 }
 
 func (f *Local) OptionsList() *FsOptionsList {
@@ -490,6 +493,58 @@ func (f *Local) Delete(ctx context.Context, name string, tag interface{}) (err e
 	// Delete the file
 	err = os.Remove(path)
 	return
+}
+
+func (f *Local) AcquireLock(ctx context.Context) (err error) {
+	// If we already have a lock, short-circuit
+	if f.lock != nil && f.lock.Locked() {
+		return nil
+	}
+
+	// Adding a semaphore here to prevent multiple operations on a lock
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
+	// For the Local implementation, locks are created on a local file using flock and contain no text
+	f.lock = flock.New(f.basePath + "_lock")
+
+	// Gain an exclusive lock
+	locked, err := f.lock.TryLockContext(ctx, 400*time.Millisecond)
+	if err != nil {
+		return err
+	}
+	if !locked {
+		return errors.New("could not acquire lock")
+	}
+
+	return nil
+}
+
+func (f *Local) ReleaseLock(ctx context.Context) (err error) {
+	// Silently short-circuit
+	if f.lock == nil || !f.lock.Locked() {
+		return nil
+	}
+
+	// Adding a semaphore here to prevent multiple operations on a lock
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
+	// Release the lock
+	err = f.lock.Unlock()
+	if err != nil {
+		return err
+	}
+	f.lock = nil
+
+	// Try to delete the file
+	// Note that this might fail if another instance is acquiring a lock at the same time, so just ignore errors
+	_ = os.Remove(f.basePath + "_lock")
+	return nil
+}
+
+func (f *Local) BreakLock(ctx context.Context) (err error) {
+	return errors.New("filesystem-based locks cannot be broken; please terminate the process that owns the lock instead")
 }
 
 // Internal function that returns the path to the file on disk

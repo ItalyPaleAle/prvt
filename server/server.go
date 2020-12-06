@@ -234,7 +234,7 @@ func (s *Server) launchServer(ctx context.Context, address, port string, router 
 		}
 
 		// We received an interrupt signal, shut down
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			// Error from closing listeners, or context timeout:
 			fmt.Fprintf(s.LogWriter, "HTTP server shutdown error: %v\n", err)
@@ -250,5 +250,16 @@ func (s *Server) launchServer(ctx context.Context, address, port string, router 
 	}
 	<-idleConnsClosed
 
+	// Release all locks, if any
+	_ = s.releaseRepoLock()
+
 	return nil
+}
+
+func (s *Server) releaseRepoLock() (err error) {
+	// If there's an existing store object, release locks (if any)
+	if s.Store != nil {
+		err = s.Store.ReleaseLock(context.Background())
+	}
+	return
 }

@@ -105,3 +105,13 @@ func SanitizeConnectionName(conn string) string {
 
 	return conn
 }
+
+// StringInSlice checks if a string is contained inside a slice of strings
+func StringInSlice(list []string, a string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}

@@ -44,9 +44,10 @@ func init() {
 
 // Performs tests for a store object, already initialized
 type testFs struct {
-	t     *testing.T
-	store Fs
-	cache *fsutils.MetadataCache
+	t      *testing.T
+	store  Fs
+	store2 Fs
+	cache  *fsutils.MetadataCache
 
 	info  *infofile.InfoFile
 	files map[string][]byte
@@ -78,6 +79,13 @@ func (s *testFs) Run() {
 	s.testGet()
 	s.testGetWithRange()
 	s.testDelete()
+
+	// Locks
+	s.testLocks()
+	// Test breaking locks only if we have 2 stores (because some FS might not support breaking locks)
+	if s.store2 != nil {
+		s.testLockBreak()
+	}
 }
 
 // Loads fixtures
@@ -256,6 +264,7 @@ func (s *testFs) testGet() {
 		err      error
 		read     []byte
 		cbCalled bool
+		ctx      = context.Background()
 	)
 
 	// Cache must be empty at this point
@@ -264,7 +273,7 @@ func (s *testFs) testGet() {
 	// Retrieve the text file
 	out = &bytes.Buffer{}
 	cbCalled = false
-	found, _, err = s.store.Get(context.Background(), "divinacommedia.txt", out, func(metadata *crypto.Metadata, metadataSize int32) {
+	found, _, err = s.store.Get(ctx, "divinacommedia.txt", out, func(metadata *crypto.Metadata, metadataSize int32) {
 		assert.Equal(s.t, "divinacommedia.txt", metadata.Name)
 		assert.Equal(s.t, "text/plain", metadata.ContentType)
 		assert.Equal(s.t, int64(len(s.files["divinacommedia.txt"])), metadata.Size)
@@ -286,7 +295,7 @@ func (s *testFs) testGet() {
 
 	// Retrieve the metadata only
 	cbCalled = false
-	found, _, err = s.store.Get(context.Background(), "kitera-dent-BIj4LObC6es-unsplash.jpg", nil, func(metadata *crypto.Metadata, metadataSize int32) {
+	found, _, err = s.store.Get(ctx, "kitera-dent-BIj4LObC6es-unsplash.jpg", nil, func(metadata *crypto.Metadata, metadataSize int32) {
 		assert.Equal(s.t, "kitera-dent-BIj4LObC6es-unsplash.jpg", metadata.Name)
 		assert.Equal(s.t, "image/jpeg", metadata.ContentType)
 		assert.Equal(s.t, int64(len(s.files["kitera-dent-BIj4LObC6es-unsplash.jpg"])), metadata.Size)
@@ -303,20 +312,20 @@ func (s *testFs) testGet() {
 	assert.True(s.t, s.cache.Contains("kitera-dent-BIj4LObC6es-unsplash.jpg"))
 
 	// Error: empty name
-	_, _, err = s.store.Get(context.Background(), "", nil, nil)
+	_, _, err = s.store.Get(ctx, "", nil, nil)
 	if !assert.Error(s.t, err) {
 		s.t.FailNow()
 	}
 
 	// File does not exist
-	found, _, err = s.store.Get(context.Background(), "no_exist", nil, nil)
+	found, _, err = s.store.Get(ctx, "no_exist", nil, nil)
 	if !assert.NoError(s.t, err) {
 		s.t.FailNow()
 	}
 	assert.False(s.t, found)
 
 	// No metadata callback
-	found, _, err = s.store.Get(context.Background(), "short.txt", nil, nil)
+	found, _, err = s.store.Get(ctx, "short.txt", nil, nil)
 	if !assert.EqualError(s.t, err, crypto.ErrMetadataOnly.Error()) ||
 		!assert.True(s.t, found) {
 		s.t.FailNow()
@@ -328,7 +337,7 @@ func (s *testFs) testGet() {
 
 	// Short file
 	out = &bytes.Buffer{}
-	found, _, err = s.store.Get(context.Background(), "short.txt", out, nil)
+	found, _, err = s.store.Get(ctx, "short.txt", out, nil)
 	if !assert.NoError(s.t, err) ||
 		!assert.True(s.t, found) {
 		s.t.FailNow()
@@ -342,7 +351,7 @@ func (s *testFs) testGet() {
 	// Context canceled
 	{
 		cbCalled = false
-		ctx, cancel := context.WithCancel(context.Background())
+		innerCtx, cancel := context.WithCancel(ctx)
 		pr, pw := io.Pipe()
 		go func() {
 			// Read the first 10 bytes, then cancel the context, then copy the rest
@@ -351,7 +360,7 @@ func (s *testFs) testGet() {
 			cancel()
 			io.Copy(ioutil.Discard, pr)
 		}()
-		_, _, err = s.store.Get(ctx, "kitera-dent-BIj4LObC6es-unsplash.jpg", pw, func(metadata *crypto.Metadata, metadataSize int32) {
+		_, _, err = s.store.Get(innerCtx, "kitera-dent-BIj4LObC6es-unsplash.jpg", pw, func(metadata *crypto.Metadata, metadataSize int32) {
 			cbCalled = (metadataSize > 0)
 		})
 		if !assert.Error(s.t, err) ||
@@ -364,6 +373,8 @@ func (s *testFs) testGet() {
 
 // Retrieve partial encrypted files
 func (s *testFs) testGetWithRange() {
+	ctx := context.Background()
+
 	// Empty the metadata cache
 	s.cache.Purge()
 
@@ -391,13 +402,13 @@ func (s *testFs) testGetWithRange() {
 	s.getRange("divinacommedia.txt", 6000, 0)
 
 	// Error: empty name
-	_, _, err := s.store.GetWithRange(context.Background(), "", nil, nil, nil)
+	_, _, err := s.store.GetWithRange(ctx, "", nil, nil, nil)
 	if !assert.Error(s.t, err) {
 		s.t.FailNow()
 	}
 
 	// File does not exist
-	found, _, err := s.store.GetWithRange(context.Background(), "no_exist", nil, nil, nil)
+	found, _, err := s.store.GetWithRange(ctx, "no_exist", nil, nil, nil)
 	if !assert.NoError(s.t, err) {
 		s.t.FailNow()
 	}
@@ -413,7 +424,7 @@ func (s *testFs) testGetWithRange() {
 			Length: 0,
 		}
 		cbCalled := false
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(ctx)
 		pr, pw := io.Pipe()
 		go func() {
 			// Read the first 10 bytes, then cancel the context, then copy the rest
@@ -433,20 +444,21 @@ func (s *testFs) testGetWithRange() {
 	}
 }
 
-// Set info file
+// Delete files
 func (s *testFs) testDelete() {
 	var (
 		err   error
 		found bool
+		ctx   = context.Background()
 	)
 	// Delete the file
-	err = s.store.Delete(context.Background(), "divinacommedia.txt", nil)
+	err = s.store.Delete(ctx, "divinacommedia.txt", nil)
 	if !assert.NoError(s.t, err) {
 		s.t.FailNow()
 	}
 
 	// File should be deleted
-	found, _, err = s.store.Get(context.Background(), "divinacommedia.txt", nil, nil)
+	found, _, err = s.store.Get(ctx, "divinacommedia.txt", nil, nil)
 	if !assert.NoError(s.t, err) {
 		s.t.FailNow()
 	}
@@ -455,10 +467,82 @@ func (s *testFs) testDelete() {
 	}
 
 	// Error: empty name
-	err = s.store.Delete(context.Background(), "", nil)
+	err = s.store.Delete(ctx, "", nil)
 	if !assert.Error(s.t, err) {
 		s.t.FailNow()
 	}
+}
+
+// Tests acquiring and releasing locks
+func (s *testFs) testLocks() {
+	var (
+		err error
+		ctx = context.Background()
+	)
+
+	// Should do a no-op
+	err = s.store.ReleaseLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// Acquire a lock
+	err = s.store.AcquireLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// Should do a no-op
+	err = s.store.AcquireLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// Release the lock
+	err = s.store.ReleaseLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+}
+
+// Test breaking locks (only for FS's that support that)
+func (s *testFs) testLockBreak() {
+	var (
+		err error
+		ctx = context.Background()
+	)
+
+	// Acquire another lock using the SECOND store
+	err = s.store2.AcquireLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// On the FIRST store, try acquiring a lock, which should fail
+	err = s.store.AcquireLock(ctx)
+	if !assert.Error(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// Now, use the FIRST store to break all locks
+	err = s.store.BreakLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// The FIRST store should now be able to acquire a lock
+	err = s.store.AcquireLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+
+	// Release the lock, on both stores (to ensure leftover background workers are stopped)
+	err = s.store.ReleaseLock(ctx)
+	if !assert.NoError(s.t, err) {
+		s.t.FailNow()
+	}
+	// This might fail, so ignore the error
+	_ = s.store2.ReleaseLock(ctx)
 }
 
 // Used by a few tests to check that the metadata for divinacommedia.txt is present

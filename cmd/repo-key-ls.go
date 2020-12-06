@@ -45,6 +45,7 @@ Usage: "prvt repo key ls --store <string>"
 			}
 
 			// Create the store object
+			// No need for a lock for this command
 			store, err := fs.GetWithConnectionString(flagStoreConnectionString)
 			if err != nil || store == nil {
 				return NewExecError(ErrorUser, "Could not initialize store", err)

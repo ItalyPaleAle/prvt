@@ -45,13 +45,18 @@ func TestFsAzure(t *testing.T) {
 	// Generate a container name
 	container := "prvttest" + RandString(6)
 
-	// Init the object
+	// Create 2 store objects
 	store := &AzureStorage{}
+	store2 := &AzureStorage{}
 	opts := map[string]string{
 		"type":      "azure",
 		"container": container,
 	}
 	err = store.InitWithOptionsMap(opts, cache)
+	if !assert.NoError(t, err) {
+		return
+	}
+	err = store2.InitWithOptionsMap(opts, cache)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -72,15 +77,18 @@ func TestFsAzure(t *testing.T) {
 	// Run the tests
 	t.Run("common tests", func(t *testing.T) {
 		tester := &testFs{
-			t:     t,
-			store: store,
-			cache: cache,
+			t:      t,
+			store:  store,
+			store2: store2,
+			cache:  cache,
 		}
 		tester.Run()
 	})
 }
 
 func removeAzureContainer(t *testing.T, store *AzureStorage, containerUrl azblob.ContainerURL) {
+	t.Helper()
+
 	_, err := containerUrl.Delete(context.Background(), azblob.ContainerAccessConditions{})
 	if !assert.NoError(t, err) {
 		return
