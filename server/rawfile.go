@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -29,12 +30,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// In the path parameter, allow one of:
+// - a single UUID
+// - a file that starts with _ and contains only letters, with an optional "." + numbers
+var rawPathMatch = regexp.MustCompile("^(?:(?:[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})|(?:_[a-z]+(?:\\.[0-9]+)?))$")
+
 // RawFileGetHandler is the handler for GET /rawfile/:path, which returns a raw file from the fs
 func (s *Server) RawFileGetHandler(c *gin.Context) {
-	// Get the path and ensure the path does not start with /
-	path := strings.TrimPrefix(c.Param("path"), "/")
-	if path == "" {
-		c.AbortWithError(http.StatusBadRequest, errors.New("empty path"))
+	// Get the path and ensure the path does not start or end with /, then validate it
+	path := strings.Trim(c.Param("path"), "/")
+	if path == "" || !rawPathMatch.MatchString(path) {
+		c.AbortWithError(http.StatusBadRequest, errors.New("empty or invalid path"))
 		return
 	}
 

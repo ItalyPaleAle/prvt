@@ -48,11 +48,11 @@ func GetFsOptions(name string) *FsOptionsList {
 // GetAllFsOptions returns the list of options for all fs
 func GetAllFsOptions() map[string]*FsOptionsList {
 	res := make(map[string]*FsOptionsList)
-	for k, fsTyp := range fsTypes {
+	for _, fsTyp := range fsTypes {
 		// Get the store object using some reflection magic
 		store := reflect.New(fsTyp).Interface().(Fs)
 		// Add this only for the canonical name
-		k = store.FSName()
+		k := store.FSName()
 		if res[k] == nil {
 			res[k] = store.OptionsList()
 		}

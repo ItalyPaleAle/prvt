@@ -1,8 +1,9 @@
 paths-ignore:
   # Ignore the wasm folder which requires compiling for wasm, not supported by CodeQL
   - wasm/
-  # node_modules folder
+  # node_modules and compiled ui
   - ui/node_modules
+  - ui/dist
 
 # Adding other queries
 queries:

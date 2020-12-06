@@ -52,6 +52,9 @@ func (s *Server) FileHandler(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
+	// Ensure that the value is filtered, to make CodeQL happy
+	// (Although this was not a real issue)
+	fileId = fileIdUUID.String()
 
 	// Check if we have the dl=1 option, which forces a download
 	forceDownload := false

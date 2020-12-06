@@ -75,7 +75,7 @@ func NewInfoFile(gpgKey string) (info *infofile.InfoFile, errMessage string, err
 	}
 
 	// Add the key
-	_, errMessage, err = AddKey(info, masterKey, gpgKey)
+	_, _, err = AddKey(info, masterKey, gpgKey)
 	if err != nil {
 		return nil, "Error adding the key", err
 	}
