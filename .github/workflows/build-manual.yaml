@@ -11,8 +11,7 @@ on:
 env:
   GO_BUILDER_IMAGE: 'golang:1.15-alpine'
   NODE_BUILDER_IMAGE: 'node:14-alpine'
-  PKGER_VERSION: 0.17.1
-  
+
 jobs:
 
   build:
