@@ -82,6 +82,9 @@ You can use the optional "--address" and "--port" flags to control what address 
 				return NewExecError(ErrorApp, "Cannot get flag 'read-only'", err)
 			}
 
+			// Release all store locks at the end, in case there's any
+			defer store.ReleaseLock(context.Background())
+
 			// Check if we have a store flag
 			if !flagNoRepo {
 				// Ensure the connection string is set
@@ -102,7 +105,6 @@ You can use the optional "--address" and "--port" flags to control what address 
 				if err != nil {
 					return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
 				}
-				defer store.ReleaseLock(context.Background())
 
 				// Request the info file
 				info, err = store.GetInfoFile()
