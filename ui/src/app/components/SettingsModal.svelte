@@ -8,7 +8,7 @@
     <div class="space-y-4">
         <h1 class="flex text-2xl break-all text-accent-300">Advanced</h1>
         <div class="mx-2">
-            <button on:click={toggleWasm}>
+            <button class="mr-2" on:click={toggleWasm}>
                 {#if $wasm}
                     <i class="fa fa-check-square-o fa-lg mr-2" aria-hidden="true"></i>
                     <span class="sr-only">Currently enabled</span>
@@ -16,8 +16,13 @@
                     <i class="fa fa-square-o fa-lg mr-2" aria-hidden="true"></i>
                     <span class="sr-only">Currently disabled</span>
                 {/if}
-                In-Browser End-to-End Encryption
+                In-browser End-to-End Encryption
             </button>
+            <a href="https://bit.ly/prvt-ibe2ee" class="text-sm"
+                aria-label="More information on In-browser E2EE"
+                title="More information on In-browser E2EE">
+                <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </a>
         </div>
     </div>
 </div>
