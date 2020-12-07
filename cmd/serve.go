@@ -107,9 +107,11 @@ You can use the optional "--address" and "--port" flags to control what address 
 				// Request the info file
 				info, err = store.GetInfoFile()
 				if err != nil {
+					_ = store.ReleaseLock(context.Background())
 					return NewExecError(ErrorApp, "Error requesting the info file", err)
 				}
 				if info == nil {
+					_ = store.ReleaseLock(context.Background())
 					return NewExecError(ErrorUser, "Repository is not initialized", err)
 				}
 
@@ -118,6 +120,7 @@ You can use the optional "--address" and "--port" flags to control what address 
 					// Derive the master key
 					masterKey, keyId, errMessage, err := GetMasterKey(info)
 					if err != nil {
+						_ = store.ReleaseLock(context.Background())
 						return NewExecError(ErrorUser, errMessage, err)
 					}
 					store.SetMasterKey(keyId, masterKey)
@@ -145,6 +148,9 @@ You can use the optional "--address" and "--port" flags to control what address 
 			}
 			err = srv.Start(cmd.Context(), flagBindAddress, flagBindPort)
 			if err != nil {
+				if store != nil {
+					_ = store.ReleaseLock(context.Background())
+				}
 				return NewExecError(ErrorApp, "Could not start server", err)
 			}
 
