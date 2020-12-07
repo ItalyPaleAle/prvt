@@ -38,7 +38,7 @@ This command forcefully removes all locks placed on a repository, allowing the u
 
 Most prvt commands acquire an exclusive lock on the repository before performing operations that would change the index, to forbid other instances of prvt from accessing the same repository and so to preserve the integrity of the data. Locks are generally removed automatically once the comamnd ends or the app is closed; however, in situations such as when the app suddenly crashes, repositories may remain in a locked state.
 
-When that happens, using the "prvt repo break-locks --store <string>" command can help by removing all locks placed on a repository.
+When that happens, using the "prvt repo lock-break --store <string>" command can help by removing all locks placed on a repository.
 
 This command should ONLY be invoked if you're sure that no other instance of prvt is accessing the data in the repository. Forcefully unlocking a repository that is in use by another instance of prvt could cause the index to be corrupted and data loss.
 `,

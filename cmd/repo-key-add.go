@@ -62,7 +62,7 @@ In order to use GPG keys, you need to have GPG version 2 installed separately. Y
 			err = store.AcquireLock(ctx)
 			cancel()
 			if err != nil {
-				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
+				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.\nIf you believe this is a mistake, you can forcefully break all locks with the \"prvt repo lock-break\" command.", err)
 			}
 			defer store.ReleaseLock(context.Background())
 

@@ -65,7 +65,7 @@ To identify a passphrase or a GPG key among those authorized, you can use the "p
 			err = store.AcquireLock(ctx)
 			cancel()
 			if err != nil {
-				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.", err)
+				return NewExecError(ErrorApp, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.\nIf you believe this is a mistake, you can forcefully break all locks with the \"prvt repo lock-break\" command.", err)
 			}
 			defer store.ReleaseLock(context.Background())
 

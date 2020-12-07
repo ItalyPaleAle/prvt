@@ -87,7 +87,7 @@ func (s *Server) PostRepoSelectHandler(c *gin.Context) {
 	cancel()
 	if err != nil {
 		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusConflict, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.")
+		c.AbortWithStatusJSON(http.StatusConflict, "Could not acquire a lock. Please make sure that no other instance of prvt is running with the same repo.\nIf you believe this is a mistake, you can forcefully break all locks with the \"prvt repo lock-break\" command.")
 		return
 	}
 
