@@ -1,5 +1,19 @@
+// Enables or disables Wasm
+export function enableWasm(enabled: boolean) {
+    if (!navigator.serviceWorker.controller) {
+        // Should never happen
+        return
+    }
+
+    // Request a change in wasm enablement
+    navigator.serviceWorker.controller.postMessage({
+        message: 'set-wasm',
+        enabled
+    })
+}
+
 // Cleans the path from the URL
-export function cleanPath(path) {
+export function cleanPath(path: string): string {
     path = path || ''
     // Ensure the path starts with a /
     if (path.charAt(0) == '/') {
@@ -13,58 +27,35 @@ export function cleanPath(path) {
 }
 
 // Encodes the path so it can put in a URL for requests to the server
-export function encodePath(path) {
+export function encodePath(path: string): string {
     // Run "encodeURIComponent" and then revert back %2F to /
     return encodeURIComponent(path).replace(/%2[Ff]/g, '/')
 }
 
 // Performs a deep cloning of an object (as long as it can be serialized as JSON)
-export function cloneObject(obj) {
+export function cloneObject<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj))
 }
 
-// Enables or disables Wasm
-export function enableWasm(enabled) {
-    navigator.serviceWorker.controller.postMessage({
-        message: 'set-wasm',
-        enabled
-    })
-}
-
 // Formats a size in bytes into human-readable
-export function formatSize(sz) {
-    let prefix = 0
-    while (sz > 1000 && prefix < 4) {
+export function formatSize(sz: number): string {
+    const units = ['bytes', 'KB', 'MB', 'GB', 'TB']
+    let unit = 0
+    while (sz > 1000 && unit < 4) {
         sz /= 1024
-        prefix++
+        unit++
     }
-    let result = sz
-    if (prefix > 0) {
-        result = Number(Math.round(sz + 'e2') + 'e-2').toString()
+    let result = sz + ''
+    if (unit > 0) {
+        result = Number(Math.round(Number(sz + 'e2')) + 'e-2').toString()
     }
-    switch (prefix) {
-        case 0:
-            result += ' bytes'
-            break
-        case 1:
-            result += ' KiB'
-            break
-        case 2:
-            result += ' MiB'
-            break
-        case 3:
-            result += ' GiB'
-            break
-        case 4:
-            result += ' TiB'
-            break
-    }
+    result += ' ' + units[unit]
 
     return result
 }
 
 // Returns the type for a given file mime type
-export function fileType(mimeType) {
+export function fileType(mimeType: string): string {
     if (!mimeType) {
         return ''
     }
@@ -145,7 +136,7 @@ export function fileType(mimeType) {
 }
 
 // Returns the icon for the given file mime type
-export function fileTypeIcon(mimeType) {
+export function fileTypeIcon(mimeType: string): string {
     switch (fileType(mimeType)) {
         case 'pdf':
             return 'fa-file-pdf-o'

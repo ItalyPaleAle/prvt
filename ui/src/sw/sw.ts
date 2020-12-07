@@ -100,6 +100,11 @@ self.addEventListener('message', async (event) => {
 
         // Message 'set-wasm' is for enabling or disabling Wasm
         case 'set-wasm':
+            // Request all clients to unmount the app and display the "loading" component while the Wasm environment is being set up
+            BroadcastMessage({
+                message: 'off'
+            })
+
             // Enable or disable wasm
             await enableWasm(!!(event.data && event.data.enabled))
 

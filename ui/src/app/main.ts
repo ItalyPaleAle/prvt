@@ -18,14 +18,15 @@ import AppInfo from './lib/appinfo'
 import App from './App.svelte'
 import LoadingApp from './LoadingApp.svelte'
 
+// App currently mounted
 let app: SvelteComponent | null = null
-let wasmCb: ((value?: boolean) => void) | null = null
+
+// Flag that informs if the startup sequence was completed
+let startupComplete = false
 
 ;(async function main() {
     // Show the LoadingApp component while the app is initializing
-    const loading = new LoadingApp({
-        target: document.body,
-    })
+    mountApp('loading')
 
     // Register the service worker and wait for its activation
     try {
@@ -63,36 +64,55 @@ let wasmCb: ((value?: boolean) => void) | null = null
     } as ServiceWorkerMessage)
 
     // Request wasm status
-    await new Promise((resolve) => {
-        wasmCb = resolve
-        // Send the request
-        controller.postMessage({
-            message: 'get-wasm'
-        } as ServiceWorkerMessage)
-    })
-
-    // Remove the loading component
-    loading.$destroy()
-
-    // Initialize the Svelte app and inject it in the DOM
-    app = new App({
-        target: document.body,
-    })
+    // The receiver for the get-wasm message also initializes the app
+    controller.postMessage({
+        message: 'get-wasm'
+    } as ServiceWorkerMessage)
 })()
 
+// Mount the desired app
+function mountApp(t: 'loading' | 'app') {
+    // If there's currently an app mounted, un-mount it first
+    if (app) {
+        app.$destroy()
+    }
+
+    // Mount the desired app
+    switch (t) {
+        case 'app':
+            app = new App({
+                target: document.body,
+            })
+            break
+        case 'loading':
+            app = new LoadingApp({
+                target: document.body,
+            })
+            break
+    }
+}
+
+// Handle messages from the service worker
 async function swMessage(event: MessageEvent<ServiceWorkerMessage>) {
     if (!event?.data) {
         return
     }
 
     switch (event.data.message) {
+        // We need to un-mount the app and display the loading component
+        // This happens for example when wasm state is about to change
+        case 'off':
+            // Display the loading component
+            mountApp('loading')
+            break
+
         // The repo was unlocked
         case 'unlocked':
             // Refresh app info cache
             await AppInfo.update()
 
             // If we are on the /unlock route, go to the main view
-            if (app && get(location) == '/unlock') {
+            if (startupComplete && get(location) == '/unlock') {
                 push('/')
             }
             break
@@ -108,8 +128,8 @@ async function swMessage(event: MessageEvent<ServiceWorkerMessage>) {
             // Wait for the next tick
             await tick()
 
-            // If there's an app mounted, that means this is not the startup sequence, so…
-            if (app) {
+            // If the startup sequence was already done, we need to do some other setup
+            if (startupComplete) {
                 // 1. …Refresh app info cache
                 const info = await AppInfo.update()
 
@@ -124,12 +144,11 @@ async function swMessage(event: MessageEvent<ServiceWorkerMessage>) {
                     }
                 }
             }
+            startupComplete = true
 
-            // Invoke the callback if any
-            if (wasmCb) {
-                wasmCb(event.data.enabled as boolean)
-                wasmCb = null
-            }
+            // Ensure the app component is displayed
+            mountApp('app')
+
             break
 
         // Theme has changed
