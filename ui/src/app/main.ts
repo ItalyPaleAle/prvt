@@ -17,6 +17,7 @@ import AppInfo from './lib/appinfo'
 // Svelte app
 import App from './App.svelte'
 import LoadingApp from './LoadingApp.svelte'
+import ErrorApp from './ErrorApp.svelte'
 
 // App currently mounted
 let app: SvelteComponent | null = null
@@ -42,10 +43,15 @@ let startupComplete = false
         console.info('Service worker activated')
     }
     catch (err) {
+        const errMsg = 'Service worker registration failed with ' + err
         // eslint-disable-next-line no-console
-        console.error('Service worker registration failed with ' + err)
+        console.error(errMsg)
 
-        // TODO: SHOW ERROR IN PAGE AS THE SITE IS BROKEN NOW
+        // Show the error app and return
+        mountApp('error', {
+            error: errMsg
+        })
+        return
     }
 
     // Listen to messages coming from the service worker
@@ -71,23 +77,26 @@ let startupComplete = false
 })()
 
 // Mount the desired app
-function mountApp(t: 'loading' | 'app') {
+function mountApp(type: 'loading' | 'app' | 'error', props?: Record<string,any>) {
     // If there's currently an app mounted, un-mount it first
     if (app) {
         app.$destroy()
     }
 
     // Mount the desired app
-    switch (t) {
+    const opts = {
+        target: document.body,
+        props
+    }
+    switch (type) {
         case 'app':
-            app = new App({
-                target: document.body,
-            })
+            app = new App(opts)
             break
         case 'loading':
-            app = new LoadingApp({
-                target: document.body,
-            })
+            app = new LoadingApp(opts)
+            break
+        case 'error':
+            app = new ErrorApp(opts)
             break
     }
 }
