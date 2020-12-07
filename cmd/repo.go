@@ -35,6 +35,7 @@ func NewRepoCmd() *cobra.Command {
 	c.AddCommand(NewRepoInitCmd())
 	c.AddCommand(NewRepoKeyCmd())
 	c.AddCommand(NewRepoUpgradeCmd())
+	c.AddCommand(NewRepoLockBreakCmd())
 
 	return c
 }

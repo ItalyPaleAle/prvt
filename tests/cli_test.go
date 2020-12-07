@@ -58,6 +58,7 @@ func TestCLICore(t *testing.T) {
 		{"prvt repo key ls", []string{"repo", "key", "ls", "--help"}, cmd.NewRepoKeyLsCmd()},
 		{"prvt repo key rm", []string{"repo", "key", "rm", "--help"}, cmd.NewRepoKeyRmCmd()},
 		{"prvt repo key test", []string{"repo", "key", "test", "--help"}, cmd.NewRepoKeyTestCmd()},
+		{"prvt repo lock-break", []string{"repo", "lock-break", "--help"}, cmd.NewRepoLockBreakCmd()},
 		{"prvt repo upgrade", []string{"repo", "upgrade", "--help"}, cmd.NewRepoUpgradeCmd()},
 		{"prvt rm", []string{"rm", "--help"}, cmd.NewRmCmd()},
 		{"prvt serve", []string{"serve", "--help"}, cmd.NewServeCmd()},
