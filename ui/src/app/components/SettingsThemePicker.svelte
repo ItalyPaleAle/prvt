@@ -32,9 +32,6 @@
 // Theme data
 import {themes} from '../lib/theme'
 
-// Stores
-import {modal} from '../stores'
-
 // Set the theme
 function setTheme(t) {
     // Set the theme by telling the service worker
@@ -42,8 +39,5 @@ function setTheme(t) {
         message: 'set-theme',
         theme: t
     })
-    
-    // Hide the modal
-    $modal = null
 }
 </script>
