@@ -3,14 +3,15 @@
   {#if $showStoreName && $AppInfo}
     {#if $AppInfo.storeType && $AppInfo.storeAccount}
       <p>
-        Using store {$AppInfo.storeType} :: {$AppInfo.storeAccount} – <a href="#/repo" class="text-accent-300 hover:underline">change</a>
+        Using repository <span class="font-bold">{$AppInfo.storeType} :: {$AppInfo.storeAccount}</span>
+        {#if !$AppInfo.repoUnlocked}
+          (locked)
+        {/if}
+        – <a href="#/repo" class="text-accent-300 hover:underline">Switch repository</a>
         {#if AppInfo.repoId}
           <br/>Repository ID: {$AppInfo.repoId}
         {/if}
       </p>
-    {/if}
-    {#if !$AppInfo.repoUnlocked}
-      <p class="text-accent-300">Repository has not been unlocked</p>
     {/if}
   {/if}
   {#if $wasm}
