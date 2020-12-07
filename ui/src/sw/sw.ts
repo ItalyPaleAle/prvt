@@ -47,18 +47,23 @@ self.addEventListener('install', (event) => {
 // On activation, load all settings and check if we want to enable wasm mode
 // These are stored in IndexedDB for persisting
 self.addEventListener('activate', (event) => {
-    // Invoke clients.claim, which makes all tabs use this service worker
-    event.waitUntil(self.clients.claim())
+    event.waitUntil((async () => {
+        // Activate the precache controller
+        // In parallel, check whether wasm is enabled
+        await Promise.all([
+            // precacheController.activate calls event.waitUntil internally
+            // However, we need to have control and get things done on our own terms
+            // So, we're passing a stub to the activate() method rather than the event object, then we call even.waitUntil here
+            // See: https://github.com/GoogleChrome/workbox/issues/2694 
+            precacheController.activate({waitUntil: () => {}} as any),
+            // Check whether wasm is enabled
+            settings.Get('wasm')
+                .then((wasm) => enableWasm(!!wasm))
+        ])
 
-    // Activate the precache controller
-    // This calls event.waitUntil internally
-    precacheController.activate(event)
-
-    // Check if we need to enable wasm
-    event.waitUntil(
-        settings.Get('wasm')
-            .then((wasm) => enableWasm(!!wasm))
-    )
+        // Invoke clients.claim, which makes all tabs use this service worker
+        await self.clients.claim()
+    })())
 })
 
 // Add the event listener that can capture fetch requests
