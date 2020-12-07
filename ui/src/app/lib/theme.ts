@@ -1,3 +1,5 @@
+import type {Writable} from 'svelte/store'
+
 // Default theme
 const defaultTheme = 'auto-blue'
 
@@ -22,13 +24,16 @@ export function getTheme() {
 }
 
 // Set a new theme
-export function setTheme(theme) {
+export function setTheme(theme: string) {
     localStorage.setItem('theme', theme)
 }
 
+// Copied from Svelte, as it's not exported
+type Subscriber<T> = (value: T) => void
+
 // Object that implements the svelte/store contract
-const subscriptions = []
-const theme = {
+const subscriptions: Subscriber<string>[] = []
+const theme: Writable<string> = {
     subscribe: (sub) => {
         subscriptions.push(sub)
         if (sub) {
@@ -57,6 +62,10 @@ const theme = {
                 subscriptions[i]('theme-' + val)
             }
         }
+    },
+
+    update: (_) => {
+        throw Error('Method update is not supported in this store')
     }
 }
 

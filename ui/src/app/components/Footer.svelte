@@ -8,7 +8,7 @@
           (locked)
         {/if}
         – <a href="#/repo" class="text-accent-300 hover:underline">Switch repository</a>
-        {#if AppInfo.repoId}
+        {#if $AppInfo.repoId}
           <br/>Repository ID: {$AppInfo.repoId}
         {/if}
       </p>
@@ -24,8 +24,7 @@
   </p>
 </footer>
 
-<script>
-/* global APP_VERSION */
+<script lang="ts">
 import {showStoreName, wasm} from '../stores'
 import AppInfo from '../lib/appinfo'
 import SettingsLink from './SettingsLink.svelte'

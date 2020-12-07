@@ -28,14 +28,16 @@
 }
 </style>
 
-<script>
+<script lang="ts">
+import {sendMessageToSW} from '../lib/utils'
+
 // Theme data
 import {themes} from '../lib/theme'
 
 // Set the theme
-function setTheme(t) {
+function setTheme(t: string) {
     // Set the theme by telling the service worker
-    navigator.serviceWorker.controller.postMessage({
+    sendMessageToSW({
         message: 'set-theme',
         theme: t
     })

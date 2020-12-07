@@ -1,6 +1,6 @@
-{#await requesting}
+{#await requestFsOptions()}
   Requesting…
-{:then _}
+{:then options}
   {#if !fs}
     <!-- Show fs selector -->
     <h1 class="flex text-2xl break-all mb-4 text-accent-300">New connection</h1>
@@ -37,7 +37,7 @@
   Error {err}
 {/await}
 
-<script>
+<script lang="ts">
 // Components
 import ConnectionAddOptsForm from "./ConnectionAddOptsForm.svelte"
 
@@ -45,35 +45,30 @@ import ConnectionAddOptsForm from "./ConnectionAddOptsForm.svelte"
 import {Request} from '../../shared/request'
 
 // Props
-export let add = null
+export let add: ((data: Record<string,any>) => Promise<any>) | null = null
 
 // Repository info, which is requested from the server
-let requesting = requestFsOptions()
-let options = null
-let fs = null
+let fs: string
 
 // Request options for all fs
 function requestFsOptions() {
-    return Request('/api/fsoptions')
-        .then((response) => {
-            options = response
-        })
+    return Request<APIFSOptionsListResponse>('/api/fsoptions')
 }
 
 // Submit the form
-function submit(event) {
+function submit(event: Event) {
     event.preventDefault()
-    const form = event.target
+    const form = event.target as HTMLFormElement
     if (form.tagName != 'FORM') {
         return false
     }
 
     // Collect all values
-    const data = {
+    const data: Record<string,any> = {
         type: fs
     }
-    Object.keys(form.elements).forEach((key) => {
-        const el = form.elements[key]
+    Object.keys(form.elements).forEach((key: any) => {
+        const el = form.elements[key] as HTMLFormElement
         if (el.type == 'checkbox') {
             data[el.name] = el.checked ? '1' : '0'
         }

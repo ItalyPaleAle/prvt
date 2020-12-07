@@ -3,6 +3,6 @@
   {title}…
 </div>
 
-<script>
+<script lang="ts">
 export let title = 'Loading'
 </script>

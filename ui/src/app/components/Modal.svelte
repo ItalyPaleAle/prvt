@@ -12,9 +12,9 @@
         <span class="sr-only">Close dialog</span>
       </span>
     </div>
-    {#if $modal && $modal.component}
+    {#if $modal?.component}
       <div class="p-4 flex-1">
-        <svelte:component this={$modal.component} {...($modal.props || {})} />
+        <svelte:component this={$modal?.component} {...($modal?.props || {})} />
       </div>
     {/if}
   </div>
@@ -28,7 +28,7 @@
 }
 </style>
 
-<script>
+<script lang="ts">
 import {modal} from '../stores'
 
 function close() {

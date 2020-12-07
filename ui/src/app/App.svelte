@@ -12,8 +12,9 @@
 
 <svelte:body on:click={bodyClick} />
 
-<script>
+<script lang="ts">
 import Router from 'svelte-spa-router'
+import type {RouterEvent, RouteDetailLoaded} from 'svelte-spa-router'
 
 // Props
 export let hide = false
@@ -29,15 +30,15 @@ import Footer from './components/Footer.svelte'
 import {modal} from './stores'
 
 // Clicking on the background anywhere will hide any modal currently open
-function bodyClick(event) {
+function bodyClick(event: MouseEvent) {
     // Only capture clicks on the body, and not child elements
-    if (event && event.target == document.body && !event.defaultPrevented) {
+    if (event?.target == document.body && !event?.defaultPrevented) {
         $modal = null
     }
 }
 
 // When the page is changed, hide the modal
-function routeLoaded(event) {
+function routeLoaded(_: RouterEvent<RouteDetailLoaded>) {
     $modal = null
 }
 </script>

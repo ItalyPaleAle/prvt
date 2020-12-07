@@ -2,4 +2,4 @@
 dist
 
 # Files from the Go runtime
-src/wasm_exec.js
+src/sw/wasm_exec.js

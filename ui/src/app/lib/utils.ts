@@ -1,15 +1,20 @@
 // Enables or disables Wasm
 export function enableWasm(enabled: boolean) {
-    if (!navigator.serviceWorker.controller) {
-        // Should never happen
-        return
-    }
-
-    // Request a change in wasm enablement
-    navigator.serviceWorker.controller.postMessage({
+    sendMessageToSW({
         message: 'set-wasm',
         enabled
     })
+}
+
+// Sends a message to the service worker
+export function sendMessageToSW(msg: ServiceWorkerMessage) {
+    if (!navigator.serviceWorker.controller) {
+        // Should never happen
+        throw Error('navigator.serviceWorker.controller is empty')
+    }
+
+    // Request a change in wasm enablement
+    navigator.serviceWorker.controller.postMessage(msg)
 }
 
 // Cleans the path from the URL

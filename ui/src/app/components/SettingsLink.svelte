@@ -5,7 +5,7 @@
     </span>
 </p>
 
-<script>
+<script lang="ts">
 // Components
 import SettingsModal from './SettingsModal.svelte'
 

@@ -18,7 +18,7 @@ import stores from './stores'
 // Types
 
 /** Handler function */
-type HandlerFunction = ((Request) => Promise<Response>)
+type HandlerFunction = ((req: Request) => Promise<Response>)
 
 /** Object containing the definition of a request handler */
 interface RequestDefinition {

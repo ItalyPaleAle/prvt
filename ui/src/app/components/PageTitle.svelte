@@ -12,12 +12,12 @@
   <slot name="right"></slot>
 </div>
 
-<script>
+<script lang="ts">
 // Components
 import TitleBarButton from '../components/TitleBarButton.svelte'
 
-export let title = ''
-export let backButton = false
+export let title: string = ''
+export let backButton: string | null | undefined = null
 
 $: justify = backButton ? 'justify-start' : 'justify-between'
 </script>

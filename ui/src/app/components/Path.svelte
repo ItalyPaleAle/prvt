@@ -18,9 +18,9 @@
   {/if}
 </h1>
 
-<script>
-export let path
+<script lang="ts">
+export let path: string
 
 // Split the path into various parts
-$: parts = path && path.split('/')
+$: parts = path?.split('/') || []
 </script>

@@ -1,3 +1,5 @@
+/* eslint-disable quote-props */
+
 module.exports = {
     env: {
         es6: true,
@@ -166,12 +168,13 @@ module.exports = {
             'error',
             'always'
         ],
-        'no-multiple-empty-lines': [
+        // Disable this because itìs incompatible with svelte
+        /*'no-multiple-empty-lines': [
             'error',
             {
                 max: 1
             }
-        ],
+        ],*/
         'operator-linebreak': [
             'error',
             'after'

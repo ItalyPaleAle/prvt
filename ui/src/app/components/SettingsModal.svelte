@@ -22,7 +22,7 @@
     </div>
 </div>
 
-<script>
+<script lang="ts">
 // Components
 import SettingsThemePicker from './SettingsThemePicker.svelte'
 

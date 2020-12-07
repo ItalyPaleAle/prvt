@@ -33,16 +33,16 @@
 }
 </style>
 
-<script>
+<script lang="ts">
 import formatDistanceToNow from 'date-fns/formatDistanceToNow'
 import format from 'date-fns/format'
 
 // Props for the view
-export let label = ''
-export let icon = ''
-export let link = ''
-export let date = null
-export let actions = null
+export let label: string = ''
+export let icon: string = ''
+export let link: string = ''
+export let date: Date | null = null
+export let actions: boolean = false
 
 // Event dispatcher
 import {createEventDispatcher} from 'svelte'

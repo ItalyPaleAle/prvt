@@ -4,7 +4,7 @@
     </div>
 </div>
 
-<script>
+<script lang="ts">
 // Components
 import Spinner from './components/Spinner.svelte'
 </script>

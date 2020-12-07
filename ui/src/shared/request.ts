@@ -10,13 +10,16 @@ interface RequestOptions {
     body?: any
     postData?: any
     timeout?: any
-    rawResponse?: any
+}
+
+interface ErrorResponse {
+    error?: string
 }
 
 /**
  * Performs API requests.
  */
-export async function Request(url: string, options?: RequestOptions) {
+export async function Request<T>(url: string, options?: RequestOptions): Promise<T> {
     if (!options) {
         options = {}
     }
@@ -72,11 +75,6 @@ export async function Request(url: string, options?: RequestOptions) {
         }
         const response = await p
 
-        // Read the response stream and get the data
-        if (options.rawResponse) {
-            return response
-        }
-    
         // We're expecting a JSON document
         const ct = response.headers.get('content-type')
         if (!ct?.match(/application\/json/i)) {

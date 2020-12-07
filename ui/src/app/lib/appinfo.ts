@@ -1,4 +1,4 @@
-import {Readable} from 'svelte/store'
+import type {Readable} from 'svelte/store'
 import {Request} from '../../shared/request'
 
 // From Svelte, here because they're not exported

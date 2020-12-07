@@ -23,18 +23,18 @@
   </label>
 {/if}
 
-<script>
+<script lang="ts">
 // Props
-export let opt
+export let opt: APIFSOptionsRule
 export let required = false
 
-$: validateRegex = (opt && opt.validate) ? new RegExp(opt.validate) : null
+$: validateRegex = (opt?.validate) ? new RegExp(opt.validate) : null
 
-function validate(event) {
+function validate(event: Event) {
     if (!validateRegex) {
         return
     }
-    const el = event.target
+    const el = event.target as HTMLInputElement
     el.setCustomValidity(
         validateRegex.test(el.value)
         ? ''

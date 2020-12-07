@@ -50,6 +50,8 @@
 {/await}
 
 <script>
+/* global URL_PREFIX */
+
 // Utils
 import {encodePath, fileTypeIcon, cloneObject} from '../lib/utils'
 import {Request} from '../../shared/request'

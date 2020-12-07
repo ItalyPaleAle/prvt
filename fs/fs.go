@@ -216,5 +216,5 @@ type FsOption struct {
 type FsOptionsList struct {
 	Label    string     `json:"label"`
 	Required []FsOption `json:"required"`
-	Optional []FsOption `json:"optional"`
+	Optional []FsOption `json:"optional,omitempty"`
 }

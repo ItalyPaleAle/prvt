@@ -4,6 +4,8 @@
 </a>
 
 <script>
+/* global URL_PREFIX */
+
 export let fileId
 
 // URL prefix - expose the constant here so it can be used in the Svelte markup above

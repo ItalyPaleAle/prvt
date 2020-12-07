@@ -1,29 +1,23 @@
 {
+    "extends": "@tsconfig/svelte/tsconfig.json",
     "compilerOptions": {
-        "allowJs": true,
-        "noImplicitAny": false,
-        "sourceMap": false,
-        "module": "commonjs",
-        "moduleResolution": "node",
-        "esModuleInterop": true,
-        "target": "es2018",
         "lib": [
             "ES2018",
             "WebWorker",
             "DOM"
         ],
         "strict": true,
-        "declaration": true,
-        "types": [
-            "node"
-        ],
+        "target": "es2018",
+        "allowJs": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
         "outDir": "dist"
     },
     "include": [
-        "**/*.ts"
+        "src/**/*"
     ],
     "exclude": [
-        "node_modules/**/*",
-        "dist"
+        "node_modules/*",
+        "dist/*"
     ]
 }

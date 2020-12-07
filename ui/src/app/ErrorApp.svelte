@@ -3,6 +3,6 @@
     <p>{error}</p>
 </div>
 
-<script>
+<script lang="ts">
 export let error = 'prvt app failed to load'
 </script>

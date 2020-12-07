@@ -104,13 +104,14 @@ module.exports = {
         noParse: /\.wasm$|wasm_exec\.js$/,
         rules: [
             {
-                test: /\.(svelte)$/,
+                test: /\.svelte$/,
                 exclude: [],
                 use: {
                     loader: 'svelte-loader',
                     options: {
                         hotReload: true,
                         dev: !prod,
+                        preprocess: require('svelte-preprocess')({})
                     }
                 }
             },

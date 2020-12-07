@@ -60,6 +60,8 @@
 {/if}
 
 <script>
+/* global URL_PREFIX */
+
 // Utils
 import {fileType} from '../lib/utils'
 import {Request} from '../../shared/request'

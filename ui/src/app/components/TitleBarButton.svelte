@@ -3,8 +3,8 @@
   <span class="sr-only">{name}</span>
 </a>
 
-<script>
-export let href
-export let icon
-export let name
+<script lang="ts">
+export let href: string
+export let icon: string
+export let name: string
 </script>

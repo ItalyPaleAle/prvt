@@ -9,11 +9,11 @@
     {/if}
 </div>
 
-<script>
+<script lang="ts">
 // Props for the view
-export let title = ''
-export let message = ''
-export let noClose = false
+export let title: string = ''
+export let message: string = ''
+export let noClose: boolean = false
 
 // Event dispatcher
 import {createEventDispatcher} from 'svelte'

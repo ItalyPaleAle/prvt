@@ -5,10 +5,12 @@ import '../css/style.css'
 import theme from './lib/theme'
 
 // Libraries
-import {SvelteComponent, tick} from 'svelte'
+import {tick} from 'svelte'
+import type {SvelteComponent} from 'svelte'
 import {push, location} from 'svelte-spa-router'
 import {get} from 'svelte/store'
 import controlled from './lib/sw-controlled'
+import {sendMessageToSW} from './lib/utils'
 
 // Stores and app info
 import {wasm} from './stores'
@@ -57,23 +59,17 @@ let startupComplete = false
     // Listen to messages coming from the service worker
     navigator.serviceWorker.addEventListener('message', swMessage)
 
-    const controller = navigator.serviceWorker.controller
-    if (!controller) {
-        // Should never happen
-        throw Error('navigator.serviceWorker.controller is empty')
-    }
-
     // Request the current theme from the service worker
     // Initially, the theme is loaded from localStorage, but that might be out of sync
-    controller.postMessage({
+    sendMessageToSW({
         message: 'get-theme'
-    } as ServiceWorkerMessage)
+    })
 
     // Request wasm status
     // The receiver for the get-wasm message also initializes the app
-    controller.postMessage({
+    sendMessageToSW({
         message: 'get-wasm'
-    } as ServiceWorkerMessage)
+    })
 })()
 
 // Mount the desired app
