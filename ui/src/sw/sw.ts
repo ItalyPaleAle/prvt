@@ -1,8 +1,5 @@
 // Globals
 declare var self: ServiceWorkerGlobalScope
-declare var APP_VERSION: string
-declare var URL_PREFIX: string
-declare var PRODUCTION: boolean
 
 // Import the Go WebAssembly runtime
 import './wasm_exec'
@@ -84,14 +81,20 @@ registerRoute(
 
 // Handle the events to turn on and off in-browser E2EE via Wasm
 self.addEventListener('message', async (event) => {
-    if (!(event?.data) || !(event?.source)) {
+    if (!event || !event.data || !event.source) {
         return
     }
 
-    switch (event.data.message) {
-        // Message 'get-wasm' requests the status of Wasm
-        case 'get-wasm':
-            // Respond
+    const data = event.data as ServiceWorkerMessage
+    switch (data.message) {
+        // Message 'connected' is received when a client has connected
+        case 'connected':
+            // Respond with current theme
+            event.source.postMessage({
+                message: 'theme',
+                theme: await settings.Get('theme')
+            }, [])
+            // Respond with wasm status
             event.source.postMessage({
                 message: 'wasm',
                 enabled: stores.wasm
@@ -106,7 +109,7 @@ self.addEventListener('message', async (event) => {
             })
 
             // Enable or disable wasm
-            await enableWasm(!!(event.data && event.data.enabled))
+            await enableWasm(!!data.enabled)
 
             // Notify all clients
             // No need to await on this, just let it run in background
@@ -116,39 +119,32 @@ self.addEventListener('message', async (event) => {
             })
             break
 
-        // Message 'get-theme' requests the current theme
-        case 'get-theme':
-            // Respond
-            event.source.postMessage({
-                message: 'theme',
-                theme: await settings.Get('theme')
-            }, [])
-            break
-
         // Message 'set-theme' sets a new theme
         case 'set-theme':
+            const theme: string = data.theme || ''
+
             // Set the preference
-            await settings.Set('theme', (event.data && event.data.theme) || '')
+            await settings.Set('theme', theme)
 
             // Notify all clients
             // No need to await on this, just let it run in background
             BroadcastMessage({
                 message: 'theme',
-                theme: (event.data && event.data.theme) || ''
+                theme
             })
             break
 
         // Message 'set-master-key' is for overriding the master key
         // This is normally used in development only
         case 'set-master-key':
-            if (typeof event.data.masterKey != 'object' || !(event.data.masterKey instanceof Uint8Array)) {
+            if (typeof data.masterKey != 'object' || !(data.masterKey instanceof Uint8Array)) {
                 throw Error('Invalid type for masterKey: must be Uint8Array')
             }
-            if (typeof event.data.keyId != 'string' || !event.data.keyId) {
+            if (typeof data.keyId != 'string' || !data.keyId) {
                 throw Error('KeyId must not be empty')
             }
-            stores.masterKey = event.data.masterKey as Uint8Array
-            stores.keyId = event.data.keyId as string
+            stores.masterKey = data.masterKey
+            stores.keyId = data.keyId
             stores.index = Prvt.getIndex(stores.masterKey)
             break
 

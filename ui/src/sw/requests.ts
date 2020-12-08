@@ -1,6 +1,3 @@
-// Globals
-declare var URL_PREFIX: string
-
 // Handlers
 import fileHandler from './requests/file'
 import apiRepoUnlockHandlerWasm from './requests/api-repo-unlock-wasm'

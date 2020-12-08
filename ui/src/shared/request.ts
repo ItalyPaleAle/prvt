@@ -1,5 +1,3 @@
-declare var URL_PREFIX: string
-
 import {timeoutPromise, TimeoutError} from './utils'
 
 const requestTimeout = 5000 // 5s

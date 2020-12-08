@@ -59,16 +59,12 @@ let startupComplete = false
     // Listen to messages coming from the service worker
     navigator.serviceWorker.addEventListener('message', swMessage)
 
-    // Request the current theme from the service worker
-    // Initially, the theme is loaded from localStorage, but that might be out of sync
+    // Notify the service worker that we're ready
+    // The SW will respond with various messages:
+    // - 'wasm' returns the wasm status; the receiver for the wasm message also initializes the app
+    // - 'theme' returns the current theme (the theme is loaded from localStorage initially, but that might be out of sync)
     sendMessageToSW({
-        message: 'get-theme'
-    })
-
-    // Request wasm status
-    // The receiver for the get-wasm message also initializes the app
-    sendMessageToSW({
-        message: 'get-wasm'
+        message: 'connected'
     })
 })()
 
@@ -143,10 +139,8 @@ async function swMessage(event: MessageEvent<ServiceWorkerMessage>) {
                 if (!info?.repoUnlocked) {
                     push('/unlock')
                 }
-                else {
-                    if (get(location) == '/unlock') {
-                        push('/')
-                    }
+                else if (get(location) == '/unlock') {
+                    push('/')
                 }
             }
             startupComplete = true
