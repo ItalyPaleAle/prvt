@@ -31,6 +31,13 @@ if (wbManifest) {
     precacheController.addToCacheList(wbManifest)
 }
 
+// Main function that is called when the service worker is started
+const ready = (async function main() {
+    // Check whether wasm is enabled
+    const wasm = await settings.Get('wasm')
+    await enableWasm(!!wasm)
+}())
+
 // Listen to the service worker installation event
 self.addEventListener('install', (event) => {
     // Enable the skipWaiting option, meaning that the service worker will become active immediately
@@ -46,17 +53,11 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
         // Activate the precache controller
-        // In parallel, check whether wasm is enabled
-        await Promise.all([
-            // precacheController.activate calls event.waitUntil internally
-            // However, we need to have control and get things done on our own terms
-            // So, we're passing a stub to the activate() method rather than the event object, then we call even.waitUntil here
-            // See: https://github.com/GoogleChrome/workbox/issues/2694 
-            precacheController.activate({waitUntil: () => {}} as any),
-            // Check whether wasm is enabled
-            settings.Get('wasm')
-                .then((wasm) => enableWasm(!!wasm))
-        ])
+        // precacheController.activate calls event.waitUntil internally
+        // However, we need to have control and get things done on our own terms
+        // So, we're passing a stub to the activate() method rather than the event object, then we call even.waitUntil here
+        // See: https://github.com/GoogleChrome/workbox/issues/2694
+        precacheController.activate({waitUntil: () => {}} as any)
 
         // Invoke clients.claim, which makes all tabs use this service worker
         await self.clients.claim()
@@ -84,6 +85,9 @@ self.addEventListener('message', async (event) => {
     if (!event || !event.data || !event.source) {
         return
     }
+
+    // Wait for the service worker to be ready before we process any message
+    await ready
 
     const data = event.data as ServiceWorkerMessage
     switch (data.message) {
@@ -146,10 +150,6 @@ self.addEventListener('message', async (event) => {
             stores.masterKey = data.masterKey
             stores.keyId = data.keyId
             stores.index = Prvt.getIndex(stores.masterKey)
-            break
-
-        // Do nothing otherwise
-        default:
             break
     }
 })

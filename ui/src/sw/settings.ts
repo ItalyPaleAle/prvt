@@ -28,7 +28,9 @@ export async function DB(): Promise<IDBDatabase> {
  * @param key Key name
  * @returns Value for the setting
  */
-export async function Get(key: string): Promise<any> {
+export async function Get(key: 'theme'): Promise<string|undefined>
+export async function Get(key: 'wasm'): Promise<boolean|undefined>
+export async function Get(key: string): Promise<any|undefined> {
     // Get a connection to the IndexedDB
     const db = await DB()
 
@@ -43,6 +45,8 @@ export async function Get(key: string): Promise<any> {
  * @param key Key name
  * @param value Value to set
  */
+export async function Set(key: 'theme', value: string): Promise<IDBValidKey>
+export async function Set(key: 'wasm', value: boolean): Promise<IDBValidKey>
 export async function Set(key: string, value: any): Promise<IDBValidKey> {
     // Get a connection to the IndexedDB
     const db = await DB()
