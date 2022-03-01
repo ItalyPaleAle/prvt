@@ -17,7 +17,7 @@ jobs:
     steps:
       #Checkout repo
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # Delete the wasm folder
       # Wasm requires compiling for the wasm target which isn't supported by GraphQL

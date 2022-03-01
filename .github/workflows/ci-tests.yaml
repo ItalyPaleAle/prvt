@@ -32,7 +32,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Build web UI
         run: |
@@ -78,7 +78,7 @@ jobs:
           go version
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Fetch web UI artifact
         uses: actions/download-artifact@v2
@@ -158,7 +158,7 @@ jobs:
           go.exe version
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Fetch web UI artifact
         uses: actions/download-artifact@v2
