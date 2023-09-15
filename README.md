@@ -1,7 +1,5 @@
 # prvt
 
-[![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/ItalyPaleAle/prvt)
-
 **Personal, end-to-end encrypted cloud storage.**
 
 prvt lets you store files on the cloud or on local directories, protected with strong end-to-end encryption, and then conveniently view them within a web browser. You can leverage cloud-based object storage services (such as AWS S3 or Azure Storage) as a personal, general-purpose cloud storage service, with full end-to-end encryption.
