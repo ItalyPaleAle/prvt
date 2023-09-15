@@ -56,7 +56,7 @@ jobs:
           ls -al ui/dist
 
       - name: Publish web UI artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ui
           path: ui/dist/
