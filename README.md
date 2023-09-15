@@ -274,7 +274,7 @@ go build -o bin
 
 prvt encrypts your files using strong, industry-standard ciphers, such as AES-256-GCM and ChaCha20-Poly1305. The encryption key is derived from the passphrase you choose using Argon2id, or from a key wrapped with GPG.
 
-Check out the [Encryption](./Encryption.md) document for detailed information.
+Check out the [Encryption](./docs/Encryption.md) document for detailed information.
 
 ### Does prvt encrypt the names of files and folders?
 
@@ -286,7 +286,7 @@ The prvt codebase has not been audited yet (and you won't see a "1.0" release un
 
 However, all the cryptographic operations used by prvt leverage popular, strong ciphers and algorithms such as AES-256-GCM, ChaCha20-Poly1305, and Argon2id. prvt relies on production-ready libraries that implement those algorithms, such as [minio/sio](https://github.com/minio/sio), [google/tink](https://github.com/google/tink), and the Go's standard library. Additionally, prvt can interface with an externally-installed GPG utility if you are initializing a repository with a GPG-wrapped key.
 
-Check out the [Encryption](./Encryption.md) document for detailed information.
+Check out the [Encryption](./docs/Encryption.md) document for detailed information.
 
 ### How many files can I store in a repository?
 
