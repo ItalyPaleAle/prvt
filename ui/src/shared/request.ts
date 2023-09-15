@@ -33,7 +33,6 @@ export async function Request<T>(url: string, options?: RequestOptions): Promise
     const reqOptions: RequestInit = {
         method: 'GET',
         cache: 'no-store',
-        credentials: 'omit',
     }
     const headers = new Headers()
 
