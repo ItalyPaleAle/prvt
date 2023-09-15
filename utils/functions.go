@@ -26,23 +26,28 @@ import (
 )
 
 var sanitizePathRegexp = regexp.MustCompile("[#%&{}<>*\\$:!'\"+@\x60|=]")
-var slashConsolidateRegexp = regexp.MustCompile("/{2,}")
 
 // SanitizePath removes certain problematic characters from path names
-func SanitizePath(path string) string {
+func SanitizePath(str string) string {
 	// Unicode normalization
-	path = norm.NFKC.String(path)
+	str = norm.NFKC.String(str)
 
 	// Replace all back slashes with a forward slash
-	path = strings.ReplaceAll(path, "\\", "/")
+	str = strings.ReplaceAll(str, "\\", "/")
 
-	// Sanitize the string
-	path = sanitizePathRegexp.ReplaceAllString(path, "")
+	// Remove invalid characters
+	str = sanitizePathRegexp.ReplaceAllString(str, "")
 
-	// Replace all consecutive slashes with a single one
-	path = slashConsolidateRegexp.ReplaceAllString(path, "/")
+	// Clean the path
+	str = path.Clean(str)
+	if str == "/" || str == "." {
+		return ""
+	}
 
-	return path
+	// Trim the ending slash if present
+	str = strings.TrimSuffix(str, "/")
+
+	return str
 }
 
 var mimeTypeRegex = regexp.MustCompile("^(application|audio|font|image|model|text|video)\\/([a-z0-9-+*.]+)")

@@ -45,7 +45,6 @@ func TestSanitizePath(t *testing.T) {
 		{"foo\\bar", "foo/bar"},
 		{"foo\\bar\\2", "foo/bar/2"},
 		// Replace multiple slashes with a single one
-		{"//", "/"},
 		{"//aa", "/aa"},
 		{"hello////world", "hello/world"},
 		{"hello////world//aa", "hello/world/aa"},
